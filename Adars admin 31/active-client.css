@@ -1,0 +1,107 @@
+/* Client Page Specific Styles */
+
+/* Name column - fluid */
+th:nth-child(1),
+td:nth-child(1) {
+    width: auto;
+    min-width: 120px;
+    text-align: left;
+}
+
+/* Email column - enough width for emails */
+th:nth-child(2),
+td:nth-child(2) {
+    width: auto;
+    min-width: 180px;
+    text-align: left;
+}
+
+/* Phone column - fixed width for max 13 digits */
+th:nth-child(3),
+td:nth-child(3) {
+    width: 110px;
+    min-width: 110px;
+    max-width: 110px;
+    white-space: nowrap;
+    text-align: left;
+}
+
+/* Updates column */
+th:nth-child(4),
+td:nth-child(4) {
+    width: 500px;
+    min-width: 500px;
+    max-width: 600px;
+    text-align: left;
+    white-space: normal;
+}
+
+/* Force table layout fixed for consistent column widths */
+table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+/* Update Badges */
+.update-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.update-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 15px;
+    font-size: 10px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.update-badge i {
+    font-size: 10px;
+}
+
+/* New cards added - Blue */
+.update-badge.new-cards {
+    background: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #93c5fd;
+}
+
+/* Reprint request - Orange/Yellow */
+.update-badge.reprint-request {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
+}
+
+/* Verified - Green */
+.update-badge.verified {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #6ee7b7;
+}
+
+/* Approved - Purple */
+.update-badge.approved {
+    background: #ede9fe;
+    color: #5b21b6;
+    border: 1px solid #c4b5fd;
+}
+
+/* Pending - Gray */
+.update-badge.pending {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+/* Downloaded - Teal */
+.update-badge.downloaded {
+    background: #ccfbf1;
+    color: #0f766e;
+    border: 1px solid #5eead4;
+}

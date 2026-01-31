@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ID Card Actions - Modern Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="common.css">
+  <link rel="stylesheet" href="idcard-actions.css">
+  <link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+/>
+
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <div class="profile square">
+          <img src="logo.png" alt="logo">
+        </div>
+        <h3>Adarsh ID Cards</h3>
+      </div>
+    </div>
+    <nav>
+      <a href="index.html"><i class="fa-solid fa-house"></i><span>Dashboard</span></a>
+      <div class="nav-section">
+        <div class="nav-section-line"></div>
+        <span class="nav-section-title">User Management</span>
+        <div class="nav-section-line"></div>
+      </div>
+      <a href="#"><i class="fa-solid fa-user-tie"></i><span>Manage Staff</span></a>
+      <a href="manage-client.html" id="allClientsLink"><i class="fa-solid fa-users"></i><span>Manage Clients</span></a>
+      <div class="nav-section">
+        <div class="nav-section-line"></div>
+        <span class="nav-section-title">ID Card Management</span>
+        <div class="nav-section-line"></div>
+      </div>
+      <a href="active-client.html" id="activeClientsLink"><i class="fa-solid fa-user-check"></i><span>Active Clients</span></a>
+      <div class="nav-section">
+        <div class="nav-section-line"></div>
+        <span class="nav-section-title">Site Management</span>
+        <div class="nav-section-line"></div>
+      </div>
+      <a href="#"><i class="fa-solid fa-globe"></i><span>Manage Website</span></a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-actions">
+        <a href="#" class="sidebar-action-btn">
+          <i class="fa-solid fa-gear"></i><span>Settings</span>
+        </a>
+      </div>
+      <div class="sidebar-info">
+        <div class="info-item">
+          <i class="fa-solid fa-calendar-days"></i>
+          <span id="date"></span>
+        </div>
+        <div class="info-item">
+          <i class="fa-solid fa-clock"></i>
+          <span id="time"></span>
+        </div>
+      </div>
+      <div class="sidebar-user">
+        <div class="user-avatar">
+          <img src="https://i.pravatar.cc/100?img=32" alt="profile">
+        </div>
+        <div class="user-info">
+          <span class="user-name">Super Admin</span>
+          <span class="user-role">Administrator</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Top Navbar -->
+    <header class="topbar">
+
+      <!-- Left - Breadcrumb -->
+      <div class="nav-left">
+        <button class="sidebar-toggle" id="sidebarToggle">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="breadcrumb">
+            <a href="index.html" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+            <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+            <a href="active-client.html" class="breadcrumb-item">Clients</a>
+            <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+            <a href="#" class="breadcrumb-item" id="clientName">Client Name</a>
+            <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+            <a href="#" class="breadcrumb-item" id="groupName">ID Card Group</a>
+            <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+            <span class="breadcrumb-item active" id="actionType">Pending List</span>
+        </div>
+      </div>
+
+      <!-- Right - Action Tabs -->
+      <div class="nav-right">
+        <div class="action-tabs">
+          <a href="#" class="action-tab pending-tab" data-action="pending">
+            <span class="tab-label">Pending List</span>
+            <span class="tab-count" id="pendingCount">0</span>
+          </a>
+          <a href="#" class="action-tab verified-tab" data-action="verified">
+            <span class="tab-label">Verified List</span>
+            <span class="tab-count" id="verifiedCount">0</span>
+          </a>
+          <a href="#" class="action-tab pool-tab" data-action="pool">
+            <span class="tab-label">Pool List</span>
+            <span class="tab-count" id="poolCount">0</span>
+          </a>
+          <a href="#" class="action-tab approved-tab" data-action="approved">
+            <span class="tab-label">Approved List</span>
+            <span class="tab-count" id="approvedCount">0</span>
+          </a>
+          <a href="#" class="action-tab download-tab" data-action="download">
+            <span class="tab-label">Download List</span>
+            <span class="tab-count" id="downloadCount">0</span>
+          </a>
+        </div>
+      </div>
+
+    </header>
+
+    <div class="main-content">
+
+    <!-- Action Bar - Pending List -->
+    <div class="action-bar" id="pendingActionBar">
+        
+        <!-- Action Buttons -->
+        <div class="action-buttons-group">
+            <button class="btn action-btn btn-blue" id="uploadXlsxBtn" disabled><i class="fa-solid fa-upload"></i> Upload XLSX</button>
+            <button class="btn action-btn btn-green" id="addBtn" disabled><i class="fa-solid fa-plus"></i> Add</button>
+            <button class="btn action-btn btn-green" id="editBtn"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+            <button class="btn action-btn btn-green" id="viewBtn"><i class="fa-solid fa-eye"></i> View</button>
+            <button class="btn action-btn btn-red" id="deleteBtn"><i class="fa-solid fa-trash"></i> Delete</button>
+            <button class="btn action-btn btn-green" id="verifyBtn"><i class="fa-solid fa-check-circle"></i> Verify Selected</button>
+            <button class="btn action-btn btn-blue" id="downloadImgBtn" disabled><i class="fa-solid fa-image"></i> Download Img</button>
+            <button class="btn action-btn btn-blue" id="downloadDocxBtn" disabled><i class="fa-solid fa-file-word"></i> Download Docx</button>
+            <button class="btn action-btn btn-blue" id="downloadXlsxBtn" disabled><i class="fa-solid fa-file-excel"></i> Download XLSX</button>
+            <button class="btn action-btn btn-green" id="downloadPdfBtn" disabled><i class="fa-solid fa-file-pdf"></i> Download PDF</button>
+            <button class="btn action-btn btn-red" id="reuploadImageBtn" disabled><i class="fa-solid fa-rotate"></i> Reupload Image</button>
+        </div>
+    </div>
+
+    <!-- Action Bar - Verified List -->
+    <div class="action-bar" id="verifiedActionBar" style="display: none;">
+        
+        <!-- Action Buttons -->
+        <div class="action-buttons-group">
+            <button class="btn action-btn btn-green" id="editBtnV"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+            <button class="btn action-btn btn-green" id="viewBtnV"><i class="fa-solid fa-eye"></i> View</button>
+            <button class="btn action-btn btn-blue" id="retrieveBtn"><i class="fa-solid fa-rotate-left"></i> Retrieve</button>
+            <button class="btn action-btn btn-red" id="unverifyBtn"><i class="fa-solid fa-circle-xmark"></i> Unverified Selected</button>
+            <button class="btn action-btn btn-green" id="approveBtn"><i class="fa-solid fa-circle-check"></i> Approve Selected</button>
+            <button class="btn action-btn btn-blue" id="downloadImgBtnV" disabled><i class="fa-solid fa-image"></i> Download Img</button>
+            <button class="btn action-btn btn-blue" id="downloadDocxBtnV" disabled><i class="fa-solid fa-file-word"></i> Download Docx</button>
+            <button class="btn action-btn btn-blue" id="downloadXlsxBtnV" disabled><i class="fa-solid fa-file-excel"></i> Download XLSX</button>
+            <button class="btn action-btn btn-green" id="downloadPdfBtnV" disabled><i class="fa-solid fa-file-pdf"></i> Download PDF</button>
+            <button class="btn action-btn btn-red" id="reuploadImageBtnV" disabled><i class="fa-solid fa-rotate"></i> Reupload Image</button>
+        </div>
+
+    </div>
+
+    <!-- Action Bar - Pool List -->
+    <div class="action-bar" id="poolActionBar" style="display: none;">
+        
+        <!-- Action Buttons -->
+        <div class="action-buttons-group">
+            <button class="btn action-btn btn-green" id="viewBtnP"><i class="fa-solid fa-eye"></i> View</button>
+            <button class="btn action-btn btn-blue" id="retrieveBtnP"><i class="fa-solid fa-rotate-left"></i> Retrieve</button>
+            <button class="btn action-btn btn-blue" id="downloadImgBtnP" disabled><i class="fa-solid fa-image"></i> Download Img</button>
+            <button class="btn action-btn btn-blue" id="downloadDocxBtnP" disabled><i class="fa-solid fa-file-word"></i> Download Docx</button>
+            <button class="btn action-btn btn-blue" id="downloadXlsxBtnP" disabled><i class="fa-solid fa-file-excel"></i> Download XLSX</button>
+            <button class="btn action-btn btn-green" id="downloadPdfBtnP" disabled><i class="fa-solid fa-file-pdf"></i> Download PDF</button>
+            <button class="btn action-btn btn-red" id="reuploadImageBtnP" disabled><i class="fa-solid fa-rotate"></i> Reupload Image</button>
+        </div>
+
+    </div>
+
+    <!-- Action Bar - Approved List -->
+    <div class="action-bar" id="approvedActionBar" style="display: none;">
+        
+        <!-- Action Buttons -->
+        <div class="action-buttons-group">
+            <button class="btn action-btn btn-green" id="editBtnA"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+            <button class="btn action-btn btn-green" id="viewBtnA"><i class="fa-solid fa-eye"></i> View</button>
+            <button class="btn action-btn btn-blue" id="retrieveBtnA"><i class="fa-solid fa-rotate-left"></i> Retrieve</button>
+            <button class="btn action-btn btn-red" id="unapprovedBtn"><i class="fa-solid fa-circle-xmark"></i> Unapproved Selected</button>
+            <button class="btn action-btn btn-blue" id="downloadImgBtnA" disabled><i class="fa-solid fa-image"></i> Download Img</button>
+            <button class="btn action-btn btn-blue" id="downloadDocxBtnA" disabled><i class="fa-solid fa-file-word"></i> Download Docx</button>
+            <button class="btn action-btn btn-blue" id="downloadXlsxBtnA" disabled><i class="fa-solid fa-file-excel"></i> Download XLSX</button>
+            <button class="btn action-btn btn-green" id="downloadPdfBtnA" disabled><i class="fa-solid fa-file-pdf"></i> Download PDF</button>
+            <button class="btn action-btn btn-red" id="reuploadImageBtnA" disabled><i class="fa-solid fa-rotate"></i> Reupload Image</button>
+        </div>
+
+    </div>
+
+    <!-- Action Bar - Download List -->
+    <div class="action-bar" id="downloadActionBar" style="display: none;">
+        
+        <!-- Action Buttons -->
+        <div class="action-buttons-group">
+            <button class="btn action-btn btn-green" id="editBtnD" disabled><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+            <button class="btn action-btn btn-green" id="viewBtnD" disabled><i class="fa-solid fa-eye"></i> View</button>
+            <button class="btn action-btn btn-blue" id="retrieveBtnD" disabled><i class="fa-solid fa-rotate-left"></i> Retrieve</button>
+            <button class="btn action-btn btn-blue" id="downloadImgBtnD" disabled><i class="fa-solid fa-image"></i> Download Img</button>
+            <button class="btn action-btn btn-blue" id="downloadDocxBtnD" disabled><i class="fa-solid fa-file-word"></i> Download Docx</button>
+            <button class="btn action-btn btn-blue" id="downloadXlsxBtnD" disabled><i class="fa-solid fa-file-excel"></i> Download XLSX</button>
+            <button class="btn action-btn btn-green" id="downloadPdfBtnD" disabled><i class="fa-solid fa-file-pdf"></i> Download PDF</button>
+            <button class="btn action-btn btn-red" id="reuploadImageBtnD" disabled><i class="fa-solid fa-rotate"></i> Reupload Image</button>
+        </div>
+
+    </div>
+
+    <!-- Search and Filter Bar -->
+    <div class="action-bar search-filter-bar">
+        <!-- Left side - Search and Filter (50%) -->
+        <div class="search-filter-left">
+            <div class="search-box">
+                <i class="fa-solid fa-search search-icon"></i>
+                <input type="text" class="search-input" placeholder="Search by name, email, mobile...">
+            </div>
+            <div class="custom-dropdown" id="filterDropdown">
+                <button class="dropdown-toggle" id="filterToggle">
+                    <i class="fa-solid fa-filter"></i> Filter
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-options" id="filterOptions">
+                    <div class="dropdown-option" data-value="all">All Records</div>
+                    <div class="dropdown-option" data-value="today">Updated Today</div>
+                    <div class="dropdown-option" data-value="week">Updated This Week</div>
+                    <div class="dropdown-option" data-value="month">Updated This Month</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right side - Sort and Search All -->
+        <div class="search-filter-right">
+            <div class="custom-dropdown" id="sortDropdown">
+                <button class="dropdown-toggle" id="sortToggle">
+                    <i class="fa-solid fa-sort"></i> Sort
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-options" id="sortOptions">
+                    <div class="dropdown-option" data-value="name-asc">Name (A-Z)</div>
+                    <div class="dropdown-option" data-value="name-desc">Name (Z-A)</div>
+                    <div class="dropdown-option" data-value="date-new">Newest First</div>
+                    <div class="dropdown-option" data-value="date-old">Oldest First</div>
+                    <div class="dropdown-option" data-value="sr-asc">Sr No. (Asc)</div>
+                    <div class="dropdown-option" data-value="sr-desc">Sr No. (Desc)</div>
+                </div>
+            </div>
+            <button class="dropdown-toggle" id="searchAllBtn">
+                <i class="fa-solid fa-magnifying-glass"></i> Search All
+            </button>
+        </div>
+    </div>
+
+
+    <div class="table-container idcard-table">
+    <table>
+        <thead>
+            <tr>
+                <th class="checkbox-col"><input type="checkbox" id="selectAll"></th>
+                <th class="sr-col">Sr No.</th>
+                <th>Student Name</th>
+                <th>Father Name</th>
+                <th>Mother Name</th>
+                <th>Email</th>
+                <th>Address</th>
+                <th>School Name</th>
+                <th>DOB</th>
+                <th>Blood Gr.</th>
+                <th>Mobile</th>
+                <th class="photo-col">Photo</th>
+                <th class="action-col">Action</th>
+                <th class="action-col approve-col">Approve</th>
+                <th class="action-col disapprove-col">Disapproval</th>
+                <th class="downloaded-col">Downloaded At</th>
+                <th>Last Updated</th>
+                <th>Updated By</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            <tr>
+                <td><input type="checkbox" class="rowCheckbox"></td>
+                <td>1</td>
+                <td>Rahul Sharma</td>
+                <td>Rajesh Sharma</td>
+                <td>Sunita Sharma</td>
+                <td>rahul@email.com</td>
+                <td>123, Main Street, Delhi</td>
+                <td>Delhi Public School</td>
+                <td>15-05-2010</td>
+                <td>O+</td>
+                <td>9876543210</td>
+                <td class="photo-cell"><img src="https://i.pravatar.cc/100?img=11" alt="photo" class="table-photo"><button class="edit-photo-btn" onclick="editPhoto(this)"><i class="fa-solid fa-pen-to-square"></i> Edit</button></td>
+                <td><button class="verify-row-btn" onclick="verifyRow(this)">Verify</button><button class="unapprove-row-btn" onclick="unapproveRow(this)">Unapprove</button></td>
+                <td><button class="approve-row-btn" onclick="approveRow(this)">Approve</button></td>
+                <td><button class="disapprove-row-btn" onclick="disapproveRow(this)">Disapprove</button></td>
+                <td class="downloaded-at">29-Jan-2026 03:45 PM</td>
+                <td>28-Jan-2026 10:35 AM</td>
+                <td>Admin</td>
+            </tr>
+            <tr>
+                <td><input type="checkbox" class="rowCheckbox"></td>
+                <td>2</td>
+                <td>Priya Singh</td>
+                <td>Amit Singh</td>
+                <td>Kavita Singh</td>
+                <td>priya@email.com</td>
+                <td>456, Park Road, Mumbai</td>
+                <td>St. Mary's School</td>
+                <td>22-08-2009</td>
+                <td>A+</td>
+                <td>9876543211</td>
+                <td class="photo-cell"><img src="https://i.pravatar.cc/100?img=5" alt="photo" class="table-photo"><button class="edit-photo-btn" onclick="editPhoto(this)"><i class="fa-solid fa-pen-to-square"></i> Edit</button></td>
+                <td><button class="verify-row-btn" onclick="verifyRow(this)">Verify</button><button class="unapprove-row-btn" onclick="unapproveRow(this)">Unapprove</button></td>
+                <td><button class="approve-row-btn" onclick="approveRow(this)">Approve</button></td>
+                <td><button class="disapprove-row-btn" onclick="disapproveRow(this)">Disapprove</button></td>
+                <td class="downloaded-at">29-Jan-2026 11:20 AM</td>
+                <td>27-Jan-2026 02:15 PM</td>
+                <td>Staff1</td>
+            </tr>
+            <tr>
+                <td><input type="checkbox" class="rowCheckbox"></td>
+                <td>3</td>
+                <td>Amit Kumar</td>
+                <td>Suresh Kumar</td>
+                <td>Geeta Kumar</td>
+                <td>amit@email.com</td>
+                <td>789, Lake View, Bangalore</td>
+                <td>National Academy</td>
+                <td>10-12-2011</td>
+                <td>B+</td>
+                <td>9876543212</td>
+                <td class="photo-cell"><img src="https://i.pravatar.cc/100?img=12" alt="photo" class="table-photo"><button class="edit-photo-btn" onclick="editPhoto(this)"><i class="fa-solid fa-pen-to-square"></i> Edit</button></td>
+                <td><button class="verify-row-btn" onclick="verifyRow(this)">Verify</button><button class="unapprove-row-btn" onclick="unapproveRow(this)">Unapprove</button></td>
+                <td><button class="approve-row-btn" onclick="approveRow(this)">Approve</button></td>
+                <td><button class="disapprove-row-btn" onclick="disapproveRow(this)">Disapprove</button></td>
+                <td class="downloaded-at">28-Jan-2026 05:30 PM</td>
+                <td>26-Jan-2026 09:45 AM</td>
+                <td>Admin</td>
+            </tr>
+            <tr>
+                <td><input type="checkbox" class="rowCheckbox"></td>
+                <td>4</td>
+                <td>Sneha Patel</td>
+                <td>Vikram Patel</td>
+                <td>Meena Patel</td>
+                <td>sneha@email.com</td>
+                <td>321, Green Colony, Ahmedabad</td>
+                <td>Gujarat School</td>
+                <td>05-03-2010</td>
+                <td>AB+</td>
+                <td>9876543213</td>
+                <td class="photo-cell"><img src="https://i.pravatar.cc/100?img=9" alt="photo" class="table-photo"><button class="edit-photo-btn" onclick="editPhoto(this)"><i class="fa-solid fa-pen-to-square"></i> Edit</button></td>
+                <td><button class="verify-row-btn" onclick="verifyRow(this)">Verify</button><button class="unapprove-row-btn" onclick="unapproveRow(this)">Unapprove</button></td>
+                <td><button class="approve-row-btn" onclick="approveRow(this)">Approve</button></td>
+                <td><button class="disapprove-row-btn" onclick="disapproveRow(this)">Disapprove</button></td>
+                <td class="downloaded-at">28-Jan-2026 09:15 AM</td>
+                <td>25-Jan-2026 04:20 PM</td>
+                <td>Staff2</td>
+            </tr>
+            <tr>
+                <td><input type="checkbox" class="rowCheckbox"></td>
+                <td>5</td>
+                <td>Rohan Gupta</td>
+                <td>Manoj Gupta</td>
+                <td>Rekha Gupta</td>
+                <td>rohan@email.com</td>
+                <td>555, Hill Road, Pune</td>
+                <td>Modern School</td>
+                <td>18-07-2009</td>
+                <td>O-</td>
+                <td>9876543214</td>
+                <td class="photo-cell"><img src="https://i.pravatar.cc/100?img=13" alt="photo" class="table-photo"><button class="edit-photo-btn" onclick="editPhoto(this)"><i class="fa-solid fa-pen-to-square"></i> Edit</button></td>
+                <td><button class="verify-row-btn" onclick="verifyRow(this)">Verify</button><button class="unapprove-row-btn" onclick="unapproveRow(this)">Unapprove</button></td>
+                <td><button class="approve-row-btn" onclick="approveRow(this)">Approve</button></td>
+                <td><button class="disapprove-row-btn" onclick="disapproveRow(this)">Disapprove</button></td>
+                <td class="downloaded-at">27-Jan-2026 02:40 PM</td>
+                <td>24-Jan-2026 11:50 AM</td>
+                <td>Admin</td>
+            </tr>
+            <tr>
+                <td><input type="checkbox" class="rowCheckbox"></td>
+                <td>6</td>
+                <td>Ananya Verma</td>
+                <td>Sanjay Verma</td>
+                <td>Pooja Verma</td>
+                <td>ananya.verma@gmail.com</td>
+                <td>78, Sector 15, Noida</td>
+                <td>Cambridge School</td>
+                <td>03-11-2010</td>
+                <td>A-</td>
+                <td>8899776655</td>
+                <td class="photo-cell"><img src="https://i.pravatar.cc/100?img=16" alt="photo" class="table-photo"><button class="edit-photo-btn" onclick="editPhoto(this)"><i class="fa-solid fa-pen-to-square"></i> Edit</button></td>
+                <td><button class="verify-row-btn" onclick="verifyRow(this)">Verify</button><button class="unapprove-row-btn" onclick="unapproveRow(this)">Unapprove</button></td>
+                <td><button class="approve-row-btn" onclick="approveRow(this)">Approve</button></td>
+                <td><button class="disapprove-row-btn" onclick="disapproveRow(this)">Disapprove</button></td>
+                <td class="downloaded-at">26-Jan-2026 04:55 PM</td>
+                <td>23-Jan-2026 03:10 PM</td>
+                <td>Staff1</td>
+            </tr>
+            <tr>
+                <td><input type="checkbox" class="rowCheckbox"></td>
+                <td>7</td>
+                <td>Vikash Yadav</td>
+                <td>Ram Prasad Yadav</td>
+                <td>Sita Yadav</td>
+                <td>vikash.y@yahoo.com</td>
+                <td>234, Gandhi Nagar, Lucknow</td>
+                <td>Central Academy</td>
+                <td>28-02-2011</td>
+                <td>B-</td>
+                <td>7788996655</td>
+                <td class="photo-cell"><img src="https://i.pravatar.cc/100?img=14" alt="photo" class="table-photo"><button class="edit-photo-btn" onclick="editPhoto(this)"><i class="fa-solid fa-pen-to-square"></i> Edit</button></td>
+                <td><button class="verify-row-btn" onclick="verifyRow(this)">Verify</button><button class="unapprove-row-btn" onclick="unapproveRow(this)">Unapprove</button></td>
+                <td><button class="approve-row-btn" onclick="approveRow(this)">Approve</button></td>
+                <td><button class="disapprove-row-btn" onclick="disapproveRow(this)">Disapprove</button></td>
+                <td class="downloaded-at">25-Jan-2026 11:30 AM</td>
+                <td>22-Jan-2026 10:00 AM</td>
+                <td>Admin</td>
+            </tr>
+            <tr>
+                <td><input type="checkbox" class="rowCheckbox"></td>
+                <td>8</td>
+                <td>Kavya Reddy</td>
+                <td>Venkat Reddy</td>
+                <td>Lakshmi Reddy</td>
+                <td>kavya.r@outlook.com</td>
+                <td>567, Jubilee Hills, Hyderabad</td>
+                <td>Oakridge International</td>
+                <td>14-09-2009</td>
+                <td>AB-</td>
+                <td>9988776644</td>
+                <td class="photo-cell"><img src="https://i.pravatar.cc/100?img=20" alt="photo" class="table-photo"><button class="edit-photo-btn" onclick="editPhoto(this)"><i class="fa-solid fa-pen-to-square"></i> Edit</button></td>
+                <td><button class="verify-row-btn" onclick="verifyRow(this)">Verify</button><button class="unapprove-row-btn" onclick="unapproveRow(this)">Unapprove</button></td>
+                <td><button class="approve-row-btn" onclick="approveRow(this)">Approve</button></td>
+                <td><button class="disapprove-row-btn" onclick="disapproveRow(this)">Disapprove</button></td>
+                <td class="downloaded-at">24-Jan-2026 08:45 AM</td>
+                <td>21-Jan-2026 05:30 PM</td>
+                <td>Staff2</td>
+            </tr>
+            <tr>
+                <td><input type="checkbox" class="rowCheckbox"></td>
+                <td>9</td>
+                <td>Arjun Malhotra</td>
+                <td>Deepak Malhotra</td>
+                <td>Neha Malhotra</td>
+                <td>arjun.m@email.com</td>
+                <td>890, Civil Lines, Jaipur</td>
+                <td>Maharaja School</td>
+                <td>07-06-2010</td>
+                <td>O+</td>
+                <td>9123456780</td>
+                <td class="photo-cell"><img src="https://i.pravatar.cc/100?img=15" alt="photo" class="table-photo"><button class="edit-photo-btn" onclick="editPhoto(this)"><i class="fa-solid fa-pen-to-square"></i> Edit</button></td>
+                <td><button class="verify-row-btn" onclick="verifyRow(this)">Verify</button><button class="unapprove-row-btn" onclick="unapproveRow(this)">Unapprove</button></td>
+                <td><button class="approve-row-btn" onclick="approveRow(this)">Approve</button></td>
+                <td><button class="disapprove-row-btn" onclick="disapproveRow(this)">Disapprove</button></td>
+                <td class="downloaded-at">23-Jan-2026 10:20 AM</td>
+                <td>20-Jan-2026 09:15 AM</td>
+                <td>Admin</td>
+            </tr>
+            <tr>
+                <td><input type="checkbox" class="rowCheckbox"></td>
+                <td>10</td>
+                <td>Ishita Chopra</td>
+                <td>Anil Chopra</td>
+                <td>Ritu Chopra</td>
+                <td>ishita.c@gmail.com</td>
+                <td>12, MG Road, Chandigarh</td>
+                <td>DAV Public School</td>
+                <td>25-01-2011</td>
+                <td>A+</td>
+                <td>8877665544</td>
+                <td class="photo-cell"><img src="https://i.pravatar.cc/100?img=23" alt="photo" class="table-photo"><button class="edit-photo-btn" onclick="editPhoto(this)"><i class="fa-solid fa-pen-to-square"></i> Edit</button></td>
+                <td><button class="verify-row-btn" onclick="verifyRow(this)">Verify</button><button class="unapprove-row-btn" onclick="unapproveRow(this)">Unapprove</button></td>
+                <td><button class="approve-row-btn" onclick="approveRow(this)">Approve</button></td>
+                <td><button class="disapprove-row-btn" onclick="disapproveRow(this)">Disapprove</button></td>
+                <td class="downloaded-at">22-Jan-2026 03:55 PM</td>
+                <td>19-Jan-2026 02:45 PM</td>
+                <td>Staff1</td>
+            </tr>
+            <tr>
+                <td><input type="checkbox" class="rowCheckbox"></td>
+                <td>11</td>
+                <td>Karan Mehta</td>
+                <td>Prakash Mehta</td>
+                <td>Asha Mehta</td>
+                <td>karan.mehta@email.com</td>
+                <td>456, Andheri West, Mumbai</td>
+                <td>Ryan International</td>
+                <td>11-04-2010</td>
+                <td>B+</td>
+                <td>9012345678</td>
+                <td class="photo-cell"><img src="https://i.pravatar.cc/100?img=17" alt="photo" class="table-photo"><button class="edit-photo-btn" onclick="editPhoto(this)"><i class="fa-solid fa-pen-to-square"></i> Edit</button></td>
+                <td><button class="verify-row-btn" onclick="verifyRow(this)">Verify</button><button class="unapprove-row-btn" onclick="unapproveRow(this)">Unapprove</button></td>
+                <td><button class="approve-row-btn" onclick="approveRow(this)">Approve</button></td>
+                <td><button class="disapprove-row-btn" onclick="disapproveRow(this)">Disapprove</button></td>
+                <td class="downloaded-at">21-Jan-2026 12:30 PM</td>
+                <td>18-Jan-2026 11:20 AM</td>
+                <td>Admin</td>
+            </tr>
+            <tr>
+                <td><input type="checkbox" class="rowCheckbox"></td>
+                <td>12</td>
+                <td>Divya Nair</td>
+                <td>Suresh Nair</td>
+                <td>Usha Nair</td>
+                <td>divya.nair@yahoo.com</td>
+                <td>789, MG Road, Kochi</td>
+                <td>Bhavan's Vidyalaya</td>
+                <td>30-08-2009</td>
+                <td>O-</td>
+                <td>7654321098</td>
+                <td class="photo-cell"><img src="https://i.pravatar.cc/100?img=24" alt="photo" class="table-photo"><button class="edit-photo-btn" onclick="editPhoto(this)"><i class="fa-solid fa-pen-to-square"></i> Edit</button></td>
+                <td><button class="verify-row-btn" onclick="verifyRow(this)">Verify</button><button class="unapprove-row-btn" onclick="unapproveRow(this)">Unapprove</button></td>
+                <td><button class="approve-row-btn" onclick="approveRow(this)">Approve</button></td>
+                <td><button class="disapprove-row-btn" onclick="disapproveRow(this)">Disapprove</button></td>
+                <td class="downloaded-at">20-Jan-2026 05:10 PM</td>
+                <td>17-Jan-2026 04:00 PM</td>
+                <td>Staff2</td>
+            </tr>
+            <tr>
+                <td><input type="checkbox" class="rowCheckbox"></td>
+                <td>13</td>
+                <td>Sahil Bansal</td>
+                <td>Rohit Bansal</td>
+                <td>Anita Bansal</td>
+                <td>sahil.b@outlook.com</td>
+                <td>321, Rajpur Road, Dehradun</td>
+                <td>Welham Boys School</td>
+                <td>19-12-2010</td>
+                <td>AB+</td>
+                <td>8765432109</td>
+                <td class="photo-cell"><img src="https://i.pravatar.cc/100?img=18" alt="photo" class="table-photo"><button class="edit-photo-btn" onclick="editPhoto(this)"><i class="fa-solid fa-pen-to-square"></i> Edit</button></td>
+                <td><button class="verify-row-btn" onclick="verifyRow(this)">Verify</button><button class="unapprove-row-btn" onclick="unapproveRow(this)">Unapprove</button></td>
+                <td><button class="approve-row-btn" onclick="approveRow(this)">Approve</button></td>
+                <td><button class="disapprove-row-btn" onclick="disapproveRow(this)">Disapprove</button></td>
+                <td class="downloaded-at">19-Jan-2026 09:45 AM</td>
+                <td>16-Jan-2026 08:30 AM</td>
+                <td>Admin</td>
+            </tr>
+            <tr>
+                <td><input type="checkbox" class="rowCheckbox"></td>
+                <td>14</td>
+                <td>Pooja Iyer</td>
+                <td>Ramesh Iyer</td>
+                <td>Sudha Iyer</td>
+                <td>pooja.iyer@gmail.com</td>
+                <td>567, T Nagar, Chennai</td>
+                <td>PSBB School</td>
+                <td>02-05-2011</td>
+                <td>A-</td>
+                <td>9876012345</td>
+                <td class="photo-cell"><img src="https://i.pravatar.cc/100?img=25" alt="photo" class="table-photo"><button class="edit-photo-btn" onclick="editPhoto(this)"><i class="fa-solid fa-pen-to-square"></i> Edit</button></td>
+                <td><button class="verify-row-btn" onclick="verifyRow(this)">Verify</button><button class="unapprove-row-btn" onclick="unapproveRow(this)">Unapprove</button></td>
+                <td><button class="approve-row-btn" onclick="approveRow(this)">Approve</button></td>
+                <td><button class="disapprove-row-btn" onclick="disapproveRow(this)">Disapprove</button></td>
+                <td class="downloaded-at">18-Jan-2026 02:20 PM</td>
+                <td>15-Jan-2026 01:15 PM</td>
+                <td>Staff1</td>
+            </tr>
+            <tr>
+                <td><input type="checkbox" class="rowCheckbox"></td>
+                <td>15</td>
+                <td>Aditya Joshi</td>
+                <td>Hemant Joshi</td>
+                <td>Vidya Joshi</td>
+                <td>aditya.j@email.com</td>
+                <td>890, FC Road, Pune</td>
+                <td>Bishop's School</td>
+                <td>16-10-2009</td>
+                <td>B-</td>
+                <td>9988001122</td>
+                <td class="photo-cell"><img src="https://i.pravatar.cc/100?img=19" alt="photo" class="table-photo"><button class="edit-photo-btn" onclick="editPhoto(this)"><i class="fa-solid fa-pen-to-square"></i> Edit</button></td>
+                <td><button class="verify-row-btn" onclick="verifyRow(this)">Verify</button><button class="unapprove-row-btn" onclick="unapproveRow(this)">Unapprove</button></td>
+                <td><button class="approve-row-btn" onclick="approveRow(this)">Approve</button></td>
+                <td><button class="disapprove-row-btn" onclick="disapproveRow(this)">Disapprove</button></td>
+                <td class="downloaded-at">17-Jan-2026 07:35 PM</td>
+                <td>14-Jan-2026 06:45 PM</td>
+                <td>Admin</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+    <!-- Pagination Bar -->
+    <div class="pagination-bar">
+        <div class="pagination-left">
+            <span class="pagination-info">Showing <strong>1-15</strong> of <strong>120</strong> results</span>
+        </div>
+        <div class="pagination-center">
+            <button class="pagination-btn" id="firstPage"><i class="fa-solid fa-angles-left"></i></button>
+            <button class="pagination-btn" id="prevPage"><i class="fa-solid fa-chevron-left"></i></button>
+            <span class="page-numbers">
+                <button class="page-num active">1</button>
+                <button class="page-num">2</button>
+                <button class="page-num">3</button>
+                <span class="page-dots">...</span>
+                <button class="page-num">24</button>
+            </span>
+            <button class="pagination-btn" id="nextPage"><i class="fa-solid fa-chevron-right"></i></button>
+            <button class="pagination-btn" id="lastPage"><i class="fa-solid fa-angles-right"></i></button>
+        </div>
+        <div class="pagination-right">
+            <label>Rows per page:</label>
+            <div class="custom-dropdown rows-dropdown" id="rowsDropdown">
+                <button class="dropdown-toggle" id="rowsToggle">
+                    <span id="rowsSelectedText">10</span>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-options" id="rowsOptions">
+                    <div class="dropdown-option" data-value="5">5</div>
+                    <div class="dropdown-option selected" data-value="10">10</div>
+                    <div class="dropdown-option" data-value="25">25</div>
+                    <div class="dropdown-option" data-value="50">50</div>
+                    <div class="dropdown-option" data-value="100">100</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    </div>
+
+  </main>
+
+  <!-- Edit Modal -->
+  <div class="modal-overlay" id="editModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-pen-to-square"></i> Edit Student Details</h3>
+        <button class="modal-close" id="closeModal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="editForm">
+          <!-- Photo Upload Section -->
+          <div class="photo-upload-section">
+            <div class="photo-preview">
+              <img src="https://i.pravatar.cc/100?img=11" alt="Student Photo" id="editPhotoPreview">
+            </div>
+            <div class="photo-upload-controls">
+              <label class="photo-upload-label">
+                <input type="file" id="editPhotoInput" accept="image/*" hidden>
+                <span class="btn btn-upload"><i class="fa-solid fa-camera"></i> Change Photo</span>
+              </label>
+              <p class="photo-hint">Passport size photo (35x45mm)</p>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Student Name</label>
+              <input type="text" id="editStudentName" placeholder="Enter student name">
+            </div>
+            <div class="form-group">
+              <label>Father Name</label>
+              <input type="text" id="editFatherName" placeholder="Enter father name">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Mother Name</label>
+              <input type="text" id="editMotherName" placeholder="Enter mother name">
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" id="editEmail" placeholder="Enter email">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Mobile</label>
+              <input type="text" id="editMobile" placeholder="Enter mobile number">
+            </div>
+            <div class="form-group">
+              <label>DOB</label>
+              <input type="text" id="editDOB" placeholder="DD-MM-YYYY">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Blood Group</label>
+              <input type="text" id="editBloodGroup" placeholder="Enter blood group">
+            </div>
+            <div class="form-group">
+              <label>School Name</label>
+              <input type="text" id="editSchoolName" placeholder="Enter school name">
+            </div>
+          </div>
+          <div class="form-group full-width">
+            <label>Address</label>
+            <textarea id="editAddress" placeholder="Enter address" rows="2"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="cancelEdit">Cancel</button>
+        <button class="btn btn-primary" id="saveEdit"><i class="fa-solid fa-check"></i> Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="idcard-actions.js"></script>
+</body>
+</html>

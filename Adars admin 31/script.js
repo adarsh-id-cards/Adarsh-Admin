@@ -1,0 +1,213 @@
+// Set active sidebar link based on current page
+(function() {
+    const pathname = window.location.pathname;
+    const allClientsLink = document.getElementById('allClientsLink');
+    const activeClientsLink = document.getElementById('activeClientsLink');
+    
+    // Remove any existing active classes first
+    if (allClientsLink) allClientsLink.classList.remove('active');
+    if (activeClientsLink) activeClientsLink.classList.remove('active');
+    
+    // Set active based on current page
+    if (pathname.includes('active-client.html')) {
+        if (activeClientsLink) activeClientsLink.classList.add('active');
+    } else if (pathname.includes('manage-client.html')) {
+        if (allClientsLink) allClientsLink.classList.add('active');
+    }
+})();
+
+function updateDateTime() {
+  const now = new Date();
+
+  document.getElementById("date").innerText =
+    now.toLocaleDateString("en-US", {
+      weekday: "long",
+      day: "2-digit",
+      month: "short",
+      year: "numeric"
+    });
+
+  document.getElementById("time").innerText =
+    now.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    });
+}
+
+setInterval(updateDateTime, 1000);
+updateDateTime();
+
+// Sidebar Toggle Functionality
+const sidebar = document.getElementById("sidebar");
+const sidebarToggle = document.getElementById("sidebarToggle");
+
+if (sidebarToggle && sidebar) {
+    // Check localStorage for saved state
+    const isCollapsed = localStorage.getItem("sidebarCollapsed") === "true";
+    if (isCollapsed) {
+        sidebar.classList.add("collapsed");
+        document.body.classList.add("sidebar-collapsed");
+        sidebarToggle.innerHTML = '<i class="fa-solid fa-bars"></i>';
+    } else {
+        sidebarToggle.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+    }
+
+    sidebarToggle.addEventListener("click", function() {
+        sidebar.classList.toggle("collapsed");
+        document.body.classList.toggle("sidebar-collapsed");
+        
+        const collapsed = sidebar.classList.contains("collapsed");
+        localStorage.setItem("sidebarCollapsed", collapsed);
+        
+        if (collapsed) {
+            sidebarToggle.innerHTML = '<i class="fa-solid fa-bars"></i>';
+        } else {
+            sidebarToggle.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+        }
+    });
+
+    // Keyboard shortcuts: C to collapse, V to expand
+    document.addEventListener("keydown", function(e) {
+        // Don't trigger if user is typing in an input/textarea
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        
+        if (e.key.toLowerCase() === 'c' && !sidebar.classList.contains('collapsed')) {
+            sidebar.classList.add('collapsed');
+            document.body.classList.add('sidebar-collapsed');
+            localStorage.setItem('sidebarCollapsed', 'true');
+            sidebarToggle.innerHTML = '<i class="fa-solid fa-bars"></i>';
+        } else if (e.key.toLowerCase() === 'v' && sidebar.classList.contains('collapsed')) {
+            sidebar.classList.remove('collapsed');
+            document.body.classList.remove('sidebar-collapsed');
+            localStorage.setItem('sidebarCollapsed', 'false');
+            sidebarToggle.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+        }
+    });
+}
+
+
+const groupSettingBtn = document.getElementById("groupSettingBtn");
+const idCardBtn = document.getElementById("idCardBtn");
+const tableRows = document.querySelectorAll("tbody tr");
+
+let selectedRow = null;
+
+// Function to update button states
+function updateButtonStates() {
+    const hasSelection = selectedRow !== null;
+    groupSettingBtn.disabled = !hasSelection;
+    idCardBtn.disabled = !hasSelection;
+}
+
+// Click to select/deselect row
+tableRows.forEach(row => {
+    row.addEventListener("click", function(e) {
+        if (this.classList.contains("selected")) {
+            // Deselect if already selected
+            this.classList.remove("selected");
+            selectedRow = null;
+        } else {
+            // Deselect previous row
+            if (selectedRow) {
+                selectedRow.classList.remove("selected");
+            }
+            // Select this row
+            this.classList.add("selected");
+            selectedRow = this;
+        }
+        updateButtonStates();
+    });
+});
+
+// Navigate to Group Setting page
+groupSettingBtn.addEventListener("click", function() {
+    if (selectedRow) {
+        const clientName = selectedRow.cells[0].textContent;
+        window.location.href = `group-setting.html?client=${encodeURIComponent(clientName)}`;
+    }
+});
+
+// Navigate to ID Card Group page
+idCardBtn.addEventListener("click", function() {
+    if (selectedRow) {
+        const clientName = selectedRow.cells[0].textContent;
+        window.location.href = `idcard-group.html?client=${encodeURIComponent(clientName)}`;
+    }
+});
+
+// Filter and Search functionality
+const customDropdown = document.getElementById("filterDropdown");
+const dropdownToggle = document.getElementById("dropdownToggle");
+const dropdownOptions = document.querySelectorAll(".dropdown-option");
+const selectedText = document.getElementById("selectedText");
+const searchInput = document.getElementById("searchInput");
+
+let currentFilterValue = "all";
+
+// Toggle dropdown open/close
+dropdownToggle.addEventListener("click", function(e) {
+    e.stopPropagation();
+    customDropdown.classList.toggle("open");
+});
+
+// Close dropdown when clicking outside
+document.addEventListener("click", function() {
+    customDropdown.classList.remove("open");
+});
+
+// Handle option selection
+dropdownOptions.forEach(option => {
+    option.addEventListener("click", function() {
+        // Update selected state
+        dropdownOptions.forEach(opt => opt.classList.remove("selected"));
+        this.classList.add("selected");
+        
+        // Update toggle text and value
+        const value = this.dataset.value;
+        const text = this.textContent;
+        selectedText.textContent = text;
+        currentFilterValue = value;
+        
+        // Update placeholder
+        const placeholders = {
+            "all": "Search All...",
+            "name": "Search in Names...",
+            "email": "Search in Emails...",
+            "phone": "Search in Phone Numbers..."
+        };
+        searchInput.placeholder = placeholders[value];
+        
+        // Close dropdown and re-run search
+        customDropdown.classList.remove("open");
+        performSearch();
+    });
+});
+
+// Search functionality
+searchInput.addEventListener("input", performSearch);
+
+function performSearch() {
+    const searchTerm = searchInput.value.toLowerCase();
+    const filterValue = currentFilterValue;
+
+    tableRows.forEach(row => {
+        const name = row.cells[0].textContent.toLowerCase();
+        const email = row.cells[1].textContent.toLowerCase();
+        const phone = row.cells[2].textContent.toLowerCase();
+
+        let matches = false;
+
+        if (filterValue === "all") {
+            matches = name.includes(searchTerm) || email.includes(searchTerm) || phone.includes(searchTerm);
+        } else if (filterValue === "name") {
+            matches = name.includes(searchTerm);
+        } else if (filterValue === "email") {
+            matches = email.includes(searchTerm);
+        } else if (filterValue === "phone") {
+            matches = phone.includes(searchTerm);
+        }
+
+        row.style.display = matches ? "" : "none";
+    });
+}

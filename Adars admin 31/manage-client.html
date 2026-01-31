@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Manage Clients - Adarsh ID Cards</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="common.css">
+  <link rel="stylesheet" href="manage-client.css">
+  <link rel="stylesheet" href="manage-client-modal.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <div class="profile square">
+          <img src="logo.png" alt="logo">
+        </div>
+        <h3>Adarsh ID Cards</h3>
+      </div>
+    </div>
+    <nav>
+      <a href="index.html"><i class="fa-solid fa-house"></i><span>Dashboard</span></a>
+      <div class="nav-section">
+        <div class="nav-section-line"></div>
+        <span class="nav-section-title">User Management</span>
+        <div class="nav-section-line"></div>
+      </div>
+      <a href="#"><i class="fa-solid fa-user-tie"></i><span>Manage Staff</span></a>
+      <a href="manage-client.html" class="active"><i class="fa-solid fa-users"></i><span>Manage Clients</span></a>
+      <div class="nav-section">
+        <div class="nav-section-line"></div>
+        <span class="nav-section-title">ID Card Management</span>
+        <div class="nav-section-line"></div>
+      </div>
+      <a href="active-client.html" id="activeClientsLink"><i class="fa-solid fa-user-check"></i><span>Active Clients</span></a>
+      <div class="nav-section">
+        <div class="nav-section-line"></div>
+        <span class="nav-section-title">Site Management</span>
+        <div class="nav-section-line"></div>
+      </div>
+      <a href="#"><i class="fa-solid fa-globe"></i><span>Manage Website</span></a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-actions">
+        <a href="#" class="sidebar-action-btn">
+          <i class="fa-solid fa-gear"></i><span>Settings</span>
+        </a>
+      </div>
+      <div class="sidebar-info">
+        <div class="info-item">
+          <i class="fa-solid fa-calendar-days"></i>
+          <span id="date"></span>
+        </div>
+        <div class="info-item">
+          <i class="fa-solid fa-clock"></i>
+          <span id="time"></span>
+        </div>
+      </div>
+      <div class="sidebar-user">
+        <div class="user-avatar">
+          <img src="https://i.pravatar.cc/100?img=32" alt="profile">
+        </div>
+        <div class="user-info">
+          <span class="user-name">Super Admin</span>
+          <span class="user-role">Administrator</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Top Navbar -->
+    <header class="topbar">
+
+      <!-- Left - Breadcrumb -->
+      <div class="nav-left">
+        <button class="sidebar-toggle" id="sidebarToggle">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="breadcrumb">
+            <a href="index.html" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+            <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+            <span class="breadcrumb-item active">Manage Clients</span>
+        </div>
+      </div>
+
+    </header>
+
+
+    <div id="add-client-drawer" class="drawer-modal">
+      <div class="drawer-content">
+        <div class="drawer-header">
+          <h3><i class="fa-solid fa-user-plus"></i> Add New Client</h3>
+          <button class="drawer-close" id="closeAddClientDrawer"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="addClientForm">
+          <div class="drawer-body">
+            <div class="form-group">
+              <label for="clientName">Client Name</label>
+              <input type="text" id="clientName" name="clientName" required>
+            </div>
+            <div class="form-group">
+              <label for="clientAddress">Client Address</label>
+              <input type="text" id="clientAddress" name="clientAddress" required>
+            </div>
+            <div class="form-group">
+              <label for="clientEmail">Client Email</label>
+              <input type="email" id="clientEmail" name="clientEmail" required>
+            </div>
+            <div class="form-group">
+              <label for="clientPhone">Client Phone</label>
+              <input type="text" id="clientPhone" name="clientPhone" required>
+            </div>
+            <div class="form-group">
+              <label for="clientSchool">Client School Name</label>
+              <input type="text" id="clientSchool" name="clientSchool">
+            </div>
+            <div class="permission-section">
+              <label>Permissions</label>
+              <div class="permission-list">
+                <div class="permission-item"><input type="checkbox" id="perm1" name="permissions" value="view"><label for="perm1">View</label></div>
+                <div class="permission-item"><input type="checkbox" id="perm2" name="permissions" value="edit"><label for="perm2">Edit</label></div>
+                <div class="permission-item"><input type="checkbox" id="perm3" name="permissions" value="delete"><label for="perm3">Delete</label></div>
+                <div class="permission-item"><input type="checkbox" id="perm4" name="permissions" value="export"><label for="perm4">Export</label></div>
+              </div>
+            </div>
+          </div>
+          <div class="drawer-footer">
+            <button type="button" class="btn" id="cancelAddClient">Cancel</button>
+            <button type="submit" class="btn btn-primary">Add Client</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div class="main-content">
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+        
+        <!-- Left Section - Filter and Search -->
+        <div class="action-left">
+            <div class="filter-group">
+                <div class="custom-dropdown" id="filterDropdown">
+                    <button class="dropdown-toggle" id="dropdownToggle">
+                        <span id="selectedText">All</span>
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+                    <div class="dropdown-options" id="dropdownOptions">
+                        <div class="dropdown-option selected" data-value="all">All</div>
+                        <div class="dropdown-option" data-value="name">Name</div>
+                        <div class="dropdown-option" data-value="email">Email</div>
+                        <div class="dropdown-option" data-value="mobile">Mobile</div>
+                        <div class="dropdown-option" data-value="status">Status</div>
+                    </div>
+                </div>
+            </div>
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" id="searchInput" placeholder="Search All..." class="search-input">
+            </div>
+        </div>
+
+        <!-- Right Section - Action Buttons -->
+        <div class="action-right">
+            <div class="actions">
+                <button class="btn btn-add" id="addClientBtn"><i class="fa-solid fa-plus"></i> Add</button>
+                <button class="btn btn-edit" id="editClientBtn" disabled><i class="fa-solid fa-pen"></i> Edit</button>
+                <button class="btn btn-active" id="activeClientBtn" disabled><i class="fa-solid fa-check"></i> Active</button>
+                <button class="btn btn-delete" id="deleteClientBtn" disabled><i class="fa-solid fa-trash"></i> Delete</button>
+                <button class="btn btn-view" id="viewClientBtn" disabled><i class="fa-solid fa-eye"></i> View</button>
+                <button class="btn btn-view-staff" id="viewStaffBtn" disabled><i class="fa-solid fa-users"></i> View Staff</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Mobile</th>
+                    <th>Status</th>
+                    <th>Create At</th>
+                    <th>Updated At</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <tr>
+                    <td>roshan</td>
+                    <td>iamroshandamor@gmail.com</td>
+                    <td>9301199730</td>
+                    <td><span class="status-badge active">Active</span></td>
+                    <td>29-01-2026 03:14 pm</td>
+                    <td>30-01-2026 02:17 pm</td>
+                </tr>
+
+                <tr>
+                    <td>Sant Hirdaram Medical College (SHMC)</td>
+                    <td>shmcnys@gmail.com</td>
+                    <td>9301199730</td>
+                    <td><span class="status-badge active">Active</span></td>
+                    <td>21-01-2026 08:07 pm</td>
+                    <td>21-01-2026 08:07 pm</td>
+                </tr>
+
+                <tr>
+                    <td>Umang Nasha Mukti Kendra</td>
+                    <td>umangbpl2222@gmail.com</td>
+                    <td>9301199730</td>
+                    <td><span class="status-badge active">Active</span></td>
+                    <td>05-01-2026 05:52 pm</td>
+                    <td>14-01-2026 12:16 pm</td>
+                </tr>
+
+                <tr>
+                    <td>Mansarovar Global University</td>
+                    <td>info@mguindia.com</td>
+                    <td>9301199730</td>
+                    <td><span class="status-badge active">Active</span></td>
+                    <td>30-12-2025 04:55 pm</td>
+                    <td>30-12-2025 04:55 pm</td>
+                </tr>
+
+                <tr>
+                    <td>PM Shri govt High School Satlapur</td>
+                    <td>mithleshmarani1982@gmail.com</td>
+                    <td>9301199730</td>
+                    <td><span class="status-badge active">Active</span></td>
+                    <td>20-12-2025 01:54 pm</td>
+                    <td>29-12-2025 11:10 am</td>
+                </tr>
+
+                <tr>
+                    <td>RSSB (Budni-SP)</td>
+                    <td>deepak.shivhare94@gmail.com</td>
+                    <td>9301199730</td>
+                    <td><span class="status-badge active">Active</span></td>
+                    <td>18-12-2025 11:51 am</td>
+                    <td>18-12-2025 12:27 pm</td>
+                </tr>
+
+                <tr>
+                    <td>PM Shri Eklavit Govt HS School (Khargone)</td>
+                    <td>1hsskhargone@gmail.com</td>
+                    <td>9301199730</td>
+                    <td><span class="status-badge active">Active</span></td>
+                    <td>16-12-2025 06:43 pm</td>
+                    <td>29-12-2025 04:29 pm</td>
+                </tr>
+
+                <tr>
+                    <td>Hahnemann Homoeopathic College (HHMC)</td>
+                    <td>hhmchbpl@gmail.com</td>
+                    <td>9301199730</td>
+                    <td><span class="status-badge active">Active</span></td>
+                    <td>08-12-2025 01:51 pm</td>
+                    <td>08-12-2025 01:51 pm</td>
+                </tr>
+
+                <tr>
+                    <td>Glory Times Press</td>
+                    <td>glorytimes07@gmail.com</td>
+                    <td>9301199730</td>
+                    <td><span class="status-badge active">Active</span></td>
+                    <td>13-10-2025 03:22 pm</td>
+                    <td>13-10-2025 03:22 pm</td>
+                </tr>
+
+                <tr>
+                    <td>Sun Shaper Energy</td>
+                    <td>ankit@sunshaperenergy.com</td>
+                    <td>9301199730</td>
+                    <td><span class="status-badge active">Active</span></td>
+                    <td>10-10-2025 03:07 pm</td>
+                    <td>10-10-2025 03:07 pm</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    </div>
+
+  </main>
+
+  <script src="script.js"></script>
+  <script src="manage-client.js"></script>
+  <script>
+    // Drawer modal logic
+    const addClientDrawer = document.getElementById('add-client-drawer');
+    const addClientBtn = document.getElementById('addClientBtn');
+    const closeAddClientDrawer = document.getElementById('closeAddClientDrawer');
+    const cancelAddClient = document.getElementById('cancelAddClient');
+    if (addClientBtn && addClientDrawer) {
+      addClientBtn.addEventListener('click', function() {
+        addClientDrawer.classList.add('open');
+      });
+    }
+    if (closeAddClientDrawer && addClientDrawer) {
+      closeAddClientDrawer.addEventListener('click', function() {
+        addClientDrawer.classList.remove('open');
+      });
+    }
+    if (cancelAddClient && addClientDrawer) {
+      cancelAddClient.addEventListener('click', function(e) {
+        e.preventDefault();
+        addClientDrawer.classList.remove('open');
+      });
+    }
+    // Prevent form submit default (demo only)
+    const addClientForm = document.getElementById('addClientForm');
+    if (addClientForm) {
+      addClientForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        addClientDrawer.classList.remove('open');
+        // Here you would handle form data
+      });
+    }
+  </script>
+</body>
+</html>

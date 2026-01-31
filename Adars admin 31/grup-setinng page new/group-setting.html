@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Group Setting - Modern Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="client.css">
+  <link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+/>
+
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="profile square">
+        <img src="logo.jpg" alt="logo">
+      </div>
+      <h3>Adarsh ID Cards</h3>
+    </div>
+    <nav>
+      <a href="index.html">Dashboard</a>
+      <a href="client.html" class="active">Client</a>
+      <a href="#">Website</a>
+      <a href="#">Settings</a>
+      <a href="#">Permission</a>
+    </nav>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Top Navbar -->
+    <header class="topbar">
+
+      <!-- Left - Breadcrumb -->
+      <div class="nav-left">
+        <div class="breadcrumb">
+            <a href="index.html" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+            <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+            <a href="client.html" class="breadcrumb-item">Clients</a>
+            <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+            <span class="breadcrumb-item active" id="clientName">Client Name</span>
+        </div>
+      </div>
+
+
+      <!-- Right -->
+      <div class="nav-right">
+        <div class="info-box">
+            <span class="icon">
+                <i class="fa-solid fa-calendar-days"></i>
+            </span>
+          <span id="date"></span>
+        </div>
+
+        <div class="info-box">
+            <span class="icon">
+                <i class="fa-solid fa-clock"></i>
+            </span>
+          <span id="time"></span>
+        </div>
+
+        <div class="profile square">
+          <img src="https://i.pravatar.cc/100?img=32" alt="profile">
+        </div>
+      </div>
+
+    </header>
+
+    <div class="main-content">
+        <!-- Add Drawer Modal -->
+        <div id="add-drawer" class="drawer-modal">
+          <div class="drawer-content wide">
+            <div class="drawer-header">
+              <h3><i class="fa-solid fa-table-list"></i> Create New Group Table</h3>
+              <button class="drawer-close" id="closeDrawer"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="drawer-body">
+              <div class="field-list-section">
+                <label class="field-list-label">Table Fields</label>
+                <div class="field-list-hint">Drag to reorder fields. Change type as needed.</div>
+                <ul id="field-list" class="field-list">
+                  <!-- List of selected/added fields will appear here -->
+                </ul>
+              </div>
+              <div class="add-field-section">
+                <label for="add-field-dropdown">Add Field</label>
+                <div class="add-field-dropdown-wrapper">
+                  <select id="add-field-dropdown">
+                    <option value="photo" selected>Photo (required)</option>
+                    <option value="name" selected>Name (required)</option>
+                    <option value="father_name">Father Name</option>
+                    <option value="mother_name">Mother Name</option>
+                    <option value="dob">Date of Birth</option>
+                    <option value="mobile">Mobile</option>
+                    <option value="email">Email</option>
+                    <option value="address">Address</option>
+                    <option value="blood_group">Blood Group</option>
+                    <option value="school_name">School Name</option>
+                    <option value="custom">Add Custom Field...</option>
+                  </select>
+                  <button id="add-field-btn" class="btn btn-primary" style="margin-left:10px;"><i class="fa-solid fa-plus"></i> Add</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+    <!-- Modal for confirmation -->
+    <div id="status-modal" class="modal" style="display:none;">
+      <div class="modal-content">
+        <span class="modal-close" id="modal-close">&times;</span>
+        <p id="modal-message">Are you sure you want to change the status?</p>
+        <div class="modal-actions">
+          <button id="modal-confirm" class="btn">Yes</button>
+          <button id="modal-cancel" class="btn">No</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast notification -->
+    <div id="toast" class="toast" style="display:none;"></div>
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+        <div class="action-left">
+          <div class="filter-group">
+            <div class="custom-dropdown" id="filterDropdown">
+              <button class="dropdown-toggle" id="filterDropdownBtn" type="button">
+                <span id="selectedFilter">Filter</span>
+                <i class="fa-solid fa-chevron-down"></i>
+              </button>
+              <div class="dropdown-options" id="filterOptions">
+                <div class="dropdown-option" data-value="name">Name</div>
+                <div class="dropdown-option" data-value="status">Status</div>
+                <div class="dropdown-option" data-value="date">Date</div>
+              </div>
+            </div>
+            <div class="search-box">
+              <span class="search-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
+              <input class="search-input" type="text" placeholder="Search..." id="searchInput" />
+            </div>
+          </div>
+        </div>
+        <div class="action-buttons-group">
+            <button class="btn action-btn"><i class="fa-solid fa-plus"></i> Add</button>
+            <button class="btn action-btn"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+            <button class="btn action-btn"><i class="fa-solid fa-eye"></i> View</button>
+            <button id="toggle-status-btn" class="btn action-btn" disabled><i class="fa-solid fa-toggle-on"></i> Active</button>
+        </div>
+
+    </div>
+
+
+    <div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Created At</th>
+                <th>Updated At</th>
+                <th>Download Sample</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            <tr>
+              <td>Student ID Card 2025</td>
+              <td><span class="status-badge verified">Active</span></td>
+              <td>28-Jan-2026 10:35 AM</td>
+              <td>28-Jan-2026 10:35 AM</td>
+                <td><button class="download-btn"><i class="fa-solid fa-download"></i> Download</button></td>
+            </tr>
+            <tr>
+              <td>Staff ID Card 2025</td>
+              <td><span class="status-badge verified">Active</span></td>
+              <td>28-Jan-2026 10:40 AM</td>
+              <td>28-Jan-2026 10:45 AM</td>
+              <td><button class="download-btn"><i class="fa-solid fa-download"></i> Download</button></td>
+            </tr>
+            <tr>
+              <td>Visitor Pass</td>
+              <td><span class="status-badge pending">Inactive</span></td>
+              <td>27-Jan-2026 09:20 AM</td>
+              <td>27-Jan-2026 09:30 AM</td>
+                <td><button class="download-btn"><i class="fa-solid fa-download"></i> Download</button></td>
+            </tr>
+            <tr>
+              <td>Temporary ID Card</td>
+              <td><span class="status-badge pending">Inactive</span></td>
+              <td>26-Jan-2026 11:00 AM</td>
+              <td>26-Jan-2026 11:10 AM</td>
+                <td><button class="download-btn"><i class="fa-solid fa-download"></i> Download</button></td>
+            </tr>
+            <tr>
+              <td>Event Pass 2024</td>
+              <td><span class="status-badge verified">Active</span></td>
+              <td>25-Jan-2026 08:00 AM</td>
+              <td>25-Jan-2026 08:15 AM</td>
+                <td><button class="download-btn"><i class="fa-solid fa-download"></i> Download</button></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+    </div>
+
+  </main>
+
+  <script src="group-setting.js"></script>
+</body>
+</html>

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard - Adarsh ID Cards</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="common.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <div class="profile square">
+          <img src="logo.png" alt="logo">
+        </div>
+        <h3>Adarsh ID Cards</h3>
+      </div>
+    </div>
+    <nav>
+      <a href="index.html" class="active"><i class="fa-solid fa-house"></i><span>Dashboard</span></a>
+      <div class="nav-section">
+        <div class="nav-section-line"></div>
+        <span class="nav-section-title">User Management</span>
+        <div class="nav-section-line"></div>
+      </div>
+      <a href="#"><i class="fa-solid fa-user-tie"></i><span>Manage Staff</span></a>
+      <a href="manage-client.html" id="allClientsLink"><i class="fa-solid fa-users"></i><span>Manage Clients</span></a>
+      <div class="nav-section">
+        <div class="nav-section-line"></div>
+        <span class="nav-section-title">ID Card Management</span>
+        <div class="nav-section-line"></div>
+      </div>
+      <a href="active-client.html" id="activeClientsLink"><i class="fa-solid fa-user-check"></i><span>Active Clients</span></a>
+      <div class="nav-section">
+        <div class="nav-section-line"></div>
+        <span class="nav-section-title">Site Management</span>
+        <div class="nav-section-line"></div>
+      </div>
+      <a href="#"><i class="fa-solid fa-globe"></i><span>Manage Website</span></a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-actions">
+        <a href="#" class="sidebar-action-btn">
+          <i class="fa-solid fa-gear"></i><span>Settings</span>
+        </a>
+      </div>
+      <div class="sidebar-info">
+        <div class="info-item">
+          <i class="fa-solid fa-calendar-days"></i>
+          <span id="date"></span>
+        </div>
+        <div class="info-item">
+          <i class="fa-solid fa-clock"></i>
+          <span id="time"></span>
+        </div>
+      </div>
+      <div class="sidebar-user">
+        <div class="user-avatar">
+          <img src="https://i.pravatar.cc/100?img=32" alt="profile">
+        </div>
+        <div class="user-info">
+          <span class="user-name">Super Admin</span>
+          <span class="user-role">Administrator</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Top Navbar -->
+    <header class="topbar">
+      <div class="nav-left">
+        <button class="sidebar-toggle" id="sidebarToggle">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="breadcrumb">
+          <span class="breadcrumb-item active"><i class="fa-solid fa-house"></i> Dashboard</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Cards -->
+    <section class="cards">
+      <div class="card">
+        <div class="card-header">
+             <h2>Card 1</h2>
+             <div class="profile square  header-icon">
+                <span class="card-icon">
+                    <i class="fa-solid fa-clock"></i>
+                </span>
+             </div>
+        </div>
+        <p>Dashboard overview</p>
+      </div>
+      <div class="card">
+        <div class="card-header">
+             <h2>Card 1</h2>
+             <div class="profile square  header-icon">
+                <span class="card-icon">
+                    <i class="fa-solid fa-clock"></i>
+                </span>
+             </div>
+        </div>
+        <p>Dashboard overview</p>
+      </div>
+      <div class="card">
+       <div class="card-header">
+             <h2>Card 1</h2>
+             <div class="header-icon profile square ">
+                <span class="card-icon">
+                    <i class="fa-solid fa-clock"></i>
+                </span>
+             </div>
+        </div>
+        <p>Dashboard overview</p>
+      </div>
+      <div class="card">
+       <div class="card-header">
+             <h2>Card 1</h2>
+             <div class="profile square header-icon">
+                <span class="card-icon">
+                    <i class="fa-solid fa-clock"></i>
+                </span>
+             </div>
+        </div>
+        <p>Dashboard overview</p>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

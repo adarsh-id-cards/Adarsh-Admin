@@ -1,0 +1,180 @@
+/* All Client Page Specific Styles */
+
+/* Action Buttons Styling */
+.btn-add {
+    background: #3b82f6;
+    color: #fff !important;
+    border: none;
+}
+
+.btn-add:hover:not(:disabled) {
+    background: #2563eb;
+    color: #fff !important;
+}
+
+.btn-edit {
+    background: #3b82f6;
+    color: #fff !important;
+    border: none;
+}
+
+.btn-edit:hover:not(:disabled) {
+    background: #2563eb;
+    color: #fff !important;
+}
+
+.btn-active {
+    background: #22c55e;
+    color: #fff !important;
+    border: none;
+}
+
+.btn-active:hover:not(:disabled) {
+    background: #16a34a;
+    color: #fff !important;
+}
+
+.btn-delete {
+    background: #ef4444;
+    color: #fff !important;
+    border: none;
+}
+
+.btn-delete:hover:not(:disabled) {
+    background: #dc2626;
+    color: #fff !important;
+}
+
+.btn-view {
+    background: #6b7280;
+    color: #fff !important;
+    border: none;
+}
+
+.btn-view:hover:not(:disabled) {
+    background: #4b5563;
+    color: #fff !important;
+}
+
+.btn-view-staff {
+    background: #22c55e;
+    color: #fff !important;
+    border: none;
+}
+
+.btn-view-staff:hover:not(:disabled) {
+    background: #16a34a;
+    color: #fff !important;
+}
+
+/* Disabled button states - keep white text */
+.btn-add:disabled,
+.btn-edit:disabled,
+.btn-active:disabled,
+.btn-delete:disabled,
+.btn-view:disabled,
+.btn-view-staff:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    color: #fff !important;
+}
+
+/* Status Badge */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-badge.active {
+    background: #22c55e;
+    color: #fff;
+}
+
+.status-badge.inactive {
+    background: #ef4444;
+    color: #fff;
+}
+
+.status-badge.pending {
+    background: #f59e0b;
+    color: #fff;
+}
+
+/* Table Column Widths */
+/* Name column */
+th:nth-child(1),
+td:nth-child(1) {
+    width: auto;
+    min-width: 180px;
+    text-align: left;
+}
+
+/* Email column */
+th:nth-child(2),
+td:nth-child(2) {
+    width: auto;
+    min-width: 200px;
+    text-align: left;
+}
+
+/* Mobile column */
+th:nth-child(3),
+td:nth-child(3) {
+    width: 110px;
+    min-width: 110px;
+    max-width: 110px;
+    white-space: nowrap;
+    text-align: left;
+}
+
+/* Status column */
+th:nth-child(4),
+td:nth-child(4) {
+    width: 80px;
+    min-width: 80px;
+    max-width: 80px;
+    text-align: center;
+}
+
+/* Create At column */
+th:nth-child(5),
+td:nth-child(5) {
+    width: 150px;
+    min-width: 150px;
+    max-width: 150px;
+    white-space: nowrap;
+    text-align: left;
+}
+
+/* Updated At column */
+th:nth-child(6),
+td:nth-child(6) {
+    width: 150px;
+    min-width: 150px;
+    max-width: 150px;
+    white-space: nowrap;
+    text-align: left;
+}
+
+/* Table Row Selection */
+.table-container tbody tr {
+    cursor: pointer;
+}
+
+.table-container tbody tr.selected {
+    background: rgba(102, 126, 234, 0.15);
+}
+
+.table-container tbody tr:hover {
+    background: rgba(102, 126, 234, 0.08);
+}
+
+.table-container tbody tr.selected:hover {
+    background: rgba(102, 126, 234, 0.2);
+}
