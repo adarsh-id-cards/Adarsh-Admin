@@ -1,0 +1,71 @@
+{% load static %}
+
+<!-- Sidebar -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">
+      <div class="profile square">
+        <img src="{% static 'assets/logo.png' %}" alt="logo">
+      </div>
+      <h3>Adarsh ID Cards</h3>
+    </div>
+  </div>
+  <nav>
+    <a href="{% url 'dashboard' %}" class="{% if active_page == 'dashboard' %}active{% endif %}">
+      <i class="fa-solid fa-house"></i><span>Dashboard</span>
+    </a>
+    <div class="nav-section">
+      <div class="nav-section-line"></div>
+      <span class="nav-section-title">User Management</span>
+      <div class="nav-section-line"></div>
+    </div>
+    <a href="{% url 'manage_staff' %}" class="{% if active_page == 'manage_staff' %}active{% endif %}">
+      <i class="fa-solid fa-user-tie"></i><span>Manage Staff</span>
+    </a>
+    <a href="{% url 'manage_clients' %}" id="allClientsLink" class="{% if active_page == 'manage_clients' %}active{% endif %}">
+      <i class="fa-solid fa-users"></i><span>Manage Clients</span>
+    </a>
+    <div class="nav-section">
+      <div class="nav-section-line"></div>
+      <span class="nav-section-title">ID Card Management</span>
+      <div class="nav-section-line"></div>
+    </div>
+    <a href="{% url 'active_clients' %}" id="activeClientsLink" class="{% if active_page == 'active_clients' %}active{% endif %}">
+      <i class="fa-solid fa-user-check"></i><span>Active Clients</span>
+    </a>
+    <div class="nav-section">
+      <div class="nav-section-line"></div>
+      <span class="nav-section-title">Site Management</span>
+      <div class="nav-section-line"></div>
+    </div>
+    <a href="{% url 'manage_website' %}" class="{% if active_page == 'manage_website' %}active{% endif %}">
+      <i class="fa-solid fa-globe"></i><span>Manage Website</span>
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="sidebar-actions">
+      <a href="{% url 'settings' %}" class="{% if active_page == 'settings' %}active{% endif %}">
+        <i class="fa-solid fa-gear"></i><span>Settings</span>
+      </a>
+    </div>
+    <div class="sidebar-info">
+      <div class="info-item">
+        <i class="fa-solid fa-calendar-days"></i>
+        <span id="date"></span>
+      </div>
+      <div class="info-item">
+        <i class="fa-solid fa-clock"></i>
+        <span id="time"></span>
+      </div>
+    </div>
+    <div class="sidebar-user">
+      <div class="user-avatar">
+        <img src="https://i.pravatar.cc/100?img=32" alt="profile">
+      </div>
+      <div class="user-info">
+        <span class="user-name">{{ user.get_full_name|default:user.username }}</span>
+        <span class="user-role">{{ user_role|default:"User" }}</span>
+      </div>
+    </div>
+  </div>
+</aside>

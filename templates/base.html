@@ -1,0 +1,47 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}Adarsh ID Cards{% endblock %}</title>
+  <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  <link rel="stylesheet" href="{% static 'css/common.css' %}">
+  {% block extra_css %}{% endblock %}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+
+  {% include 'partials/sidebar.html' %}
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Top Navbar -->
+    <header class="topbar">
+      <div class="nav-left">
+        <button class="sidebar-toggle" id="sidebarToggle">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="breadcrumb">
+          {% block breadcrumb %}
+          <span class="breadcrumb-item active"><i class="fa-solid fa-house"></i> Dashboard</span>
+          {% endblock %}
+        </div>
+      </div>
+      {% block topbar_right %}{% endblock %}
+    </header>
+
+    <!-- Page Content -->
+    {% block content %}{% endblock %}
+
+  </main>
+
+  <script src="{% static 'js/script.js' %}"></script>
+  {% block extra_js %}{% endblock %}
+
+</body>
+</html>

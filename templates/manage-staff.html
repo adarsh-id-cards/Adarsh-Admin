@@ -1,0 +1,323 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Manage Staff - Adarsh ID Cards</title>
+  <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=12">
+  <link rel="stylesheet" href="{% static 'css/common.css' %}?v=12">
+  <link rel="stylesheet" href="{% static 'css/manage-staff.css' %}?v=12">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+
+  {% include 'partials/sidebar.html' %}
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Top Navbar -->
+    <header class="topbar">
+      <div class="nav-left">
+        <button class="sidebar-toggle" id="sidebarToggle">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="breadcrumb">
+            <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+            <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+            <span class="breadcrumb-item active">Manage Staff</span>
+        </div>
+      </div>
+    </header>
+
+    <div id="staff-drawer" class="drawer-modal">
+      <div class="drawer-content">
+        <div class="drawer-header">
+          <h3 id="drawerTitle"><i class="fa-solid fa-user-plus" id="drawerIcon"></i> <span id="drawerTitleText">Add New Staff</span></h3>
+          <button class="drawer-close" id="closeStaffDrawer"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="staffForm">
+          <div class="drawer-body">
+            
+            <!-- Profile Picture Section -->
+            <div class="profile-upload-section">
+              <div class="profile-preview" id="profilePreview">
+                <i class="fa-solid fa-user"></i>
+              </div>
+              <div class="profile-upload-controls">
+                <label class="upload-btn" for="staffProfilePic">
+                  <input type="file" id="staffProfilePic" name="profilePic" accept="image/*" style="display: none;">
+                  <i class="fa-solid fa-camera"></i> Upload Photo
+                </label>
+                <p class="upload-hint">JPG, PNG (Max 2MB)</p>
+              </div>
+            </div>
+
+            <!-- Basic Info Section -->
+            <div class="form-section">
+              <div class="section-title"><i class="fa-solid fa-user"></i> Basic Information</div>
+              
+              <div class="form-group">
+                <label for="staffName">Staff Name <span class="required">*</span></label>
+                <input type="text" id="staffName" name="staffName" placeholder="Enter staff name" required>
+              </div>
+              
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="staffEmail">Email <span class="required">*</span></label>
+                  <input type="email" id="staffEmail" name="staffEmail" placeholder="Enter email address" required>
+                </div>
+                <div class="form-group">
+                  <label for="staffPhone">Phone <span class="required">*</span></label>
+                  <input type="text" id="staffPhone" name="staffPhone" placeholder="Enter phone number" required>
+                </div>
+              </div>
+              
+              <div class="form-group">
+                <label for="staffAddress">Full Address <span class="required">*</span></label>
+                <textarea id="staffAddress" name="staffAddress" placeholder="Enter complete address" rows="3" required></textarea>
+              </div>
+            </div>
+
+            <!-- Permissions Section -->
+            <div class="form-section permissions-section">
+              <div class="section-title"><i class="fa-solid fa-shield-halved"></i> User Permissions</div>
+              
+              <!-- Staff Permissions -->
+              <div class="permission-category">
+                <div class="category-header">Staff Management</div>
+                <div class="permission-grid">
+                  <div class="permission-toggle-item">
+                    <span class="permission-label">Staff List</span>
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_staff_list" name="perm_staff_list">
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                  <div class="permission-toggle-item">
+                    <span class="permission-label">Staff Add</span>
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_staff_add" name="perm_staff_add">
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                  <div class="permission-toggle-item">
+                    <span class="permission-label">Staff Edit</span>
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_staff_edit" name="perm_staff_edit">
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                  <div class="permission-toggle-item">
+                    <span class="permission-label">Staff Delete</span>
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_staff_delete" name="perm_staff_delete">
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                  <div class="permission-toggle-item">
+                    <span class="permission-label">Staff Status</span>
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_staff_status" name="perm_staff_status">
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ID Card Settings Permissions -->
+              <div class="permission-category">
+                <div class="category-header">ID Card Settings</div>
+                <div class="permission-grid">
+                  <div class="permission-toggle-item">
+                    <span class="permission-label">Id Card Setting List</span>
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_setting_list" name="perm_idcard_setting_list">
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                  <div class="permission-toggle-item">
+                    <span class="permission-label">Id Card Setting Add</span>
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_setting_add" name="perm_idcard_setting_add">
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                  <div class="permission-toggle-item">
+                    <span class="permission-label">Id Card Setting Edit</span>
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_setting_edit" name="perm_idcard_setting_edit">
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                  <div class="permission-toggle-item">
+                    <span class="permission-label">Id Card Setting Delete</span>
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_setting_delete" name="perm_idcard_setting_delete">
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                  <div class="permission-toggle-item">
+                    <span class="permission-label">Id Card Setting Status</span>
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="perm_idcard_setting_status" name="perm_idcard_setting_status">
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+          <div class="drawer-footer">
+            <button type="button" class="btn btn-cancel" id="cancelStaffDrawer">Cancel</button>
+            <button type="submit" class="btn btn-save" id="submitStaffBtn">Add Staff</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal" class="modal">
+      <div class="modal-content">
+        <span class="modal-close" id="closeDeleteModal">&times;</span>
+        <div class="delete-icon">
+          <i class="fa-solid fa-trash"></i>
+        </div>
+        <p>Are you sure you want to delete <strong id="deleteStaffName">this staff member</strong>?</p>
+        <p class="warning-text">This action cannot be undone.</p>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-cancel" id="cancelDeleteBtn">Cancel</button>
+          <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast" class="toast">
+      <i class="fa-solid fa-check-circle"></i>
+      <span id="toastMessage">Success!</span>
+    </div>
+
+    <div class="main-content">
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+        
+        <!-- Left Section - Filter and Search -->
+        <div class="action-left">
+            <div class="filter-group">
+                <div class="custom-dropdown" id="filterDropdown">
+                    <button class="dropdown-toggle" id="dropdownToggle">
+                        <span id="selectedText">All</span>
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+                    <div class="dropdown-options" id="dropdownOptions">
+                        <div class="dropdown-option selected" data-value="all">All</div>
+                        <div class="dropdown-option" data-value="name">Name</div>
+                        <div class="dropdown-option" data-value="email">Email</div>
+                        <div class="dropdown-option" data-value="mobile">Mobile</div>
+                    </div>
+                </div>
+            </div>
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" id="searchInput" placeholder="Search All..." class="search-input">
+            </div>
+        </div>
+
+        <!-- Right Section - Action Buttons -->
+        <div class="action-right">
+            <div class="actions">
+                <div class="btn-group">
+                    <button class="btn btn-add" id="addStaffBtn"><i class="fa-solid fa-plus"></i> Add</button>
+                    <button class="btn btn-edit" id="editStaffBtn" disabled><i class="fa-solid fa-pen"></i> Edit</button>
+                    <button class="btn btn-view" id="viewStaffBtn" disabled><i class="fa-solid fa-eye"></i> View</button>
+                </div>
+                
+                <div class="btn-group-divider"></div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-delete" id="deleteStaffBtn" disabled><i class="fa-solid fa-trash"></i> Delete</button>
+                    <button class="btn btn-active" id="activeStaffBtn" disabled><i class="fa-solid fa-check"></i> Active</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-container">
+        <table id="staffTable">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Mobile</th>
+                    <th>Status</th>
+                    <th>Create At</th>
+                    <th>Updated At</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for staff in staff_list %}
+                <tr data-staff-id="{{ staff.id }}" data-staff-status="{% if staff.user.is_active %}active{% else %}inactive{% endif %}">
+                    <td>{{ staff.user.get_full_name|default:staff.user.username }}</td>
+                    <td>{{ staff.user.email }}</td>
+                    <td>{{ staff.user.phone|default:"-" }}</td>
+                    <td><span class="status-badge {% if staff.user.is_active %}active{% else %}inactive{% endif %}">{% if staff.user.is_active %}Active{% else %}Inactive{% endif %}</span></td>
+                    <td>{{ staff.created_at|date:"d-m-Y h:i a" }}</td>
+                    <td>{{ staff.updated_at|date:"d-m-Y h:i a" }}</td>
+                </tr>
+                {% empty %}
+                <tr class="no-data-row">
+                    <td colspan="6" style="text-align: center;">No staff members found</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination Bar -->
+    <div class="pagination-bar">
+        <div class="pagination-left">
+            <span class="pagination-info">Showing <strong>1-{{ staff_list|length }}</strong> of <strong>{{ staff_list|length }}</strong> staff members</span>
+        </div>
+        <div class="pagination-center">
+            <button class="pagination-btn" disabled title="First Page"><i class="fa-solid fa-angles-left"></i></button>
+            <button class="pagination-btn" disabled title="Previous"><i class="fa-solid fa-chevron-left"></i></button>
+            <div class="page-numbers">
+                <button class="page-num active">1</button>
+            </div>
+            <button class="pagination-btn" disabled title="Next"><i class="fa-solid fa-chevron-right"></i></button>
+            <button class="pagination-btn" disabled title="Last Page"><i class="fa-solid fa-angles-right"></i></button>
+        </div>
+        <div class="pagination-right">
+            <label>Rows per page:</label>
+            <div class="rows-dropdown" id="rowsDropdown">
+                <button class="dropdown-toggle" type="button">
+                    <span>10</span>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-options">
+                    <div class="dropdown-option" data-value="10">10</div>
+                    <div class="dropdown-option" data-value="25">25</div>
+                    <div class="dropdown-option" data-value="50">50</div>
+                    <div class="dropdown-option" data-value="100">100</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    </div>
+
+  </main>
+
+  <script src="{% static 'js/script.js' %}"></script>
+  <script src="{% static 'js/manage-staff.js' %}"></script>
+</body>
+</html>

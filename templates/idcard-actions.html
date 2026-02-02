@@ -1,0 +1,630 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ID Card Actions - {{ table.name }} - Adarsh ID Cards</title>
+  <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=24">
+  <link rel="stylesheet" href="{% static 'css/common.css' %}?v=24">
+  <link rel="stylesheet" href="{% static 'css/idcard-actions.css' %}?v=24">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- SheetJS for Excel file reading -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- JSZip for ZIP file reading -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script>
+    // Define global variables before any other scripts
+    var TABLE_ID = {{ table.id }};
+    var TABLE_FIELDS = {{ table.fields|safe }};
+    var CURRENT_STATUS = '{{ current_status|default:"pending" }}';
+    var CLIENT_ID = {{ client.id }};
+  </script>
+</head>
+<body>
+
+  {% include 'partials/sidebar.html' %}
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Top Navbar -->
+    <header class="topbar">
+      <!-- Left - Breadcrumb -->
+      <div class="nav-left">
+        <button class="sidebar-toggle" id="sidebarToggle">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+        <div class="breadcrumb">
+            <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+            <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+            <a href="{% url 'active_clients' %}" class="breadcrumb-item">Clients</a>
+            <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+            <span class="breadcrumb-item">{{ client.name }}</span>
+            <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+            <a href="{% url 'idcard_group' client.id %}" class="breadcrumb-item">ID Card Group</a>
+            <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+            <span class="breadcrumb-item active">{% if current_status %}{{ current_status|title }} List{% else %}{{ table.name }}{% endif %}</span>
+        </div>
+      </div>
+
+      <!-- Right - Action Tabs -->
+      <div class="nav-right">
+        <div class="action-tabs">
+          <a href="{% url 'idcard_actions' table.id %}?status=pending" class="action-tab pending-tab {% if current_status == 'pending' or not current_status %}active{% endif %}">
+            <span class="tab-label">Pending List</span>
+            <span class="tab-count">{{ status_counts.pending }}</span>
+          </a>
+          <a href="{% url 'idcard_actions' table.id %}?status=verified" class="action-tab verified-tab {% if current_status == 'verified' %}active{% endif %}">
+            <span class="tab-label">Verified List</span>
+            <span class="tab-count">{{ status_counts.verified }}</span>
+          </a>
+          <a href="{% url 'idcard_actions' table.id %}?status=pool" class="action-tab pool-tab {% if current_status == 'pool' %}active{% endif %}">
+            <span class="tab-label">Pool List</span>
+            <span class="tab-count">{{ status_counts.pool }}</span>
+          </a>
+          <a href="{% url 'idcard_actions' table.id %}?status=approved" class="action-tab approved-tab {% if current_status == 'approved' %}active{% endif %}">
+            <span class="tab-label">Approved List</span>
+            <span class="tab-count">{{ status_counts.approved }}</span>
+          </a>
+          <a href="{% url 'idcard_actions' table.id %}?status=download" class="action-tab download-tab {% if current_status == 'download' %}active{% endif %}">
+            <span class="tab-label">Download List</span>
+            <span class="tab-count">{{ status_counts.download }}</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <div class="main-content">
+
+    <!-- Hidden file input for XLSX upload -->
+    <input type="file" id="xlsxFileInput" accept=".xlsx,.xls,.csv" style="display: none;">
+
+    <!-- Action Bar - Pending List -->
+    <div class="action-bar action-buttons-bar" id="pendingActionBar" {% if current_status and current_status != 'pending' %}style="display: none;"{% endif %}>
+        <div class="action-buttons-group">
+            <button class="btn action-btn btn-blue" id="uploadXlsxBtn"><i class="fa-solid fa-upload"></i> Upload XLSX</button>
+            <button class="btn action-btn btn-green" id="addBtn"><i class="fa-solid fa-plus"></i> Add</button>
+            <button class="btn action-btn btn-green" id="editBtn" disabled><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+            <button class="btn action-btn btn-green" id="viewBtn" disabled><i class="fa-solid fa-eye"></i> View</button>
+            <button class="btn action-btn btn-red" id="deleteBtn" disabled><i class="fa-solid fa-trash"></i> Delete</button>
+            <button class="btn action-btn btn-green" id="verifyBtn" disabled><i class="fa-solid fa-check-circle"></i> Verify Selected</button>
+            <button class="btn action-btn btn-blue" id="downloadImgBtn" disabled><i class="fa-solid fa-image"></i> Download Img</button>
+            <button class="btn action-btn btn-blue" id="downloadDocxBtn" disabled><i class="fa-solid fa-file-word"></i> Download Docx</button>
+            <button class="btn action-btn btn-blue" id="downloadXlsxBtn" disabled><i class="fa-solid fa-file-excel"></i> Download XLSX</button>
+            <button class="btn action-btn btn-green" id="downloadPdfBtn" disabled><i class="fa-solid fa-file-pdf"></i> Download PDF</button>
+            <button class="btn action-btn btn-red" id="reuploadImageBtn" disabled><i class="fa-solid fa-rotate"></i> Reupload Image</button>
+        </div>
+    </div>
+
+    <!-- Action Bar - Verified List -->
+    <div class="action-bar action-buttons-bar" id="verifiedActionBar" {% if current_status != 'verified' %}style="display: none;"{% endif %}>
+        <div class="action-buttons-group">
+            <button class="btn action-btn btn-green" id="editBtnV" disabled><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+            <button class="btn action-btn btn-green" id="viewBtnV" disabled><i class="fa-solid fa-eye"></i> View</button>
+            <button class="btn action-btn btn-red" id="deleteBtnV" disabled><i class="fa-solid fa-trash"></i> Delete</button>
+            <button class="btn action-btn btn-red" id="unverifyBtn" disabled><i class="fa-solid fa-circle-xmark"></i> Unverified Selected</button>
+            <button class="btn action-btn btn-green" id="approveBtn" disabled><i class="fa-solid fa-circle-check"></i> Approve Selected</button>
+            <button class="btn action-btn btn-blue" id="downloadImgBtnV" disabled><i class="fa-solid fa-image"></i> Download Img</button>
+            <button class="btn action-btn btn-blue" id="downloadDocxBtnV" disabled><i class="fa-solid fa-file-word"></i> Download Docx</button>
+            <button class="btn action-btn btn-blue" id="downloadXlsxBtnV" disabled><i class="fa-solid fa-file-excel"></i> Download XLSX</button>
+            <button class="btn action-btn btn-green" id="downloadPdfBtnV" disabled><i class="fa-solid fa-file-pdf"></i> Download PDF</button>
+            <button class="btn action-btn btn-red" id="reuploadImageBtnV" disabled><i class="fa-solid fa-rotate"></i> Reupload Image</button>
+        </div>
+    </div>
+
+    <!-- Action Bar - Pool List -->
+    <div class="action-bar action-buttons-bar" id="poolActionBar" {% if current_status != 'pool' %}style="display: none;"{% endif %}>
+        <div class="action-buttons-group">
+            <button class="btn action-btn btn-green" id="viewBtnP" disabled><i class="fa-solid fa-eye"></i> View</button>
+            <button class="btn action-btn btn-blue" id="retrieveBtnP" disabled><i class="fa-solid fa-rotate-left"></i> Retrieve</button>
+            <button class="btn action-btn btn-blue" id="downloadImgBtnP" disabled><i class="fa-solid fa-image"></i> Download Img</button>
+            <button class="btn action-btn btn-blue" id="downloadDocxBtnP" disabled><i class="fa-solid fa-file-word"></i> Download Docx</button>
+            <button class="btn action-btn btn-blue" id="downloadXlsxBtnP" disabled><i class="fa-solid fa-file-excel"></i> Download XLSX</button>
+            <button class="btn action-btn btn-green" id="downloadPdfBtnP" disabled><i class="fa-solid fa-file-pdf"></i> Download PDF</button>
+            <button class="btn action-btn btn-red" id="reuploadImageBtnP" disabled><i class="fa-solid fa-rotate"></i> Reupload Image</button>
+            <button class="btn action-btn btn-red" id="deletePermanentBtnP" disabled><i class="fa-solid fa-trash"></i> Delete Permanent</button>
+        </div>
+    </div>
+
+    <!-- Action Bar - Approved List -->
+    <div class="action-bar action-buttons-bar" id="approvedActionBar" {% if current_status != 'approved' %}style="display: none;"{% endif %}>
+        <div class="action-buttons-group">
+            <button class="btn action-btn btn-green" id="editBtnA" disabled><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+            <button class="btn action-btn btn-green" id="viewBtnA" disabled><i class="fa-solid fa-eye"></i> View</button>
+            <button class="btn action-btn btn-blue" id="retrieveBtnA" disabled><i class="fa-solid fa-rotate-left"></i> Retrieve</button>
+            <button class="btn action-btn btn-red" id="unapprovedBtn" disabled><i class="fa-solid fa-circle-xmark"></i> Unapproved Selected</button>
+            <button class="btn action-btn btn-blue" id="downloadImgBtnA" disabled><i class="fa-solid fa-image"></i> Download Img</button>
+            <button class="btn action-btn btn-blue" id="downloadDocxBtnA" disabled><i class="fa-solid fa-file-word"></i> Download Docx</button>
+            <button class="btn action-btn btn-blue" id="downloadXlsxBtnA" disabled><i class="fa-solid fa-file-excel"></i> Download XLSX</button>
+            <button class="btn action-btn btn-green" id="downloadPdfBtnA" disabled><i class="fa-solid fa-file-pdf"></i> Download PDF</button>
+            <button class="btn action-btn btn-red" id="reuploadImageBtnA" disabled><i class="fa-solid fa-rotate"></i> Reupload Image</button>
+        </div>
+    </div>
+
+    <!-- Action Bar - Download List -->
+    <div class="action-bar action-buttons-bar" id="downloadActionBar" {% if current_status != 'download' %}style="display: none;"{% endif %}>
+        <div class="action-buttons-group">
+            <button class="btn action-btn btn-green" id="editBtnD" disabled><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+            <button class="btn action-btn btn-green" id="viewBtnD" disabled><i class="fa-solid fa-eye"></i> View</button>
+            <button class="btn action-btn btn-blue" id="retrieveBtnD" disabled><i class="fa-solid fa-rotate-left"></i> Retrieve</button>
+            <button class="btn action-btn btn-blue" id="downloadImgBtnD" disabled><i class="fa-solid fa-image"></i> Download Img</button>
+            <button class="btn action-btn btn-blue" id="downloadDocxBtnD" disabled><i class="fa-solid fa-file-word"></i> Download Docx</button>
+            <button class="btn action-btn btn-blue" id="downloadXlsxBtnD" disabled><i class="fa-solid fa-file-excel"></i> Download XLSX</button>
+            <button class="btn action-btn btn-green" id="downloadPdfBtnD" disabled><i class="fa-solid fa-file-pdf"></i> Download PDF</button>
+            <button class="btn action-btn btn-red" id="reuploadImageBtnD" disabled><i class="fa-solid fa-rotate"></i> Reupload Image</button>
+        </div>
+    </div>
+
+    <!-- Search and Filter Bar -->
+    <div class="action-bar search-filter-bar">
+        <!-- Left side - Search and Filter -->
+        <div class="search-filter-left">
+            <div class="search-box">
+                <i class="fa-solid fa-search search-icon"></i>
+                <input type="text" class="search-input" id="searchInput" placeholder="Search in all fields...">
+                <button class="search-clear-btn" id="searchClearBtn" type="button" style="display: none;">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="custom-dropdown" id="filterDropdown">
+                <button class="dropdown-toggle" id="filterToggle" type="button">
+                    <i class="fa-solid fa-filter"></i> Filter
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-options" id="filterOptions">
+                    <div class="dropdown-option selected" data-value="all" data-field="all">ALL FIELDS</div>
+                    {% for field in table.fields %}
+                    {% if field.type != 'image' %}
+                    <div class="dropdown-option" data-value="field" data-field="{{ field.name|upper }}">{{ field.name|upper }}</div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right side - Image Sort and Search All -->
+        <div class="search-filter-right">
+            <button class="dropdown-toggle" id="imageSortBtn" type="button">
+                <i class="fa-solid fa-image"></i> Image Sort
+            </button>
+            <button class="dropdown-toggle" id="searchAllBtn" type="button">
+                <i class="fa-solid fa-magnifying-glass"></i> Search All
+            </button>
+        </div>
+    </div>
+
+    <!-- ID Cards Table -->
+    <div class="table-wrapper">
+        <div class="table-container idcard-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th class="checkbox-col"><input type="checkbox" id="selectAll"></th>
+                        <th class="sr-col">Sr No.</th>
+                        {% for field in table.fields %}
+                        {% if field.type == 'image' or field.name|lower == 'photo' %}
+                        <th class="image-col">{{ field.name }}</th>
+                        {% else %}
+                        <th class="dynamic-col">{{ field.name }}</th>
+                        {% endif %}
+                        {% endfor %}
+                        <th class="action-col">Action</th>
+                        <th class="fixed-col">Last Updated</th>
+                        <th class="fixed-col">Updated By</th>
+                    </tr>
+                </thead>
+                <tbody id="cardsTableBody">
+                    {% for card in id_cards %}
+                    <tr data-card-id="{{ card.id }}">
+                        <td><input type="checkbox" class="rowCheckbox"></td>
+                        <td>{{ forloop.counter }}</td>
+                        {% for field in card.ordered_fields %}
+                            {% if field.type == 'image' or field.name|lower == 'photo' %}
+                            <td class="image-field image-cell" 
+                                data-field-name="{{ field.name }}" 
+                                data-field-type="image"
+                                data-original-value="{{ field.value }}">
+                                <div class="image-with-edit">
+                                    {% if field.value and field.value != 'NOT_FOUND' and 'id_card_images' in field.value|lower %}
+                                    <img src="/media/{{ field.value }}" alt="{{ field.name }}" class="table-image">
+                                    {% elif field.value and field.value != 'NOT_FOUND' %}
+                                    <img src="/media/{{ field.value }}" alt="{{ field.name }}" class="table-image">
+                                    {% elif field.value == 'NOT_FOUND' %}
+                                    <!-- Image name was given but not found in ZIP - grayscale placeholder -->
+                                    <div class="no-image passport-placeholder not-found">
+                                        <i class="fa-solid fa-user-xmark"></i>
+                                    </div>
+                                    {% else %}
+                                    <!-- No image name given - colorful cartoon placeholder -->
+                                    <div class="no-image colorful-placeholder">
+                                        <i class="fa-solid fa-user-astronaut"></i>
+                                    </div>
+                                    {% endif %}
+                                    <button class="edit-photo-btn" data-card-id="{{ card.id }}" title="Edit Card">Edit</button>
+                                </div>
+                            </td>
+                            {% else %}
+                            <td class="dynamic-field editable-cell {% if field.type == 'textarea' %}long-text{% elif field.type == 'date' or field.type == 'number' %}short-text{% elif field.value|length <= 10 %}short-text{% elif field.value|length > 40 %}long-text{% else %}medium-text{% endif %}" 
+                                data-field-name="{{ field.name }}" 
+                                data-field-type="{{ field.type }}"
+                                data-original-value="{{ field.value }}"
+                                title="Click to edit">
+                                <span class="cell-value">{{ field.value }}</span>
+                            </td>
+                            {% endif %}
+                        {% endfor %}
+                        <td class="action-cell">
+                            <div class="action-buttons">
+                            {% if current_status == 'pending' or not current_status %}
+                            <button class="verify-row-btn" data-card-id="{{ card.id }}">Verify</button>
+                            {% elif current_status == 'verified' %}
+                            <button class="approve-row-btn" data-card-id="{{ card.id }}">Approve</button>
+                            <button class="unverify-row-btn" data-card-id="{{ card.id }}">Unverify</button>
+                            {% elif current_status == 'approved' %}
+                            <button class="download-row-btn" data-card-id="{{ card.id }}">Download</button>
+                            <button class="unapprove-row-btn" data-card-id="{{ card.id }}">Unapprove</button>
+                            {% elif current_status == 'pool' %}
+                            <button class="retrieve-row-btn" data-card-id="{{ card.id }}">Retrieve</button>
+                            {% elif current_status == 'download' %}
+                            <span class="status-badge download">Downloaded</span>
+                            {% else %}
+                            <span class="status-badge {{ card.status }}">{{ card.get_status_display }}</span>
+                            {% endif %}
+                            </div>
+                        </td>
+                        <td>{{ card.updated_at|date:"d-M-Y h:i A" }}</td>
+                        <td>Admin</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="50" class="no-cards">
+                            <div class="empty-state">
+                                <i class="fa-solid fa-id-card"></i>
+                                <h3>No ID Cards Found</h3>
+                                {% if current_status %}
+                                <p>No cards with "{{ current_status|title }}" status</p>
+                                {% else %}
+                                <p>Add your first ID card to get started</p>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pagination Bar -->
+    <div class="pagination-bar">
+        <div class="pagination-left">
+            <span class="pagination-info">Showing <strong>1-{{ id_cards|length }}</strong> of <strong>{{ status_counts.total }}</strong> results</span>
+        </div>
+        <div class="pagination-center">
+            <button class="pagination-btn" id="firstPage"><i class="fa-solid fa-angles-left"></i></button>
+            <button class="pagination-btn" id="prevPage"><i class="fa-solid fa-chevron-left"></i></button>
+            <span class="page-numbers">
+                <button class="page-num active">1</button>
+            </span>
+            <button class="pagination-btn" id="nextPage"><i class="fa-solid fa-chevron-right"></i></button>
+            <button class="pagination-btn" id="lastPage"><i class="fa-solid fa-angles-right"></i></button>
+        </div>
+        <div class="pagination-right">
+            <label>Rows per page:</label>
+            <div class="custom-dropdown rows-dropdown" id="rowsDropdown">
+                <button class="dropdown-toggle" id="rowsToggle" type="button">
+                    <span id="rowsSelectedText">50</span>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-options" id="rowsOptions">
+                    <div class="dropdown-option selected" data-value="50">50</div>
+                    <div class="dropdown-option" data-value="100">100</div>
+                    <div class="dropdown-option" data-value="150">150</div>
+                    <div class="dropdown-option" data-value="200">200</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    </div>
+
+  </main>
+
+  <!-- Side Modal for Add/Edit/View -->
+  <div class="side-modal-overlay" id="sideModalOverlay">
+    <div class="side-modal" id="sideModal">
+      <div class="side-modal-header">
+        <h3 id="sideModalTitle"><i class="fa-solid fa-plus"></i> <span>Add New Card</span></h3>
+        <button class="side-modal-close" id="closeSideModal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="side-modal-body">
+        <form id="cardForm">
+          <!-- Photo Upload Section -->
+          <div class="form-photo-section">
+            <div class="form-photo-preview" id="formPhotoPreview">
+              <i class="fa-solid fa-user"></i>
+            </div>
+            <div class="form-photo-controls">
+              <label class="photo-upload-label" id="photoUploadLabel">
+                <input type="file" id="formPhotoInput" accept="image/*" hidden>
+                <span class="btn btn-upload"><i class="fa-solid fa-camera"></i> Upload Photo</span>
+              </label>
+              <p class="photo-hint">Passport size photo (35x45mm)</p>
+            </div>
+          </div>
+
+          <!-- Dynamic Form Fields - Generated from table.fields -->
+          <div class="form-fields-grid" id="formFieldsContainer">
+            {% for field in table.fields %}
+            {% if field.type == 'image' %}
+            <div class="form-group image-upload-group">
+              <label for="field_{{ forloop.counter }}">{{ field.name }}</label>
+              <div class="image-upload-wrapper">
+                <div class="image-preview" id="preview_{{ forloop.counter }}">
+                  <i class="fa-solid fa-image"></i>
+                </div>
+                <label class="image-upload-label">
+                  <input type="file" 
+                         id="field_{{ forloop.counter }}" 
+                         name="{{ field.name }}" 
+                         class="form-control image-input"
+                         data-field-name="{{ field.name }}"
+                         data-field-type="{{ field.type }}"
+                         data-preview-id="preview_{{ forloop.counter }}"
+                         accept="image/*" hidden>
+                  <span class="btn btn-upload-small"><i class="fa-solid fa-upload"></i> Upload</span>
+                </label>
+              </div>
+            </div>
+            {% elif field.type == 'textarea' %}
+            <div class="form-group full-width">
+              <label for="field_{{ forloop.counter }}">{{ field.name }}</label>
+              <textarea id="field_{{ forloop.counter }}" 
+                        name="{{ field.name }}" 
+                        class="form-control"
+                        data-field-name="{{ field.name }}"
+                        data-field-type="{{ field.type }}"
+                        rows="3"></textarea>
+            </div>
+            {% elif field.type == 'date' %}
+            <div class="form-group">
+              <label for="field_{{ forloop.counter }}">{{ field.name }}</label>
+              <input type="date" 
+                     id="field_{{ forloop.counter }}" 
+                     name="{{ field.name }}" 
+                     class="form-control"
+                     data-field-name="{{ field.name }}"
+                     data-field-type="{{ field.type }}">
+            </div>
+            {% elif field.type == 'number' %}
+            <div class="form-group">
+              <label for="field_{{ forloop.counter }}">{{ field.name }}</label>
+              <input type="text" 
+                     id="field_{{ forloop.counter }}" 
+                     name="{{ field.name }}" 
+                     class="form-control"
+                     data-field-name="{{ field.name }}"
+                     data-field-type="{{ field.type }}">
+            </div>
+            {% elif field.type == 'email' %}
+            <div class="form-group">
+              <label for="field_{{ forloop.counter }}">{{ field.name }}</label>
+              <input type="email" 
+                     id="field_{{ forloop.counter }}" 
+                     name="{{ field.name }}" 
+                     class="form-control"
+                     data-field-name="{{ field.name }}"
+                     data-field-type="{{ field.type }}">
+            </div>
+            {% else %}
+            <div class="form-group">
+              <label for="field_{{ forloop.counter }}">{{ field.name }}</label>
+              <input type="text" 
+                     id="field_{{ forloop.counter }}" 
+                     name="{{ field.name }}" 
+                     class="form-control"
+                     data-field-name="{{ field.name }}"
+                     data-field-type="{{ field.type }}">
+            </div>
+            {% endif %}
+            {% endfor %}
+          </div>
+        </form>
+      </div>
+      <div class="side-modal-footer">
+        <button class="btn btn-secondary" id="cancelSideModal">Cancel</button>
+        <button class="btn btn-primary" id="saveSideModal"><i class="fa-solid fa-check"></i> <span>Save</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast">
+    <i class="fa-solid fa-check-circle"></i>
+    <span id="toastMessage">Success!</span>
+  </div>
+
+  <!-- Upload XLSX Confirmation Modal -->
+  <div class="upload-modal-overlay" id="uploadModalOverlay">
+    <div class="upload-modal">
+      <div class="upload-modal-header">
+        <h3><i class="fa-solid fa-file-excel"></i> Upload Excel File</h3>
+        <button class="upload-modal-close" id="closeUploadModal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="upload-modal-body">
+        <div class="upload-status" id="uploadStatus">
+          <i class="fa-solid fa-check-circle success-icon"></i>
+          <span id="uploadStatusText">Fields matched successfully!</span>
+        </div>
+        
+        <div class="field-match-section">
+          <div class="match-group matched" id="matchedFieldsGroup">
+            <div class="match-title"><i class="fa-solid fa-check"></i> Matched Fields</div>
+            <div class="match-list" id="matchedFieldsList"></div>
+          </div>
+          
+          <div class="match-group missing" id="missingFieldsGroup" style="display: none;">
+            <div class="match-title"><i class="fa-solid fa-exclamation-triangle"></i> Missing Fields (will be empty)</div>
+            <div class="match-list" id="missingFieldsList"></div>
+          </div>
+          
+          <div class="match-group ignored" id="ignoredFieldsGroup" style="display: none;">
+            <div class="match-title"><i class="fa-solid fa-eye-slash"></i> Ignored Columns</div>
+            <div class="match-list" id="ignoredFieldsList"></div>
+          </div>
+        </div>
+        
+        <div class="data-rows-info">
+          <i class="fa-solid fa-table-list"></i>
+          <span id="dataRowsCount">0 data rows found</span>
+        </div>
+        
+        <!-- Photo ZIP Upload Section -->
+        <div class="photo-zip-section" id="photoZipSection">
+          <div class="zip-upload-header">
+            <i class="fa-solid fa-images"></i>
+            <span>Upload Photos (Optional)</span>
+          </div>
+          <div class="zip-upload-info">
+            <p>Upload a ZIP file containing photos. The filenames in ZIP should match the values in the PHOTO column of your Excel (without extension).</p>
+          </div>
+          <div class="zip-upload-input">
+            <input type="file" id="photoZipInput" accept=".zip" style="display: none;">
+            <button class="btn btn-outline" id="selectZipBtn">
+              <i class="fa-solid fa-file-zipper"></i> Select ZIP File
+            </button>
+            <span class="zip-file-name" id="zipFileName">No file selected</span>
+          </div>
+          <div class="zip-file-status" id="zipFileStatus" style="display: none;">
+            <i class="fa-solid fa-check-circle"></i>
+            <span id="zipFileCount">0 images found in ZIP</span>
+          </div>
+        </div>
+        
+        <!-- Upload Progress Section -->
+        <div class="upload-progress-section" id="uploadProgressSection" style="display: none;">
+          <div class="progress-header">
+            <span class="progress-title"><i class="fa-solid fa-cloud-arrow-up"></i> Uploading...</span>
+            <span class="progress-percentage" id="uploadPercentage">0%</span>
+          </div>
+          <div class="progress-bar-container">
+            <div class="progress-bar" id="uploadProgressBar"></div>
+          </div>
+          <div class="progress-details">
+            <span class="progress-size" id="uploadProgressSize">0 KB / 0 KB</span>
+            <span class="progress-time" id="uploadTimeRemaining">Calculating...</span>
+          </div>
+        </div>
+      </div>
+      <div class="upload-modal-footer">
+        <button class="btn btn-secondary" id="cancelUploadModal">Cancel</button>
+        <button class="btn btn-primary" id="confirmUploadModal"><i class="fa-solid fa-upload"></i> Proceed with Upload</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Image Sort Modal -->
+  <div class="upload-modal-overlay" id="imageSortModalOverlay">
+    <div class="upload-modal image-sort-modal">
+      <div class="upload-modal-header">
+        <h3><i class="fa-solid fa-image"></i> Image Sort</h3>
+        <button class="upload-modal-close" id="closeImageSortModal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="upload-modal-body">
+        <div class="image-sort-form">
+          <div class="form-group">
+            <label for="imageSortColumn"><i class="fa-solid fa-table-columns"></i> Select Image Column</label>
+            <select id="imageSortColumn" class="form-select">
+              <option value="">-- Select Column --</option>
+              {% for field in table.fields %}
+                {% if field.type == 'image' %}
+                <option value="{{ field.name }}">{{ field.name|upper }}</option>
+                {% endif %}
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="imageSortCondition"><i class="fa-solid fa-filter"></i> Select Condition</label>
+            <select id="imageSortCondition" class="form-select">
+              <option value="">-- Select Condition --</option>
+              <option value="complete">Complete (Image Uploaded)</option>
+              <option value="pending">Pending (Placeholder Created)</option>
+              <option value="incomplete">Incomplete (No Placeholder)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="upload-modal-footer">
+        <button class="btn btn-secondary" id="clearImageSort">Clear Filter</button>
+        <button class="btn btn-primary" id="applyImageSort"><i class="fa-solid fa-check"></i> Apply Sort</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search All Modal -->
+  <div class="upload-modal-overlay" id="searchAllModalOverlay">
+    <div class="upload-modal search-all-modal">
+      <div class="upload-modal-header">
+        <h3><i class="fa-solid fa-magnifying-glass"></i> Search All Lists</h3>
+        <button class="upload-modal-close" id="closeSearchAllModal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="upload-modal-body">
+        <div class="search-all-form">
+          <div class="search-input-wrapper">
+            <i class="fa-solid fa-search"></i>
+            <input type="text" id="searchAllInput" placeholder="Search by name, mobile, address..." autocomplete="off">
+            <button class="clear-search-btn" id="clearSearchInput" style="display: none;">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <div class="search-info">
+            <span><i class="fa-solid fa-info-circle"></i> Searches across all lists: Pending, Verified, Pool, Approved, Download</span>
+          </div>
+        </div>
+        <div class="search-results-container" id="searchResultsContainer">
+          <div class="search-placeholder">
+            <i class="fa-solid fa-search"></i>
+            <p>Type to search across all lists</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Permanent Confirmation Modal -->
+  <div class="upload-modal-overlay" id="deleteModalOverlay">
+    <div class="upload-modal delete-modal">
+      <div class="upload-modal-header delete-header">
+        <h3><i class="fa-solid fa-triangle-exclamation"></i> Permanent Delete Warning</h3>
+        <button class="upload-modal-close" id="closeDeleteModal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="upload-modal-body">
+        <div class="delete-warning-content">
+          <div class="delete-warning-icon">
+            <i class="fa-solid fa-trash"></i>
+          </div>
+          <div class="delete-warning-text">
+            <p class="delete-count"><strong id="deleteCountText">0 card(s)</strong> will be permanently deleted</p>
+            <div class="delete-warning-list">
+              <div class="warning-item"><i class="fa-solid fa-xmark"></i> This action <strong>cannot be undone</strong></div>
+              <div class="warning-item"><i class="fa-solid fa-xmark"></i> Data will be <strong>permanently removed</strong> from database</div>
+              <div class="warning-item"><i class="fa-solid fa-xmark"></i> <strong>No retrieve option</strong> available after deletion</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="upload-modal-footer delete-footer">
+        <button class="btn btn-secondary" id="cancelDeleteModal">Cancel</button>
+        <button class="btn btn-danger" id="confirmDeleteModal"><i class="fa-solid fa-trash"></i> Delete Permanently</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="{% static 'js/script.js' %}?v=32"></script>
+  <script src="{% static 'js/idcard-actions.js' %}?v=32"></script>
+</body>
+</html>

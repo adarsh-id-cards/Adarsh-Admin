@@ -1,0 +1,72 @@
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    # Dashboard
+    path('', views.dashboard, name='dashboard'),
+    
+    # Global Search API
+    path('api/global-search/', views.api_global_search, name='api_global_search'),
+    
+    # Staff Management
+    path('manage-staff/', views.manage_staff, name='manage_staff'),
+    
+    # Client Management
+    path('manage-clients/', views.manage_clients, name='manage_clients'),
+    
+    # Active Clients (ID Card Management)
+    path('active-clients/', views.active_clients, name='active_clients'),
+    
+    # ID Card Group for a client (shows all tables with status counts)
+    path('client/<int:client_id>/groups/', views.idcard_group, name='idcard_group'),
+    
+    # ID Card Actions for a table (shows cards, can filter by status)
+    path('table/<int:table_id>/cards/', views.idcard_actions, name='idcard_actions'),
+    
+    # Group Settings for a client (manage tables)
+    path('client/<int:client_id>/settings/', views.group_settings, name='group_settings'),
+    
+    # Website Management
+    path('manage-website/', views.manage_website, name='manage_website'),
+    
+    # System Settings
+    path('settings/', views.settings, name='settings'),
+    
+    # ==================== API ENDPOINTS ====================
+    # Client APIs
+    path('api/client/create/', views.api_client_create, name='api_client_create'),
+    path('api/client/<int:client_id>/', views.api_client_get, name='api_client_get'),
+    path('api/client/<int:client_id>/update/', views.api_client_update, name='api_client_update'),
+    path('api/client/<int:client_id>/delete/', views.api_client_delete, name='api_client_delete'),
+    path('api/client/<int:client_id>/toggle-status/', views.api_client_toggle_status, name='api_client_toggle_status'),
+    path('api/client/<int:client_id>/staff/', views.api_client_staff, name='api_client_staff'),
+    
+    # Staff APIs
+    path('api/staff/create/', views.api_staff_create, name='api_staff_create'),
+    path('api/staff/<int:staff_id>/', views.api_staff_get, name='api_staff_get'),
+    path('api/staff/<int:staff_id>/update/', views.api_staff_update, name='api_staff_update'),
+    path('api/staff/<int:staff_id>/delete/', views.api_staff_delete, name='api_staff_delete'),
+    path('api/staff/<int:staff_id>/toggle-status/', views.api_staff_toggle_status, name='api_staff_toggle_status'),
+    
+    # ID Card Table APIs
+    path('api/group/<int:group_id>/tables/', views.api_idcard_table_list, name='api_idcard_table_list'),
+    path('api/group/<int:group_id>/table/create/', views.api_idcard_table_create, name='api_idcard_table_create'),
+    path('api/table/<int:table_id>/', views.api_idcard_table_get, name='api_idcard_table_get'),
+    path('api/table/<int:table_id>/update/', views.api_idcard_table_update, name='api_idcard_table_update'),
+    path('api/table/<int:table_id>/delete/', views.api_idcard_table_delete, name='api_idcard_table_delete'),
+    path('api/table/<int:table_id>/toggle-status/', views.api_idcard_table_toggle_status, name='api_idcard_table_toggle_status'),
+    
+    # ID Card APIs
+    path('api/table/<int:table_id>/cards/', views.api_idcard_list, name='api_idcard_list'),
+    path('api/table/<int:table_id>/card/create/', views.api_idcard_create, name='api_idcard_create'),
+    path('api/card/<int:card_id>/', views.api_idcard_get, name='api_idcard_get'),
+    path('api/card/<int:card_id>/update/', views.api_idcard_update, name='api_idcard_update'),
+    path('api/card/<int:card_id>/delete/', views.api_idcard_delete, name='api_idcard_delete'),
+    path('api/card/<int:card_id>/status/', views.api_idcard_change_status, name='api_idcard_change_status'),
+    path('api/table/<int:table_id>/cards/bulk-status/', views.api_idcard_bulk_status, name='api_idcard_bulk_status'),
+    path('api/table/<int:table_id>/cards/bulk-delete/', views.api_idcard_bulk_delete, name='api_idcard_bulk_delete'),
+    path('api/table/<int:table_id>/cards/bulk-upload/', views.api_idcard_bulk_upload, name='api_idcard_bulk_upload'),
+    path('api/table/<int:table_id>/cards/search/', views.api_idcard_search, name='api_idcard_search'),
+    path('api/table/<int:table_id>/status-counts/', views.api_table_status_counts, name='api_table_status_counts'),
+    path('api/table/<int:table_id>/cards/download-images/', views.api_idcard_download_images, name='api_idcard_download_images'),
+]
