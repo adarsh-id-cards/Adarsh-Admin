@@ -155,15 +155,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (btn) btn.disabled = !anySelected;
         });
         
-        // Download buttons - enabled when any selected
-        document.querySelectorAll('[id^="download"]').forEach(btn => {
-            if (btn) btn.disabled = !anySelected;
-        });
+        // Download buttons - always enabled (work on selected or all)
+        // No disabling needed - buttons work on all cards if none selected
         
-        // Reupload buttons
-        document.querySelectorAll('[id^="reuploadImage"]').forEach(btn => {
-            if (btn) btn.disabled = !anySelected;
-        });
+        // Reupload buttons - always enabled (work on selected or all)
+        // No disabling needed - buttons work on all cards if none selected
         
         // Delete Permanent button (Pool list only)
         const deletePermanentBtn = document.getElementById('deletePermanentBtnP');
@@ -1334,7 +1330,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // DOWNLOAD IMAGES BUTTON HANDLERS
     // ==========================================
     
-    // Download Images function - downloads all images from selected cards as ZIP
+    // Download Images function - downloads all images from selected cards as ZIP with progress
     function downloadImages(cardIds) {
         const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : null;
         if (!tableId) {
@@ -1347,89 +1343,565 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        showToast('Preparing images for download...', true);
+        // Show progress toast
+        showProgressToast('Preparing images...', -1);
         
-        fetch(`/api/table/${tableId}/cards/download-images/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCSRFToken()
-            },
-            body: JSON.stringify({ card_ids: cardIds })
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(data => {
-                    throw new Error(data.message || 'Failed to download images');
-                });
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `/api/table/${tableId}/cards/download-images/`, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.setRequestHeader('X-CSRFToken', getCSRFToken());
+        xhr.responseType = 'blob';
+        
+        // Track download progress
+        xhr.onprogress = function(event) {
+            if (event.lengthComputable) {
+                const percentComplete = Math.round((event.loaded / event.total) * 100);
+                showProgressToast(`Downloading... ${percentComplete}%`, percentComplete);
+            } else {
+                showProgressToast('Downloading...', -1);
             }
-            return response.blob();
-        })
-        .then(blob => {
-            // Create download link
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            
-            // Get filename from timestamp
-            const now = new Date();
-            const timestamp = now.getFullYear().toString() + 
-                             (now.getMonth() + 1).toString().padStart(2, '0') + 
-                             now.getDate().toString().padStart(2, '0') + '_' +
-                             now.getHours().toString().padStart(2, '0') + 
-                             now.getMinutes().toString().padStart(2, '0') + 
-                             now.getSeconds().toString().padStart(2, '0');
-            a.download = `images_${timestamp}.zip`;
-            
-            document.body.appendChild(a);
-            a.click();
-            
-            // Cleanup
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-            
-            showToast('Images downloaded successfully!', true);
-        })
-        .catch(error => {
-            console.error('Download error:', error);
-            showToast(error.message || 'Failed to download images', false);
-        });
+        };
+        
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                const blob = xhr.response;
+                
+                // Create download link
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                
+                // Get filename from timestamp
+                const now = new Date();
+                const timestamp = now.getFullYear().toString() + 
+                                 (now.getMonth() + 1).toString().padStart(2, '0') + 
+                                 now.getDate().toString().padStart(2, '0') + '_' +
+                                 now.getHours().toString().padStart(2, '0') + 
+                                 now.getMinutes().toString().padStart(2, '0') + 
+                                 now.getSeconds().toString().padStart(2, '0');
+                a.download = `images_${timestamp}.zip`;
+                
+                document.body.appendChild(a);
+                a.click();
+                
+                // Cleanup
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                
+                showDownloadComplete('Images downloaded successfully!');
+            } else {
+                // Try to parse error message
+                hideProgressToast();
+                const reader = new FileReader();
+                reader.onload = function() {
+                    try {
+                        const error = JSON.parse(reader.result);
+                        showToast(error.message || 'Failed to download images', false);
+                    } catch(e) {
+                        showToast('Failed to download images', false);
+                    }
+                };
+                reader.readAsText(xhr.response);
+            }
+        };
+        
+        xhr.onerror = function() {
+            hideProgressToast();
+            showToast('Failed to download images', false);
+        };
+        
+        xhr.send(JSON.stringify({ card_ids: cardIds }));
     }
     
-    // Download Img buttons for all lists
+    // Download Img buttons for all lists - works on selected or all cards
     document.getElementById('downloadImgBtn')?.addEventListener('click', function() {
-        const selectedIds = getSelectedCardIds();
-        if (selectedIds.length > 0) {
-            downloadImages(selectedIds);
+        const cardIds = getCardIdsForAction();
+        if (cardIds.length > 0) {
+            downloadImages(cardIds);
+        } else {
+            showToast('No cards available to download!', false);
         }
     });
     
     document.getElementById('downloadImgBtnV')?.addEventListener('click', function() {
-        const selectedIds = getSelectedCardIds();
-        if (selectedIds.length > 0) {
-            downloadImages(selectedIds);
+        const cardIds = getCardIdsForAction();
+        if (cardIds.length > 0) {
+            downloadImages(cardIds);
+        } else {
+            showToast('No cards available to download!', false);
         }
     });
     
     document.getElementById('downloadImgBtnP')?.addEventListener('click', function() {
-        const selectedIds = getSelectedCardIds();
-        if (selectedIds.length > 0) {
-            downloadImages(selectedIds);
+        const cardIds = getCardIdsForAction();
+        if (cardIds.length > 0) {
+            downloadImages(cardIds);
+        } else {
+            showToast('No cards available to download!', false);
         }
     });
     
     document.getElementById('downloadImgBtnA')?.addEventListener('click', function() {
-        const selectedIds = getSelectedCardIds();
-        if (selectedIds.length > 0) {
-            downloadImages(selectedIds);
+        const cardIds = getCardIdsForAction();
+        if (cardIds.length > 0) {
+            downloadImages(cardIds);
+        } else {
+            showToast('No cards available to download!', false);
         }
     });
     
     document.getElementById('downloadImgBtnD')?.addEventListener('click', function() {
-        const selectedIds = getSelectedCardIds();
-        if (selectedIds.length > 0) {
-            downloadImages(selectedIds);
+        const cardIds = getCardIdsForAction();
+        if (cardIds.length > 0) {
+            downloadImages(cardIds);
+        } else {
+            showToast('No cards available to download!', false);
+        }
+    });
+
+    // ==========================================
+    // DOWNLOAD DOCX BUTTON HANDLERS
+    // ==========================================
+    
+    let pendingDocxDownloadIds = [];
+    const docFormatModalOverlay = document.getElementById('docFormatModalOverlay');
+    
+    // Open format selection modal
+    function openDocFormatModal(cardIds) {
+        pendingDocxDownloadIds = cardIds;
+        if (docFormatModalOverlay) {
+            docFormatModalOverlay.classList.add('active');
+        }
+    }
+    
+    // Close format selection modal
+    function closeDocFormatModal() {
+        if (docFormatModalOverlay) {
+            docFormatModalOverlay.classList.remove('active');
+        }
+        pendingDocxDownloadIds = [];
+    }
+    
+    // Download DOCX function with progress
+    function downloadDocx(cardIds, format) {
+        const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : null;
+        if (!tableId) {
+            showToast('Error: Table ID not found', false);
+            return;
+        }
+        
+        if (cardIds.length === 0) {
+            showToast('No cards selected!', false);
+            return;
+        }
+        
+        closeDocFormatModal();
+        
+        // Show progress toast
+        showProgressToast(`Preparing ${format.toUpperCase()} document...`, -1);
+        
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `/api/table/${tableId}/cards/download-docx/`, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.setRequestHeader('X-CSRFToken', getCSRFToken());
+        xhr.responseType = 'blob';
+        
+        // Track download progress
+        xhr.onprogress = function(event) {
+            if (event.lengthComputable) {
+                const percentComplete = Math.round((event.loaded / event.total) * 100);
+                showProgressToast(`Downloading... ${percentComplete}%`, percentComplete);
+            } else {
+                showProgressToast('Downloading...', -1);
+            }
+        };
+        
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                const blob = xhr.response;
+                
+                // Create download link
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                
+                // Get filename from timestamp
+                const now = new Date();
+                const timestamp = now.getFullYear().toString() + 
+                                 (now.getMonth() + 1).toString().padStart(2, '0') + 
+                                 now.getDate().toString().padStart(2, '0') + '_' +
+                                 now.getHours().toString().padStart(2, '0') + 
+                                 now.getMinutes().toString().padStart(2, '0') + 
+                                 now.getSeconds().toString().padStart(2, '0');
+                a.download = `idcards_${timestamp}.${format}`;
+                
+                document.body.appendChild(a);
+                a.click();
+                
+                // Cleanup
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                
+                showDownloadComplete('Document downloaded successfully!');
+            } else {
+                // Try to parse error message
+                hideProgressToast();
+                const reader = new FileReader();
+                reader.onload = function() {
+                    try {
+                        const error = JSON.parse(reader.result);
+                        showToast(error.message || 'Failed to download document', false);
+                    } catch(e) {
+                        showToast('Failed to download document', false);
+                    }
+                };
+                reader.readAsText(xhr.response);
+            }
+        };
+        
+        xhr.onerror = function() {
+            hideProgressToast();
+            showToast('Failed to download document', false);
+        };
+        
+        xhr.send(JSON.stringify({ card_ids: cardIds, format: format }));
+    }
+    
+    // Close modal handlers
+    document.getElementById('closeDocFormatModal')?.addEventListener('click', closeDocFormatModal);
+    document.getElementById('cancelDocFormatModal')?.addEventListener('click', closeDocFormatModal);
+    
+    // Close on overlay click
+    if (docFormatModalOverlay) {
+        docFormatModalOverlay.addEventListener('click', function(e) {
+            if (e.target === this) closeDocFormatModal();
+        });
+    }
+    
+    // Format card click handlers
+    document.querySelectorAll('.format-card').forEach(card => {
+        card.addEventListener('click', function() {
+            const format = this.getAttribute('data-format');
+            if (format && pendingDocxDownloadIds.length > 0) {
+                downloadDocx(pendingDocxDownloadIds, format);
+            }
+        });
+    });
+    
+    // Download Docx buttons for all lists - works on selected or all cards
+    document.getElementById('downloadDocxBtn')?.addEventListener('click', function() {
+        const cardIds = getCardIdsForAction();
+        if (cardIds.length > 0) {
+            openDocFormatModal(cardIds);
+        } else {
+            showToast('No cards available to download!', false);
+        }
+    });
+    
+    document.getElementById('downloadDocxBtnV')?.addEventListener('click', function() {
+        const cardIds = getCardIdsForAction();
+        if (cardIds.length > 0) {
+            openDocFormatModal(cardIds);
+        } else {
+            showToast('No cards available to download!', false);
+        }
+    });
+    
+    document.getElementById('downloadDocxBtnP')?.addEventListener('click', function() {
+        const cardIds = getCardIdsForAction();
+        if (cardIds.length > 0) {
+            openDocFormatModal(cardIds);
+        } else {
+            showToast('No cards available to download!', false);
+        }
+    });
+    
+    document.getElementById('downloadDocxBtnA')?.addEventListener('click', function() {
+        const cardIds = getCardIdsForAction();
+        if (cardIds.length > 0) {
+            openDocFormatModal(cardIds);
+        } else {
+            showToast('No cards available to download!', false);
+        }
+    });
+    
+    document.getElementById('downloadDocxBtnD')?.addEventListener('click', function() {
+        const cardIds = getCardIdsForAction();
+        if (cardIds.length > 0) {
+            openDocFormatModal(cardIds);
+        } else {
+            showToast('No cards available to download!', false);
+        }
+    });
+
+    // ==========================================
+    // DOWNLOAD XLSX BUTTON HANDLERS
+    // ==========================================
+    
+    // Download XLSX function - downloads Excel file with auto-sized columns and progress
+    function downloadXlsx(cardIds) {
+        const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : null;
+        if (!tableId) {
+            showToast('Error: Table ID not found', false);
+            return;
+        }
+        
+        if (cardIds.length === 0) {
+            showToast('No cards to download!', false);
+            return;
+        }
+        
+        // Show progress toast
+        showProgressToast('Preparing Excel file...', -1);
+        
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `/api/table/${tableId}/cards/download-xlsx/`, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.setRequestHeader('X-CSRFToken', getCSRFToken());
+        xhr.responseType = 'blob';
+        
+        // Track download progress
+        xhr.onprogress = function(event) {
+            if (event.lengthComputable) {
+                const percentComplete = Math.round((event.loaded / event.total) * 100);
+                showProgressToast(`Downloading... ${percentComplete}%`, percentComplete);
+            } else {
+                showProgressToast('Downloading...', -1);
+            }
+        };
+        
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                const blob = xhr.response;
+                
+                // Create download link
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                
+                // Get filename from timestamp
+                const now = new Date();
+                const timestamp = now.getFullYear().toString() + 
+                                 (now.getMonth() + 1).toString().padStart(2, '0') + 
+                                 now.getDate().toString().padStart(2, '0') + '_' +
+                                 now.getHours().toString().padStart(2, '0') + 
+                                 now.getMinutes().toString().padStart(2, '0') + 
+                                 now.getSeconds().toString().padStart(2, '0');
+                a.download = `idcards_${timestamp}.xlsx`;
+                
+                document.body.appendChild(a);
+                a.click();
+                
+                // Cleanup
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                
+                showDownloadComplete('Excel file downloaded successfully!');
+            } else {
+                // Try to parse error message
+                hideProgressToast();
+                const reader = new FileReader();
+                reader.onload = function() {
+                    try {
+                        const error = JSON.parse(reader.result);
+                        showToast(error.message || 'Failed to download Excel file', false);
+                    } catch(e) {
+                        showToast('Failed to download Excel file', false);
+                    }
+                };
+                reader.readAsText(xhr.response);
+            }
+        };
+        
+        xhr.onerror = function() {
+            hideProgressToast();
+            showToast('Failed to download Excel file', false);
+        };
+        
+        xhr.send(JSON.stringify({ card_ids: cardIds }));
+    }
+    
+    // Download XLSX buttons for all lists - works on selected or all cards
+    document.getElementById('downloadXlsxBtn')?.addEventListener('click', function() {
+        const cardIds = getCardIdsForAction();
+        if (cardIds.length > 0) {
+            downloadXlsx(cardIds);
+        } else {
+            showToast('No cards available to download!', false);
+        }
+    });
+    
+    document.getElementById('downloadXlsxBtnV')?.addEventListener('click', function() {
+        const cardIds = getCardIdsForAction();
+        if (cardIds.length > 0) {
+            downloadXlsx(cardIds);
+        } else {
+            showToast('No cards available to download!', false);
+        }
+    });
+    
+    document.getElementById('downloadXlsxBtnP')?.addEventListener('click', function() {
+        const cardIds = getCardIdsForAction();
+        if (cardIds.length > 0) {
+            downloadXlsx(cardIds);
+        } else {
+            showToast('No cards available to download!', false);
+        }
+    });
+    
+    document.getElementById('downloadXlsxBtnA')?.addEventListener('click', function() {
+        const cardIds = getCardIdsForAction();
+        if (cardIds.length > 0) {
+            downloadXlsx(cardIds);
+        } else {
+            showToast('No cards available to download!', false);
+        }
+    });
+    
+    document.getElementById('downloadXlsxBtnD')?.addEventListener('click', function() {
+        const cardIds = getCardIdsForAction();
+        if (cardIds.length > 0) {
+            downloadXlsx(cardIds);
+        } else {
+            showToast('No cards available to download!', false);
+        }
+    });
+
+    // ==========================================
+    // REUPLOAD IMAGE BUTTON HANDLERS
+    // ==========================================
+    
+    // Create hidden file input for ZIP reupload
+    let reuploadZipInput = document.getElementById('reuploadZipInput');
+    if (!reuploadZipInput) {
+        reuploadZipInput = document.createElement('input');
+        reuploadZipInput.type = 'file';
+        reuploadZipInput.id = 'reuploadZipInput';
+        reuploadZipInput.accept = '.zip';
+        reuploadZipInput.style.display = 'none';
+        document.body.appendChild(reuploadZipInput);
+    }
+    
+    let pendingReuploadCardIds = [];
+    
+    // Reupload function - uploads ZIP file to reupload images
+    function reuploadImages(cardIds) {
+        pendingReuploadCardIds = cardIds;
+        reuploadZipInput.value = ''; // Reset input
+        reuploadZipInput.click();
+    }
+    
+    // Handle ZIP file selection for reupload
+    reuploadZipInput.addEventListener('change', async function() {
+        const file = this.files[0];
+        if (!file) return;
+        
+        // Validate it's a ZIP file
+        if (!file.name.toLowerCase().endsWith('.zip')) {
+            showToast('Please select a ZIP file', false);
+            this.value = '';
+            return;
+        }
+        
+        const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : null;
+        if (!tableId) {
+            showToast('Error: Table ID not found', false);
+            return;
+        }
+        
+        // Show progress toast
+        showProgressToast('Reuploading images...', -1);
+        
+        // Create FormData
+        const formData = new FormData();
+        formData.append('zip_file', file);
+        formData.append('card_ids', JSON.stringify(pendingReuploadCardIds));
+        
+        // Upload via XHR for progress tracking
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `/api/table/${tableId}/cards/reupload-images/`, true);
+        xhr.setRequestHeader('X-CSRFToken', getCSRFToken());
+        
+        xhr.upload.onprogress = function(event) {
+            if (event.lengthComputable) {
+                const percentComplete = Math.round((event.loaded / event.total) * 100);
+                showProgressToast(`Uploading... ${percentComplete}%`, percentComplete);
+            }
+        };
+        
+        xhr.onload = function() {
+            try {
+                const result = JSON.parse(xhr.responseText);
+                if (xhr.status === 200 && result.success) {
+                    showDownloadComplete(result.message || 'Images reuploaded successfully!');
+                    // Reload the page to show updated images
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    hideProgressToast();
+                    showToast(result.message || 'Reupload failed', false);
+                }
+            } catch (e) {
+                hideProgressToast();
+                showToast('Error processing response', false);
+            }
+        };
+        
+        xhr.onerror = function() {
+            hideProgressToast();
+            showToast('Failed to reupload images', false);
+        };
+        
+        xhr.send(formData);
+    });
+    
+    // Reupload button handlers for all lists
+    document.getElementById('reuploadImageBtn')?.addEventListener('click', function() {
+        const cardIds = getCardIdsForAction();
+        if (cardIds.length > 0) {
+            reuploadImages(cardIds);
+        } else {
+            showToast('No cards available for reupload!', false);
+        }
+    });
+    
+    document.getElementById('reuploadImageBtnV')?.addEventListener('click', function() {
+        const cardIds = getCardIdsForAction();
+        if (cardIds.length > 0) {
+            reuploadImages(cardIds);
+        } else {
+            showToast('No cards available for reupload!', false);
+        }
+    });
+    
+    document.getElementById('reuploadImageBtnP')?.addEventListener('click', function() {
+        const cardIds = getCardIdsForAction();
+        if (cardIds.length > 0) {
+            reuploadImages(cardIds);
+        } else {
+            showToast('No cards available for reupload!', false);
+        }
+    });
+    
+    document.getElementById('reuploadImageBtnA')?.addEventListener('click', function() {
+        const cardIds = getCardIdsForAction();
+        if (cardIds.length > 0) {
+            reuploadImages(cardIds);
+        } else {
+            showToast('No cards available for reupload!', false);
+        }
+    });
+    
+    document.getElementById('reuploadImageBtnD')?.addEventListener('click', function() {
+        const cardIds = getCardIdsForAction();
+        if (cardIds.length > 0) {
+            reuploadImages(cardIds);
+        } else {
+            showToast('No cards available for reupload!', false);
         }
     });
 
@@ -1612,6 +2084,22 @@ document.addEventListener('DOMContentLoaded', function() {
             const inputs = document.querySelectorAll('#formFieldsContainer .form-control');
             inputs.forEach(input => {
                 const fieldName = input.getAttribute('data-field-name');
+                const fieldType = input.getAttribute('data-field-type');
+                
+                // Skip file inputs - they cannot have value set programmatically
+                if (input.type === 'file' || fieldType === 'image') {
+                    // For image fields, show preview if path exists
+                    if (fieldName && cardData.field_data[fieldName]) {
+                        const imgPath = cardData.field_data[fieldName];
+                        // Find the preview container for this image field
+                        const previewContainer = input.closest('.image-upload-wrapper')?.querySelector('.image-preview');
+                        if (previewContainer && imgPath && imgPath !== 'NOT_FOUND') {
+                            previewContainer.innerHTML = `<img src="/media/${imgPath}" alt="${fieldName}" style="max-width: 100px; max-height: 100px;">`;
+                        }
+                    }
+                    return; // Skip setting value on file input
+                }
+                
                 if (fieldName && cardData.field_data[fieldName] !== undefined) {
                     input.value = cardData.field_data[fieldName];
                 }
@@ -1862,15 +2350,170 @@ document.addEventListener('DOMContentLoaded', function() {
         return [...checked].map(cb => cb.closest('tr').getAttribute('data-card-id'));
     }
     
+    // Get all visible card IDs from current list
+    function getAllVisibleCardIds() {
+        const allRows = document.querySelectorAll('#cardsTableBody tr[data-card-id]');
+        return [...allRows].map(row => row.getAttribute('data-card-id')).filter(id => id);
+    }
+    
+    // Get card IDs - selected if any, otherwise all visible
+    function getCardIdsForAction() {
+        const selectedIds = getSelectedCardIds();
+        return selectedIds.length > 0 ? selectedIds : getAllVisibleCardIds();
+    }
+    
     function showToast(message, isSuccess = true) {
         const toast = document.getElementById('toast');
         const toastMessage = document.getElementById('toastMessage');
+        const toastIcon = document.getElementById('toastIcon');
+        const toastProgress = document.getElementById('toastProgress');
+        const toastProgressBar = document.getElementById('toastProgressBar');
+        
         if (toast && toastMessage) {
             toastMessage.textContent = message;
+            
+            // Hide progress bar for regular toasts
+            if (toastProgress) {
+                toastProgress.style.display = 'none';
+            }
+            if (toastProgressBar) {
+                toastProgressBar.classList.remove('indeterminate');
+                toastProgressBar.style.width = '0%';
+            }
+            
+            // Set icon based on success/error
+            if (toastIcon) {
+                toastIcon.className = isSuccess ? 'fa-solid fa-check-circle' : 'fa-solid fa-times-circle';
+            }
+            
             toast.className = 'toast show ' + (isSuccess ? 'success' : 'error');
             setTimeout(() => {
                 toast.className = 'toast';
             }, 3000);
+        }
+    }
+    
+    // Progress toast for downloads
+    let downloadToastTimeout = null;
+    
+    function showProgressToast(message, progress = -1) {
+        const toast = document.getElementById('toast');
+        const toastMessage = document.getElementById('toastMessage');
+        const toastIcon = document.getElementById('toastIcon');
+        const toastProgress = document.getElementById('toastProgress');
+        const toastProgressBar = document.getElementById('toastProgressBar');
+        const toastPercent = document.getElementById('toastPercent');
+        
+        // Clear any existing timeout
+        if (downloadToastTimeout) {
+            clearTimeout(downloadToastTimeout);
+            downloadToastTimeout = null;
+        }
+        
+        if (toast && toastMessage) {
+            toastMessage.textContent = message;
+            
+            // Set downloading icon (spinner)
+            if (toastIcon) {
+                toastIcon.className = 'fa-solid fa-spinner';
+            }
+            
+            // Show progress bar
+            if (toastProgress) {
+                toastProgress.style.display = 'block';
+            }
+            
+            // Show/update percentage
+            if (toastPercent) {
+                if (progress >= 0) {
+                    toastPercent.style.display = 'inline';
+                    toastPercent.textContent = Math.round(progress) + '%';
+                } else {
+                    toastPercent.style.display = 'none';
+                }
+            }
+            
+            if (toastProgressBar) {
+                if (progress < 0) {
+                    // Indeterminate progress
+                    toastProgressBar.classList.add('indeterminate');
+                    toastProgressBar.style.width = '30%';
+                } else {
+                    // Determinate progress
+                    toastProgressBar.classList.remove('indeterminate');
+                    toastProgressBar.style.width = Math.min(progress, 100) + '%';
+                }
+            }
+            
+            toast.className = 'toast show downloading';
+        }
+    }
+    
+    function showDownloadComplete(message = 'Successfully downloaded!') {
+        const toast = document.getElementById('toast');
+        const toastMessage = document.getElementById('toastMessage');
+        const toastIcon = document.getElementById('toastIcon');
+        const toastProgress = document.getElementById('toastProgress');
+        const toastProgressBar = document.getElementById('toastProgressBar');
+        const toastPercent = document.getElementById('toastPercent');
+        
+        // Clear any existing timeout
+        if (downloadToastTimeout) {
+            clearTimeout(downloadToastTimeout);
+            downloadToastTimeout = null;
+        }
+        
+        if (toast && toastMessage) {
+            toastMessage.textContent = message;
+            
+            // Set success icon
+            if (toastIcon) {
+                toastIcon.className = 'fa-solid fa-check-circle';
+            }
+            
+            // Show progress bar at 100%
+            if (toastProgress) {
+                toastProgress.style.display = 'block';
+            }
+            
+            if (toastProgressBar) {
+                toastProgressBar.classList.remove('indeterminate');
+                toastProgressBar.style.width = '100%';
+            }
+            
+            // Show 100% text
+            if (toastPercent) {
+                toastPercent.style.display = 'inline';
+                toastPercent.textContent = '100%';
+            }
+            
+            toast.className = 'toast show download-complete';
+            
+            // Auto-hide after 3 seconds
+            downloadToastTimeout = setTimeout(() => {
+                hideProgressToast();
+            }, 3000);
+        }
+    }
+    
+    function hideProgressToast() {
+        const toast = document.getElementById('toast');
+        const toastProgress = document.getElementById('toastProgress');
+        const toastPercent = document.getElementById('toastPercent');
+        const toastProgressBar = document.getElementById('toastProgressBar');
+        
+        if (toast) {
+            toast.className = 'toast';
+        }
+        if (toastProgress) {
+            toastProgress.style.display = 'none';
+        }
+        if (toastPercent) {
+            toastPercent.style.display = 'none';
+        }
+        if (toastProgressBar) {
+            toastProgressBar.style.width = '0%';
+            toastProgressBar.classList.remove('indeterminate');
         }
     }
     

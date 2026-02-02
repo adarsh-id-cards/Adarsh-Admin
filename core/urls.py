@@ -69,4 +69,7 @@ urlpatterns = [
     path('api/table/<int:table_id>/cards/search/', views.api_idcard_search, name='api_idcard_search'),
     path('api/table/<int:table_id>/status-counts/', views.api_table_status_counts, name='api_table_status_counts'),
     path('api/table/<int:table_id>/cards/download-images/', views.api_idcard_download_images, name='api_idcard_download_images'),
+    path('api/table/<int:table_id>/cards/reupload-images/', views.api_idcard_reupload_images, name='api_idcard_reupload_images'),
+    path('api/table/<int:table_id>/cards/download-docx/', views.api_idcard_download_docx, name='api_idcard_download_docx'),
+    path('api/table/<int:table_id>/cards/download-xlsx/', views.api_idcard_download_xlsx, name='api_idcard_download_xlsx'),
 ]

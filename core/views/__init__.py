@@ -51,4 +51,7 @@ from .idcard_api import (
     api_table_status_counts,
     api_idcard_bulk_upload,
     api_idcard_download_images,
+    api_idcard_reupload_images,
+    api_idcard_download_docx,
+    api_idcard_download_xlsx,
 )
