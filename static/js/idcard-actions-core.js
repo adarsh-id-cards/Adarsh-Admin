@@ -393,9 +393,14 @@ function setupDropdown(dropdownId) {
 function initDropdowns() {
     setupDropdown('filterDropdown');
     setupDropdown('rowsDropdown');
+    setupDropdown('classFilterDropdown');
+    setupDropdown('sectionFilterDropdown');
     
     // Close dropdowns when clicking outside
-    document.addEventListener('click', function() {
+    document.addEventListener('click', function(e) {
+        // Don't close if clicking inside a dropdown
+        if (e.target.closest('.custom-dropdown')) return;
+        
         document.querySelectorAll('.custom-dropdown.open').forEach(d => {
             d.classList.remove('open');
         });

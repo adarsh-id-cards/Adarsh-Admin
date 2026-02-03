@@ -48,7 +48,8 @@
   border-radius: var(--radius-md);
   padding: 0 var(--space-md);
   flex: 1;
-  min-height: 36px;
+  height: 36px;
+  box-sizing: border-box;
   transition: all var(--transition-base);
 }
 
@@ -377,14 +378,15 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
+  padding: 8px 12px;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--transition-base);
   border: none;
-  min-height: 32px;
+  height: 36px;
+  box-sizing: border-box;
   background: var(--gray-500);
   color: var(--text-white);
   box-shadow: 0 2px 4px rgba(107, 114, 128, 0.3);

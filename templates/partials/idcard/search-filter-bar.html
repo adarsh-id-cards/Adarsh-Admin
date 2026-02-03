@@ -1,21 +1,31 @@
 {% load static %}
 <!-- Search and Filter Bar -->
 <div class="action-bar">
-    <!-- Left Section - Filter, Image Sort and Search -->
+    <!-- Left Section - Class Filter, Section Filter, Image Sort and Search -->
     <div class="action-left">
         <div class="filter-group">
-            <div class="custom-dropdown" id="filterDropdown">
-                <button class="dropdown-toggle" id="filterToggle" type="button">
-                    <span id="filterSelectedText">Filter</span>
+            <!-- Class Filter Dropdown -->
+            <div class="custom-dropdown" id="classFilterDropdown">
+                <button class="dropdown-toggle" id="classFilterToggle" type="button">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                    <span id="classFilterText">Class</span>
                     <i class="fa-solid fa-chevron-down"></i>
                 </button>
-                <div class="dropdown-options" id="filterOptions">
-                    <div class="dropdown-option selected" data-value="all" data-field="all">All Fields</div>
-                    {% for field in table.fields %}
-                    {% if field.type != 'image' %}
-                    <div class="dropdown-option" data-value="field" data-field="{{ field.name|upper }}">{{ field.name }}</div>
-                    {% endif %}
-                    {% endfor %}
+                <div class="dropdown-options" id="classFilterOptions">
+                    <div class="dropdown-option selected" data-value="all">All Classes</div>
+                    <!-- Options will be populated dynamically from table data -->
+                </div>
+            </div>
+            <!-- Section Filter Dropdown -->
+            <div class="custom-dropdown" id="sectionFilterDropdown">
+                <button class="dropdown-toggle" id="sectionFilterToggle" type="button">
+                    <i class="fa-solid fa-layer-group"></i>
+                    <span id="sectionFilterText">Section</span>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-options" id="sectionFilterOptions">
+                    <div class="dropdown-option selected" data-value="all">All Sections</div>
+                    <!-- Options will be populated dynamically from table data -->
                 </div>
             </div>
             <button class="btn btn-settings" id="imageSortBtn" title="Filter by image status">

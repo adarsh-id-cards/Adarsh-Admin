@@ -2,6 +2,11 @@
 // Contains: Search input, filter dropdown, sort dropdown, rows per page, search all modal
 
 // ==========================================
+// SEARCH STATE
+// ==========================================
+var searchQuery = '';
+
+// ==========================================
 // SEARCH INPUT HANDLERS
 // ==========================================
 
@@ -22,18 +27,16 @@ function initSearchHandlers() {
             updateClearButton();
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(() => {
-                if (typeof searchRows === 'function') {
-                    searchRows(this.value);
-                }
+                searchQuery = this.value.trim();
+                applyClassSectionFilters();
             }, 300);
         });
         
         searchInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 clearTimeout(searchTimeout);
-                if (typeof searchRows === 'function') {
-                    searchRows(this.value);
-                }
+                searchQuery = this.value.trim();
+                applyClassSectionFilters();
             }
         });
         
@@ -41,9 +44,8 @@ function initSearchHandlers() {
             searchClearBtn.addEventListener('click', function() {
                 searchInput.value = '';
                 updateClearButton();
-                if (typeof searchRows === 'function') {
-                    searchRows('');
-                }
+                searchQuery = '';
+                applyClassSectionFilters();
                 searchInput.focus();
             });
         }
@@ -51,45 +53,310 @@ function initSearchHandlers() {
 }
 
 // ==========================================
-// FILTER DROPDOWN HANDLERS
+// CLASS AND SECTION FILTER HANDLERS
 // ==========================================
 
+// Current filter values
+let currentClassFilter = 'all';
+let currentSectionFilter = 'all';
+
 function initFilterHandlers() {
-    const filterOptions = document.querySelectorAll('#filterOptions .dropdown-option');
+    console.log('Initializing Class/Section filter handlers...');
     
-    filterOptions.forEach(option => {
+    // Populate filter options from table data
+    populateFilterOptions();
+    
+    // Attach click handlers to filter options
+    attachClassFilterHandlers();
+    attachSectionFilterHandlers();
+    
+    console.log('Filter handlers initialized');
+}
+
+function populateFilterOptions() {
+    const tableBody = document.getElementById('cardsTableBody');
+    if (!tableBody) {
+        console.log('No table body found for filter population');
+        return;
+    }
+    
+    const rows = tableBody.querySelectorAll('tr[data-card-id]');
+    const classValues = new Set();
+    const sectionValues = new Set();
+    
+    // Get header indices for Class and Section columns
+    const headerRow = document.querySelector('#data-table thead tr');
+    if (!headerRow) {
+        console.log('No header row found');
+        return;
+    }
+    
+    const headers = headerRow.querySelectorAll('th');
+    let classColIndex = -1;
+    let sectionColIndex = -1;
+    
+    headers.forEach((header, index) => {
+        // Use data-field-name attribute if available, otherwise use text content
+        const fieldName = header.getAttribute('data-field-name') || header.textContent.trim();
+        const fieldNameUpper = fieldName.toUpperCase();
+        
+        // Match CLASS or similar names
+        if (classColIndex === -1 && (fieldNameUpper === 'CLASS' || fieldNameUpper === 'STD' || fieldNameUpper === 'STANDARD' || fieldNameUpper === 'GRADE' || fieldNameUpper.includes('CLASS'))) {
+            classColIndex = index;
+            console.log('Found CLASS column at index:', classColIndex, 'name:', fieldName);
+        }
+        // Match SECTION or similar names
+        if (sectionColIndex === -1 && (fieldNameUpper === 'SECTION' || fieldNameUpper === 'SEC' || fieldNameUpper === 'DIV' || fieldNameUpper === 'DIVISION' || fieldNameUpper.includes('SECTION'))) {
+            sectionColIndex = index;
+            console.log('Found SECTION column at index:', sectionColIndex, 'name:', fieldName);
+        }
+    });
+    
+    console.log('Class column index:', classColIndex, 'Section column index:', sectionColIndex);
+    console.log('Total rows:', rows.length);
+    
+    // Collect unique values from rows
+    rows.forEach((row, rowIndex) => {
+        const cells = row.querySelectorAll('td');
+        
+        if (classColIndex >= 0 && classColIndex < cells.length) {
+            // Get the text content, handling span inside cell
+            const cell = cells[classColIndex];
+            const cellValue = cell.querySelector('.cell-value');
+            const classVal = (cellValue ? cellValue.textContent : cell.textContent).trim();
+            if (classVal && classVal !== '-' && classVal !== '') {
+                classValues.add(classVal);
+            }
+        }
+        
+        if (sectionColIndex >= 0 && sectionColIndex < cells.length) {
+            const cell = cells[sectionColIndex];
+            const cellValue = cell.querySelector('.cell-value');
+            const sectionVal = (cellValue ? cellValue.textContent : cell.textContent).trim();
+            if (sectionVal && sectionVal !== '-' && sectionVal !== '') {
+                sectionValues.add(sectionVal);
+            }
+        }
+    });
+    
+    console.log('Found class values:', Array.from(classValues));
+    console.log('Found section values:', Array.from(sectionValues));
+    
+    // Populate Class dropdown
+    const classOptionsContainer = document.getElementById('classFilterOptions');
+    if (classOptionsContainer && classValues.size > 0) {
+        // Keep "All Classes" option, clear others
+        const allOption = classOptionsContainer.querySelector('[data-value="all"]');
+        classOptionsContainer.innerHTML = '';
+        if (allOption) {
+            classOptionsContainer.appendChild(allOption);
+        } else {
+            const opt = document.createElement('div');
+            opt.className = 'dropdown-option selected';
+            opt.setAttribute('data-value', 'all');
+            opt.textContent = 'All Classes';
+            classOptionsContainer.appendChild(opt);
+        }
+        
+        const sortedClasses = Array.from(classValues).sort((a, b) => {
+            // Try numeric sort first (for roman numerals, convert)
+            const romanToNum = {'I':1,'II':2,'III':3,'IV':4,'V':5,'VI':6,'VII':7,'VIII':8,'IX':9,'X':10,'XI':11,'XII':12};
+            const numA = romanToNum[a.toUpperCase()] || parseInt(a) || 999;
+            const numB = romanToNum[b.toUpperCase()] || parseInt(b) || 999;
+            return numA - numB;
+        });
+        
+        sortedClasses.forEach(classVal => {
+            const option = document.createElement('div');
+            option.className = 'dropdown-option';
+            option.setAttribute('data-value', classVal);
+            option.textContent = classVal;
+            classOptionsContainer.appendChild(option);
+        });
+        
+        console.log('Added', sortedClasses.length, 'class options');
+    }
+    
+    // Populate Section dropdown
+    const sectionOptionsContainer = document.getElementById('sectionFilterOptions');
+    if (sectionOptionsContainer && sectionValues.size > 0) {
+        // Keep "All Sections" option, clear others
+        const allOption = sectionOptionsContainer.querySelector('[data-value="all"]');
+        sectionOptionsContainer.innerHTML = '';
+        if (allOption) {
+            sectionOptionsContainer.appendChild(allOption);
+        } else {
+            const opt = document.createElement('div');
+            opt.className = 'dropdown-option selected';
+            opt.setAttribute('data-value', 'all');
+            opt.textContent = 'All Sections';
+            sectionOptionsContainer.appendChild(opt);
+        }
+        
+        const sortedSections = Array.from(sectionValues).sort();
+        
+        sortedSections.forEach(sectionVal => {
+            const option = document.createElement('div');
+            option.className = 'dropdown-option';
+            option.setAttribute('data-value', sectionVal);
+            option.textContent = sectionVal;
+            sectionOptionsContainer.appendChild(option);
+        });
+        
+        console.log('Added', sortedSections.length, 'section options');
+    }
+    
+    // Attach click handlers to the new options
+    attachClassFilterHandlers();
+    attachSectionFilterHandlers();
+}
+}
+
+function attachClassFilterHandlers() {
+    const classOptions = document.querySelectorAll('#classFilterOptions .dropdown-option');
+    
+    classOptions.forEach(option => {
+        // Remove existing listeners
+        const newOption = option.cloneNode(true);
+        option.parentNode.replaceChild(newOption, option);
+    });
+    
+    // Re-select and add new listeners
+    document.querySelectorAll('#classFilterOptions .dropdown-option').forEach(option => {
         option.addEventListener('click', function() {
-            const fieldName = this.getAttribute('data-field');
-            if (typeof filterByField === 'function') {
-                filterByField(fieldName);
+            currentClassFilter = this.getAttribute('data-value');
+            
+            const filterText = document.getElementById('classFilterText');
+            if (filterText) {
+                filterText.textContent = currentClassFilter === 'all' ? 'Class' : currentClassFilter;
             }
             
-            const filterToggle = document.getElementById('filterToggle');
-            if (filterToggle) {
-                const icon = '<i class="fa-solid fa-filter"></i> ';
-                const chevron = ' <i class="fa-solid fa-chevron-down"></i>';
-                filterToggle.innerHTML = icon + this.textContent.trim() + chevron;
-            }
-            
-            const searchInput = document.getElementById('searchInput');
-            if (searchInput) {
-                if (fieldName === 'all') {
-                    searchInput.placeholder = 'Search in all fields...';
-                } else {
-                    searchInput.placeholder = 'Search in ' + fieldName + '...';
-                }
-            }
-            
-            filterOptions.forEach(o => o.classList.remove('selected'));
+            document.querySelectorAll('#classFilterOptions .dropdown-option').forEach(o => o.classList.remove('selected'));
             this.classList.add('selected');
             
-            if (searchInput && searchInput.value.trim()) {
-                if (typeof searchRows === 'function') {
-                    searchRows(searchInput.value.trim());
-                }
-            }
+            // Apply filters
+            applyClassSectionFilters();
         });
     });
+}
+
+function attachSectionFilterHandlers() {
+    const sectionOptions = document.querySelectorAll('#sectionFilterOptions .dropdown-option');
+    
+    sectionOptions.forEach(option => {
+        // Remove existing listeners
+        const newOption = option.cloneNode(true);
+        option.parentNode.replaceChild(newOption, option);
+    });
+    
+    // Re-select and add new listeners
+    document.querySelectorAll('#sectionFilterOptions .dropdown-option').forEach(option => {
+        option.addEventListener('click', function() {
+            currentSectionFilter = this.getAttribute('data-value');
+            
+            const filterText = document.getElementById('sectionFilterText');
+            if (filterText) {
+                filterText.textContent = currentSectionFilter === 'all' ? 'Section' : currentSectionFilter;
+            }
+            
+            document.querySelectorAll('#sectionFilterOptions .dropdown-option').forEach(o => o.classList.remove('selected'));
+            this.classList.add('selected');
+            
+            // Apply filters
+            applyClassSectionFilters();
+        });
+    });
+}
+            
+            // Close dropdown
+            const dropdown = document.getElementById('sectionFilterDropdown');
+            if (dropdown) dropdown.classList.remove('open');
+            
+            // Apply filters
+            applyClassSectionFilters();
+        });
+    });
+}
+
+function getClassSectionColumnIndices() {
+    const headerRow = document.querySelector('#data-table thead tr');
+    if (!headerRow) return { classIndex: -1, sectionIndex: -1 };
+    
+    const headers = headerRow.querySelectorAll('th');
+    let classIndex = -1;
+    let sectionIndex = -1;
+    
+    headers.forEach((header, index) => {
+        const fieldName = header.getAttribute('data-field-name') || header.textContent.trim();
+        const fieldNameUpper = fieldName.toUpperCase();
+        // Match CLASS or similar names
+        if (classIndex === -1 && (fieldNameUpper === 'CLASS' || fieldNameUpper === 'STD' || fieldNameUpper === 'STANDARD' || fieldNameUpper === 'GRADE' || fieldNameUpper.includes('CLASS'))) {
+            classIndex = index;
+        }
+        // Match SECTION or similar names
+        if (sectionIndex === -1 && (fieldNameUpper === 'SECTION' || fieldNameUpper === 'SEC' || fieldNameUpper === 'DIV' || fieldNameUpper === 'DIVISION' || fieldNameUpper.includes('SECTION'))) {
+            sectionIndex = index;
+        }
+    });
+    
+    return { classIndex, sectionIndex };
+}
+
+function applyClassSectionFilters() {
+    const { classIndex, sectionIndex } = getClassSectionColumnIndices();
+    
+    // Get all rows
+    const tableBody = document.getElementById('cardsTableBody');
+    if (!tableBody) return;
+    
+    const rows = tableBody.querySelectorAll('tr[data-card-id]');
+    let visibleCount = 0;
+    
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        let showRow = true;
+        
+        // Check class filter
+        if (currentClassFilter !== 'all' && classIndex >= 0 && classIndex < cells.length) {
+            const cell = cells[classIndex];
+            const cellValueSpan = cell.querySelector('.cell-value');
+            const val = (cellValueSpan ? cellValueSpan.textContent : cell.textContent).trim();
+            if (val !== currentClassFilter) {
+                showRow = false;
+            }
+        }
+        
+        // Check section filter
+        if (showRow && currentSectionFilter !== 'all' && sectionIndex >= 0 && sectionIndex < cells.length) {
+            const cell = cells[sectionIndex];
+            const cellValueSpan = cell.querySelector('.cell-value');
+            const val = (cellValueSpan ? cellValueSpan.textContent : cell.textContent).trim();
+            if (val !== currentSectionFilter) {
+                showRow = false;
+            }
+        }
+        
+        // Also apply search query if exists
+        if (showRow && searchQuery) {
+            const rowText = row.textContent.toLowerCase();
+            if (!rowText.includes(searchQuery.toLowerCase())) {
+                showRow = false;
+            }
+        }
+        
+        row.style.display = showRow ? '' : 'none';
+        if (showRow) visibleCount++;
+    });
+    
+    // Update pagination info
+    updateFilteredCount(visibleCount);
+}
+
+function updateFilteredCount(count) {
+    const showingCount = document.getElementById('showing-count');
+    if (showingCount) {
+        showingCount.textContent = count;
+    }
 }
 
 // ==========================================
