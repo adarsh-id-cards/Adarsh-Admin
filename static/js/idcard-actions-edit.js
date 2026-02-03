@@ -58,6 +58,7 @@ function startCellEdit(cell) {
         background: white;
         outline: none;
         box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+        text-transform: uppercase;
     `;
     
     // Store original value
@@ -102,8 +103,11 @@ function cancelCellEdit(cell) {
 function saveCellEdit(cell, newValue, cardId, field) {
     const originalValue = cell.getAttribute('data-original-value') || '';
     
+    // Convert to uppercase
+    const uppercaseValue = typeof newValue === 'string' ? newValue.toUpperCase() : newValue;
+    
     // If no change, just restore
-    if (newValue === originalValue) {
+    if (uppercaseValue === originalValue) {
         cell.textContent = originalValue;
         cell.removeAttribute('data-original-value');
         return;
@@ -127,7 +131,7 @@ function saveCellEdit(cell, newValue, cardId, field) {
         },
         body: JSON.stringify({
             field: field,
-            value: newValue
+            value: uppercaseValue
         })
     })
     .then(response => {
@@ -135,7 +139,7 @@ function saveCellEdit(cell, newValue, cardId, field) {
         return response.json();
     })
     .then(data => {
-        cell.textContent = newValue;
+        cell.textContent = uppercaseValue;
         cell.removeAttribute('data-original-value');
         
         // Show success feedback

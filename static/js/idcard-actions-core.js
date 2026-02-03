@@ -347,32 +347,58 @@ function initCheckboxes() {
     // Individual row checkboxes - use event delegation
     const tableBody = document.getElementById('cardsTableBody');
     if (tableBody) {
-        // Handle Shift+Click for range selection
+        // Handle Shift+Click for range selection and single-select without Shift
         tableBody.addEventListener('click', function(e) {
             if (e.target.classList.contains('rowCheckbox')) {
                 const rowCheckboxes = [...getRowCheckboxes()];
                 const currentIndex = rowCheckboxes.indexOf(e.target);
                 
-                // Shift+Click range selection
                 if (e.shiftKey && lastClickedCheckboxIndex !== null && currentIndex !== lastClickedCheckboxIndex) {
+                    // Shift+Click: Range selection
                     e.preventDefault(); // Prevent default checkbox behavior
+                    e.stopPropagation(); // Stop event from bubbling
                     
                     const start = Math.min(lastClickedCheckboxIndex, currentIndex);
                     const end = Math.max(lastClickedCheckboxIndex, currentIndex);
                     
-                    // Check all checkboxes in range (set to checked state)
+                    // Check all checkboxes in range (from first selected to last selected, inclusive)
                     for (let i = start; i <= end; i++) {
                         if (rowCheckboxes[i]) {
                             rowCheckboxes[i].checked = true;
                         }
                     }
                     
+                    // IMPORTANT: Directly set the clicked checkbox (e.target) as checked
+                    // This ensures the last clicked is always selected
+                    e.target.checked = true;
+                    
                     // Trigger change event for button state update
-                    e.target.dispatchEvent(new Event('change', { bubbles: true }));
-                }
-                
-                // Update last clicked index (only for checked boxes or regular clicks)
-                if (!e.shiftKey || e.target.checked) {
+                    updateButtonStates();
+                    
+                    // Don't update lastClickedCheckboxIndex for shift+click 
+                    // so user can continue selecting ranges from the original anchor
+                } else {
+                    // Without Shift (or first click): Only one checkbox can be selected at a time
+                    // Uncheck all others first
+                    rowCheckboxes.forEach((cb, idx) => {
+                        if (idx !== currentIndex) {
+                            cb.checked = false;
+                        }
+                    });
+                    
+                    // Also uncheck selectAll
+                    if (selectAll) {
+                        selectAll.checked = false;
+                    }
+                    
+                    // Deactivate Select All DB
+                    const selectAllDbBtn = document.getElementById('selectAllDbBtn');
+                    if (selectAllDbBtn) {
+                        selectAllDbBtn.classList.remove('active');
+                        window.IDCardApp.allDbCardIds = null;
+                    }
+                    
+                    // Update last clicked index - this becomes the anchor for Shift+Click
                     lastClickedCheckboxIndex = currentIndex;
                 }
             }

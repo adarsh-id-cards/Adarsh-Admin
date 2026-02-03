@@ -180,7 +180,7 @@ def api_idcard_table_create(request, group_id):
         group = get_object_or_404(IDCardGroup, id=group_id)
         data = json.loads(request.body)
         
-        name = data.get('name', '').strip()
+        name = data.get('name', '').strip().upper()  # Convert to uppercase
         if not name:
             return JsonResponse({'success': False, 'message': 'Table name is required!'}, status=400)
         
@@ -191,7 +191,7 @@ def api_idcard_table_create(request, group_id):
         # Validate fields structure
         validated_fields = []
         for idx, field in enumerate(fields):
-            field_name = field.get('name', '').strip()
+            field_name = field.get('name', '').strip().upper()  # Convert to uppercase
             field_type = field.get('type', 'text')
             if not field_name:
                 return JsonResponse({'success': False, 'message': f'Field {idx+1} name is required!'}, status=400)
@@ -260,7 +260,7 @@ def api_idcard_table_update(request, table_id):
         table = get_object_or_404(IDCardTable, id=table_id)
         data = json.loads(request.body)
         
-        name = data.get('name', '').strip()
+        name = data.get('name', '').strip().upper()  # Convert to uppercase
         if not name:
             return JsonResponse({'success': False, 'message': 'Table name is required!'}, status=400)
         
@@ -271,7 +271,7 @@ def api_idcard_table_update(request, table_id):
         # Validate fields structure
         validated_fields = []
         for idx, field in enumerate(fields):
-            field_name = field.get('name', '').strip()
+            field_name = field.get('name', '').strip().upper()  # Convert to uppercase
             field_type = field.get('type', 'text')
             if not field_name:
                 return JsonResponse({'success': False, 'message': f'Field {idx+1} name is required!'}, status=400)
@@ -654,23 +654,26 @@ def api_idcard_update(request, card_id):
                     file_key = f"image_{field_name}"
                     if file_key in request.FILES:
                         try:
-                            # Save the image with versioned filename
+                            # Save the image with new filename
                             uploaded_file = request.FILES[file_key]
                             from django.core.files.storage import default_storage
                             
                             # Get file extension from uploaded file
                             original_ext = os.path.splitext(uploaded_file.name)[1].lower() or '.jpg'
                             
-                            # Check if there's an existing image for this field
+                            # Check if there's an existing image for this field - delete it
                             existing_image_path = existing_field_data.get(field_name, '')
+                            if existing_image_path and existing_image_path != 'NOT_FOUND' and existing_image_path.strip():
+                                try:
+                                    if default_storage.exists(existing_image_path):
+                                        default_storage.delete(existing_image_path)
+                                        print(f"Deleted old image: {existing_image_path}")
+                                except Exception as del_err:
+                                    print(f"Warning: Could not delete old image {existing_image_path}: {del_err}")
                             
-                            if existing_image_path and existing_image_path != 'NOT_FOUND':
-                                # Use versioned filename (keeps base name + adds _XXXXXX suffix)
-                                new_filename = generate_updated_image_filename(existing_image_path, original_ext)
-                            else:
-                                # New image - generate fresh filename with 14-digit timestamp + counter
-                                image_counter += 1
-                                new_filename = generate_image_filename(image_counter, original_ext)
+                            # Generate fresh filename with 14-digit timestamp + counter
+                            image_counter += 1
+                            new_filename = generate_image_filename(image_counter, original_ext)
                             
                             file_path = f"{client_image_folder}/{new_filename}"
                             
@@ -691,9 +694,43 @@ def api_idcard_update(request, card_id):
             
             card.field_data = existing_field_data
             
-            # Handle main photo
+            # Handle main photo - save to field_data["Photo"] not card.photo
             if 'photo' in request.FILES:
-                card.photo = request.FILES['photo']
+                try:
+                    uploaded_file = request.FILES['photo']
+                    from django.core.files.storage import default_storage
+                    
+                    # Get file extension from uploaded file
+                    original_ext = os.path.splitext(uploaded_file.name)[1].lower() or '.jpg'
+                    
+                    # Check if there's an existing Photo in field_data - delete it
+                    existing_photo_path = existing_field_data.get('Photo', '')
+                    if existing_photo_path and existing_photo_path != 'NOT_FOUND' and existing_photo_path.strip():
+                        try:
+                            if default_storage.exists(existing_photo_path):
+                                default_storage.delete(existing_photo_path)
+                                print(f"Deleted old photo: {existing_photo_path}")
+                        except Exception as del_err:
+                            print(f"Warning: Could not delete old photo {existing_photo_path}: {del_err}")
+                    
+                    # Generate fresh filename with 14-digit timestamp + counter
+                    new_filename = generate_image_filename(999, original_ext)  # Use 999 as counter for main photo
+                    file_path = f"{client_image_folder}/{new_filename}"
+                    
+                    # Save the image
+                    saved_path, renamed, success = safe_save_image(
+                        default_storage, file_path, uploaded_file,
+                        fallback_name=f"photo_{int(time.time())}.jpg"
+                    )
+                    
+                    if success and saved_path:
+                        existing_field_data['Photo'] = saved_path
+                        card.field_data = existing_field_data
+                        print(f"Photo updated to: {saved_path}")
+                    else:
+                        print(f"Warning: Could not save main photo")
+                except Exception as photo_err:
+                    print(f"Error processing main photo: {photo_err}")
             
             card.save()
         else:
@@ -740,6 +777,44 @@ def api_idcard_delete(request, card_id):
             'success': True,
             'message': 'ID Card deleted successfully!'
         })
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_idcard_update_field(request, card_id):
+    """API endpoint to update a single field on an ID Card (for inline editing)"""
+    try:
+        card = get_object_or_404(IDCard, id=card_id)
+        data = json.loads(request.body)
+        
+        field = data.get('field')
+        value = data.get('value', '')
+        
+        if not field:
+            return JsonResponse({'success': False, 'message': 'Field name is required!'}, status=400)
+        
+        # Update the field_data
+        field_data = card.field_data or {}
+        
+        # Convert to uppercase if it's a string
+        if isinstance(value, str):
+            field_data[field] = value.upper()
+        else:
+            field_data[field] = value
+        
+        card.field_data = field_data
+        card.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Field updated successfully!',
+            'field': field,
+            'value': field_data[field]
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON data!'}, status=400)
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)}, status=400)
 
@@ -1229,9 +1304,7 @@ def api_idcard_bulk_upload(request, table_id):
                             field_data[field_name] = ''
                     
                     # Process image fields - try to match with ZIP photos
-                    # Batch counter for this upload (reset per batch)
                     photos_matched = 0
-                    original_photo_name_value = None  # Track original photo name from Excel
                     
                     for img_field in image_fields:
                         # Get the photo reference value from the tracked column
@@ -1272,10 +1345,6 @@ def api_idcard_bulk_upload(request, table_id):
                                     else:
                                         photo_column_value = str(cell_value).strip()
                         
-                        # Store original photo name from Excel for later matching during reupload
-                        if photo_column_value:
-                            original_photo_name_value = photo_column_value
-                        
                         # Try to match photo from ZIP - CASE SENSITIVE match
                         if photo_column_value and zip_photos and photo_column_value in zip_photos:
                             try:
@@ -1313,11 +1382,10 @@ def api_idcard_bulk_upload(request, table_id):
                             # No value given at all - show colorful placeholder
                             field_data[img_field] = ''
                     
-                    # Create the card with original_photo_name for future matching
+                    # Create the card
                     IDCard.objects.create(
                         table=table,
                         field_data=field_data,
-                        original_photo_name=original_photo_name_value,
                         status='pending'
                     )
                     cards_created += 1
@@ -1389,9 +1457,7 @@ def api_idcard_bulk_upload(request, table_id):
                         field_data[field_name] = str(value).strip().upper() if value else ''  # Convert to uppercase
                     
                     # Process image fields - try to match with ZIP photos
-                    # Batch counter for this upload (reset per batch)
                     photos_matched = 0
-                    original_photo_name_value = None  # Track original photo name from Excel
                     
                     for img_field in image_fields:
                         # Get the photo reference value from the tracked column
@@ -1413,10 +1479,6 @@ def api_idcard_bulk_upload(request, table_id):
                                         # CASE SENSITIVE
                                         photo_column_value = str(cell_value).strip()
                                     break
-                        
-                        # Store original photo name from Excel for later matching during reupload
-                        if photo_column_value:
-                            original_photo_name_value = photo_column_value
                         
                         # Try to match photo from ZIP - CASE SENSITIVE match
                         if photo_column_value and zip_photos and photo_column_value in zip_photos:
@@ -1455,11 +1517,10 @@ def api_idcard_bulk_upload(request, table_id):
                             # No value given at all - show colorful placeholder
                             field_data[img_field] = ''
                     
-                    # Create the card with original_photo_name for future matching
+                    # Create the card
                     IDCard.objects.create(
                         table=table,
                         field_data=field_data,
-                        original_photo_name=original_photo_name_value,
                         status='pending'
                     )
                     cards_created += 1
@@ -1539,7 +1600,6 @@ def api_idcard_download_images(request, table_id):
         images_skipped = 0
         
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
-            sr_no = 1
             for card in cards:
                 field_data = card.field_data or {}
                 
@@ -1556,7 +1616,7 @@ def api_idcard_download_images(request, table_id):
                                     
                                     # Validate image before adding to ZIP
                                     if img_data and len(img_data) >= 100:
-                                        # Use filename from path (already renamed with 14-digit timestamp format)
+                                        # Use the stored filename (already renamed with timestamp format)
                                         download_filename = os.path.basename(img_path)
                                         
                                         # Add to ZIP with the filename
@@ -1572,8 +1632,6 @@ def api_idcard_download_images(request, table_id):
                             images_skipped += 1
                             print(f"Error downloading image {img_path}: {e}")
                             continue
-                
-                sr_no += 1
         
         if images_added == 0:
             return JsonResponse({'success': False, 'message': 'No images found for selected cards!'}, status=400)
@@ -1601,8 +1659,8 @@ def api_idcard_download_images(request, table_id):
 def api_idcard_reupload_images(request, table_id):
     """
     API endpoint to reupload images from a ZIP file.
-    Matches ZIP filenames (without extension) to original_photo_name stored on each IDCard.
-    On match, saves new image with 14-digit timestamp format in client's UUID folder.
+    Matches ZIP filenames (without extension) to the current stored filename on each IDCard.
+    On match, saves new image with versioned filename (adds _XXXXXX suffix) in client's UUID folder.
     Uses CASE SENSITIVE matching.
     """
     try:
@@ -1628,19 +1686,19 @@ def api_idcard_reupload_images(request, table_id):
             except:
                 card_ids = []
         
-        # Get cards to process - only those with original_photo_name set and missing images
+        # Get cards to process
         if card_ids:
             cards = IDCard.objects.filter(table=table, id__in=card_ids)
         else:
             cards = IDCard.objects.filter(table=table)
         
-        # Filter to cards that have original_photo_name stored
-        cards_with_photo_ref = cards.exclude(original_photo_name__isnull=True).exclude(original_photo_name='')
+        # Get all cards - match by current stored filename
+        cards_to_process = list(cards)
         
-        if not cards_with_photo_ref.exists():
+        if not cards_to_process:
             return JsonResponse({
                 'success': False, 
-                'message': 'No cards found with stored photo references! Upload Excel data first.'
+                'message': 'No cards found to process!'
             }, status=400)
         
         # Get image field names from table config
@@ -1695,43 +1753,53 @@ def api_idcard_reupload_images(request, table_id):
         if not zip_photos:
             return JsonResponse({'success': False, 'message': 'No images found in the ZIP file!'}, status=400)
         
-        # Process cards and match images using original_photo_name
+        # Process cards and match images using current stored filename
         images_matched = 0
         images_not_matched = 0
         cards_updated = 0
         batch_counter = 0  # Counter for this reupload batch
         
-        for card in cards_with_photo_ref:
+        for card in cards_to_process:
             field_data = card.field_data or {}
             card_updated = False
             
-            # Get the original photo name stored on this card - CASE SENSITIVE
-            original_photo_ref = card.original_photo_name
+            # Get current stored filename (without extension) for matching
+            current_stored_filename = None
+            existing_image_path = None
+            for img_field in image_fields:
+                current_value = field_data.get(img_field, '')
+                if current_value and current_value not in ['NOT_FOUND', '']:
+                    existing_image_path = current_value
+                    # Extract filename without extension from path
+                    current_stored_filename = os.path.splitext(os.path.basename(current_value))[0]
+                    break
             
-            if not original_photo_ref:
+            # Skip cards without existing images (nothing to match)
+            if not current_stored_filename:
+                images_not_matched += 1
                 continue
             
-            # Check if this matches any file in the ZIP - CASE SENSITIVE match
-            if original_photo_ref in zip_photos:
+            # Try to match by current stored filename
+            matched_photo_info = None
+            if current_stored_filename in zip_photos:
+                matched_photo_info = zip_photos[current_stored_filename]
+            
+            if matched_photo_info:
                 try:
-                    photo_info = zip_photos[original_photo_ref]
+                    photo_info = matched_photo_info
                     batch_counter += 1
                     
-                    # Check if there's an existing image for any image field
-                    existing_image_path = None
-                    for img_field in image_fields:
-                        current_value = field_data.get(img_field, '')
-                        if current_value and current_value not in ['NOT_FOUND', '']:
-                            existing_image_path = current_value
-                            break
+                    # Delete old image file before saving new one
+                    if existing_image_path and existing_image_path != 'NOT_FOUND':
+                        try:
+                            if default_storage.exists(existing_image_path):
+                                default_storage.delete(existing_image_path)
+                                print(f"Deleted old image during reupload: {existing_image_path}")
+                        except Exception as del_err:
+                            print(f"Warning: Could not delete old image {existing_image_path}: {del_err}")
                     
-                    # Generate filename based on whether we're updating or creating
-                    if existing_image_path:
-                        # Use versioned filename (keeps base name + adds _XXXXXX suffix)
-                        new_filename = generate_updated_image_filename(existing_image_path, photo_info['ext'])
-                    else:
-                        # New image - generate fresh filename with 14-digit timestamp + batch counter
-                        new_filename = generate_image_filename(batch_counter, photo_info['ext'])
+                    # Generate fresh filename with 14-digit timestamp + batch counter
+                    new_filename = generate_image_filename(batch_counter, photo_info['ext'])
                     
                     # Save to client's UUID folder
                     file_path = f"{client_image_folder}/{new_filename}"
@@ -1750,10 +1818,10 @@ def api_idcard_reupload_images(request, table_id):
                         
                         images_matched += 1
                     else:
-                        print(f"Warning: Could not save reuploaded image for {original_photo_ref}")
+                        print(f"Warning: Could not save reuploaded image for card {card.id}")
                 except Exception as save_error:
                     # Log but don't break the whole process
-                    print(f"Error saving reuploaded image for {original_photo_ref}: {save_error}")
+                    print(f"Error saving reuploaded image for card {card.id}: {save_error}")
                     continue
             else:
                 images_not_matched += 1
@@ -1817,18 +1885,22 @@ def api_idcard_download_docx(request, table_id):
         if not cards.exists():
             return JsonResponse({'success': False, 'message': 'No cards found!'}, status=400)
         
-        # Get table fields configuration
+        # Get table fields configuration - maintain original order
         table_fields = table.fields
         
-        # Separate image fields and text fields
-        image_fields = [f['name'] for f in table_fields if f.get('type') == 'image']
-        text_fields = [f for f in table_fields if f.get('type') != 'image']
-        
-        # Check for PHOTO field not marked as image
+        # Build ordered_fields list maintaining original order
+        # Each field has: name, type, is_image flag
+        ordered_fields = []
         for f in table_fields:
-            if f['name'].upper() == 'PHOTO' and f['name'] not in image_fields:
-                image_fields.append(f['name'])
-                text_fields = [tf for tf in text_fields if tf['name'] != f['name']]
+            field_name = f['name']
+            field_type = f.get('type', 'text')
+            # Check if it's an image field
+            is_image = (field_type == 'image' or field_name.upper() in ['PHOTO', 'SIGNATURE', 'IMAGE', 'PIC', 'PICTURE', 'SIGN'])
+            ordered_fields.append({
+                'name': field_name,
+                'type': field_type,
+                'is_image': is_image
+            })
         
         # Get client/institution name from the table's group
         institution_name = table.group.client.name if table.group and table.group.client else "Institution"
@@ -2014,30 +2086,29 @@ def api_idcard_download_docx(request, table_id):
         total_pages_run._r.append(fldChar5)
         total_pages_run._r.append(fldChar6)
         
-        # Calculate number of columns: Sr No + image fields + text fields
-        num_cols = 1 + len(image_fields) + len(text_fields)
+        # Calculate number of columns: Sr No + all fields (in original order)
+        num_cols = 1 + len(ordered_fields)
         
         # First pass: Calculate max content length for each column to determine widths
         column_max_lengths = {}
         column_max_lengths[0] = 5  # Sr No. column - fixed width
         
-        # Image fields - fixed width for 2.5cm height images (approx 2cm width typical)
-        for idx, img_field in enumerate(image_fields):
-            column_max_lengths[1 + idx] = 12  # Fixed width for image columns
-        
-        # Text fields - calculate based on content
-        for idx, field in enumerate(text_fields):
+        # Calculate widths for each field in order
+        for idx, field in enumerate(ordered_fields):
             field_name = field['name']
-            max_len = len(field_name)  # Start with header length
-            
-            for card in cards:
-                field_data = card.field_data or {}
-                value = str(field_data.get(field_name, ''))
-                if len(value) > max_len:
-                    max_len = len(value)
-            
-            # Cap max length for very long text
-            column_max_lengths[1 + len(image_fields) + idx] = min(max_len, 50)
+            if field['is_image']:
+                # Image fields - fixed width for 2.5cm height images
+                column_max_lengths[1 + idx] = 12
+            else:
+                # Text fields - calculate based on content
+                max_len = len(field_name)  # Start with header length
+                for card in cards:
+                    field_data = card.field_data or {}
+                    value = str(field_data.get(field_name, ''))
+                    if len(value) > max_len:
+                        max_len = len(value)
+                # Cap max length for very long text
+                column_max_lengths[1 + idx] = min(max_len, 50)
         
         # Calculate column widths based on content length
         # Available width in landscape A4 with 1cm margins: approximately 27.7cm
@@ -2130,22 +2201,8 @@ def api_idcard_download_docx(request, table_id):
             header_cells[col_idx].width = Cm(column_widths[col_idx])
             col_idx += 1
             
-            # Image field headers
-            for img_field in image_fields:
-                header_cells[col_idx].text = img_field
-                header_cells[col_idx].paragraphs[0].runs[0].bold = True
-                header_cells[col_idx].paragraphs[0].runs[0].font.name = 'Arial'
-                header_cells[col_idx].paragraphs[0].runs[0].font.size = Pt(9)
-                header_cells[col_idx].paragraphs[0].runs[0].font.color.rgb = RGBColor(0, 0, 0)
-                header_cells[col_idx].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-                set_cell_margins(header_cells[col_idx], 0, 0, 14, 14)
-                set_cell_vertical_alignment(header_cells[col_idx], 'center')
-                set_paragraph_spacing(header_cells[col_idx].paragraphs[0], 0, 0)
-                header_cells[col_idx].width = Cm(column_widths[col_idx])
-                col_idx += 1
-            
-            # Text field headers
-            for field in text_fields:
+            # All field headers in original order
+            for field in ordered_fields:
                 header_cells[col_idx].text = field['name']
                 header_cells[col_idx].paragraphs[0].runs[0].bold = True
                 header_cells[col_idx].paragraphs[0].runs[0].font.name = 'Arial'
@@ -2168,6 +2225,11 @@ def api_idcard_download_docx(request, table_id):
         cards_list = list(cards)
         total_cards = len(cards_list)
         
+        # Remove default empty paragraph that Word creates
+        if doc.paragraphs:
+            p = doc.paragraphs[0]._element
+            p.getparent().remove(p)
+        
         # Process cards in batches of 7 per page
         current_table = None
         sr_no = 1
@@ -2175,9 +2237,23 @@ def api_idcard_download_docx(request, table_id):
         for card_idx, card in enumerate(cards_list):
             # Check if we need a new page/table
             if card_idx % ENTRIES_PER_PAGE == 0:
-                if card_idx > 0:
-                    # Add page break before new table
-                    doc.add_page_break()
+                if current_table is not None:
+                    # Add page break after previous table (not as a separate paragraph)
+                    # Use section break for continuous pages instead of page break
+                    from docx.oxml import OxmlElement
+                    from docx.oxml.ns import qn
+                    
+                    # Add paragraph with page break
+                    p = doc.add_paragraph()
+                    # Remove spacing from this paragraph
+                    pPr = p._p.get_or_add_pPr()
+                    pPr.append(parse_xml(r'<w:spacing {} w:before="0" w:after="0" w:line="0" w:lineRule="auto"/>'.format(nsdecls('w'))))
+                    
+                    # Add page break run
+                    run = p.add_run()
+                    br = OxmlElement('w:br')
+                    br.set(qn('w:type'), 'page')
+                    run._r.append(br)
                 
                 # Create new table with header row
                 current_table = doc.add_table(rows=1, cols=num_cols)
@@ -2217,101 +2293,100 @@ def api_idcard_download_docx(request, table_id):
             row_cells[col_idx].width = Cm(column_widths[col_idx])
             col_idx += 1
             
-            # Image fields - NO padding, image touches borders
-            for img_field in image_fields:
-                img_path = field_data.get(img_field, '')
+            # All fields in original order
+            for field in ordered_fields:
+                field_name = field['name']
                 cell = row_cells[col_idx]
                 cell.width = Cm(column_widths[col_idx])
                 
-                # Set cell styling - zero padding on all sides
-                set_cell_margins(cell, 0, 0, 0, 0)  # No padding - image touches borders
-                set_cell_vertical_alignment(cell, 'center')
-                
-                # NO background for empty - just leave white
-                
-                if img_path and img_path != 'NOT_FOUND' and img_path.strip():
-                    try:
-                        if default_storage.exists(img_path):
-                            with default_storage.open(img_path, 'rb') as img_file:
-                                img_data = img_file.read()
-                                
-                                # Validate image data is not empty
-                                if not img_data or len(img_data) < 100:
-                                    raise ValueError("Image data is empty or too small")
-                                
-                                # Add 0.5pt black border to image
-                                try:
-                                    pil_img = Image.open(BytesIO(img_data))
+                if field['is_image']:
+                    # Image field - NO padding, image touches borders
+                    img_path = field_data.get(field_name, '')
+                    
+                    # Set cell styling - zero padding on all sides
+                    set_cell_margins(cell, 0, 0, 0, 0)  # No padding - image touches borders
+                    set_cell_vertical_alignment(cell, 'center')
+                    
+                    if img_path and img_path != 'NOT_FOUND' and img_path.strip():
+                        try:
+                            if default_storage.exists(img_path):
+                                with default_storage.open(img_path, 'rb') as img_file:
+                                    img_data = img_file.read()
                                     
-                                    # Verify image can be loaded
-                                    pil_img.verify()
-                                    # Re-open after verify (verify invalidates the image)
-                                    pil_img = Image.open(BytesIO(img_data))
+                                    # Validate image data is not empty
+                                    if not img_data or len(img_data) < 100:
+                                        raise ValueError("Image data is empty or too small")
                                     
-                                    # Convert to RGB if needed
-                                    if pil_img.mode in ('RGBA', 'LA', 'P'):
-                                        pil_img = pil_img.convert('RGB')
-                                    
-                                    # Add black border (1 pixel ≈ 0.5pt at 144 DPI)
-                                    from PIL import ImageOps
-                                    pil_img = ImageOps.expand(pil_img, border=1, fill='black')
-                                    
-                                    # Save image to BytesIO
-                                    img_stream = BytesIO()
-                                    pil_img.save(img_stream, format='JPEG', quality=90)
-                                    img_stream.seek(0)
-                                    
-                                    # Target height is 2.5cm (fits in 2.7cm row with padding)
-                                    target_height_cm = 2.5
-                                    
-                                    # Add image to cell
-                                    paragraph = cell.paragraphs[0]
-                                    run = paragraph.add_run()
-                                    run.add_picture(img_stream, height=Cm(target_height_cm))
-                                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                                    set_paragraph_spacing(paragraph, 0, 0)
-                                except Exception as img_err:
-                                    print(f"Image processing error for {img_path}: {img_err}")
-                                    cell.text = '[Error]'
-                                    cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-                                    cell.paragraphs[0].runs[0].font.size = Pt(8)
-                                    cell.paragraphs[0].runs[0].font.color.rgb = RGBColor(150, 150, 150)
-                                    set_paragraph_spacing(cell.paragraphs[0], 0, 0)
-                        else:
-                            cell.text = '[No Image]'
+                                    # Add 0.5pt black border to image
+                                    try:
+                                        pil_img = Image.open(BytesIO(img_data))
+                                        
+                                        # Verify image can be loaded
+                                        pil_img.verify()
+                                        # Re-open after verify (verify invalidates the image)
+                                        pil_img = Image.open(BytesIO(img_data))
+                                        
+                                        # Convert to RGB if needed
+                                        if pil_img.mode in ('RGBA', 'LA', 'P'):
+                                            pil_img = pil_img.convert('RGB')
+                                        
+                                        # Add black border (1 pixel ≈ 0.5pt at 144 DPI)
+                                        from PIL import ImageOps
+                                        pil_img = ImageOps.expand(pil_img, border=1, fill='black')
+                                        
+                                        # Save image to BytesIO
+                                        img_stream = BytesIO()
+                                        pil_img.save(img_stream, format='JPEG', quality=90)
+                                        img_stream.seek(0)
+                                        
+                                        # Target height is 2.5cm (fits in 2.7cm row with padding)
+                                        target_height_cm = 2.5
+                                        
+                                        # Add image to cell
+                                        paragraph = cell.paragraphs[0]
+                                        run = paragraph.add_run()
+                                        run.add_picture(img_stream, height=Cm(target_height_cm))
+                                        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                                        set_paragraph_spacing(paragraph, 0, 0)
+                                    except Exception as img_err:
+                                        print(f"Image processing error for {img_path}: {img_err}")
+                                        cell.text = '[Error]'
+                                        cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+                                        cell.paragraphs[0].runs[0].font.size = Pt(8)
+                                        cell.paragraphs[0].runs[0].font.color.rgb = RGBColor(150, 150, 150)
+                                        set_paragraph_spacing(cell.paragraphs[0], 0, 0)
+                            else:
+                                cell.text = '[No Image]'
+                                cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+                                cell.paragraphs[0].runs[0].font.size = Pt(8)
+                                cell.paragraphs[0].runs[0].font.color.rgb = RGBColor(150, 150, 150)
+                                set_paragraph_spacing(cell.paragraphs[0], 0, 0)
+                        except Exception as e:
+                            cell.text = '[Error]'
                             cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-                            cell.paragraphs[0].runs[0].font.size = Pt(8)
-                            cell.paragraphs[0].runs[0].font.color.rgb = RGBColor(150, 150, 150)
+                            if cell.paragraphs[0].runs:
+                                cell.paragraphs[0].runs[0].font.size = Pt(8)
                             set_paragraph_spacing(cell.paragraphs[0], 0, 0)
-                    except Exception as e:
-                        cell.text = '[Error]'
-                        cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-                        if cell.paragraphs[0].runs:
-                            cell.paragraphs[0].runs[0].font.size = Pt(8)
-                        set_paragraph_spacing(cell.paragraphs[0], 0, 0)
+                    else:
+                        # Empty placeholder - leave empty (white background)
+                        paragraph = cell.paragraphs[0]
+                        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        set_paragraph_spacing(paragraph, 0, 0)
                 else:
-                    # Empty placeholder - leave empty (white background)
-                    paragraph = cell.paragraphs[0]
-                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    set_paragraph_spacing(paragraph, 0, 0)
-                
-                col_idx += 1
-            
-            # Text fields - minimal padding, Arial font
-            for field in text_fields:
-                value = field_data.get(field['name'], '')
-                cell = row_cells[col_idx]
-                cell.text = str(value) if value else ''
-                cell.width = Cm(column_widths[col_idx])
-                
-                # Apply minimal styling to text cells with Arial font
-                set_cell_margins(cell, 0, 0, 28, 28)  # 0 top/bottom, small left/right
-                set_cell_vertical_alignment(cell, 'center')
-                if cell.paragraphs[0].runs:
-                    cell.paragraphs[0].runs[0].font.name = 'Arial'
-                    cell.paragraphs[0].runs[0].font.size = Pt(9)
-                    cell.paragraphs[0].runs[0].font.color.rgb = RGBColor(0, 0, 0)
-                set_paragraph_spacing(cell.paragraphs[0], 0, 0)
+                    # Text field - minimal padding, Arial font
+                    value = field_data.get(field_name, '')
+                    # Ensure uppercase for display
+                    value = str(value).upper() if value else ''
+                    cell.text = value
+                    
+                    # Apply minimal styling to text cells with Arial font
+                    set_cell_margins(cell, 0, 0, 28, 28)  # 0 top/bottom, small left/right
+                    set_cell_vertical_alignment(cell, 'center')
+                    if cell.paragraphs[0].runs:
+                        cell.paragraphs[0].runs[0].font.name = 'Arial'
+                        cell.paragraphs[0].runs[0].font.size = Pt(9)
+                        cell.paragraphs[0].runs[0].font.color.rgb = RGBColor(0, 0, 0)
+                    set_paragraph_spacing(cell.paragraphs[0], 0, 0)
                 
                 col_idx += 1
             
@@ -2419,8 +2494,8 @@ def api_idcard_download_xlsx(request, table_id):
         # Track max width for each column
         column_widths = {}
         
-        # Add header row
-        headers = ['Sr No.'] + [f['name'] for f in text_fields]
+        # Add header row (no Sr No. - only data fields)
+        headers = [f['name'] for f in text_fields]
         for col_idx, header in enumerate(headers, 1):
             cell = ws.cell(row=1, column=col_idx, value=header)
             cell.font = header_font
@@ -2435,17 +2510,11 @@ def api_idcard_download_xlsx(request, table_id):
         for row_idx, card in enumerate(cards, 2):
             field_data = card.field_data or {}
             
-            # Sr No
-            sr_cell = ws.cell(row=row_idx, column=1, value=row_idx - 1)
-            sr_cell.font = data_font
-            sr_cell.alignment = center_alignment
-            sr_cell.border = thin_border
-            column_widths[1] = max(column_widths.get(1, 5), len(str(row_idx - 1)) + 2)
-            
-            # Data fields
-            for col_idx, field in enumerate(text_fields, 2):
+            # Data fields (no Sr No.)
+            for col_idx, field in enumerate(text_fields, 1):
                 value = field_data.get(field['name'], '')
-                value_str = str(value) if value else ''
+                # Ensure uppercase for display
+                value_str = str(value).upper() if value else ''
                 
                 cell = ws.cell(row=row_idx, column=col_idx, value=value_str)
                 cell.font = data_font

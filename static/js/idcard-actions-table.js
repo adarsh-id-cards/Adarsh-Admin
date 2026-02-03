@@ -569,8 +569,15 @@ function createRowFromCard(card, index) {
             
             if (fieldType === 'image' || fieldName.toLowerCase() === 'photo') {
                 let imageHtml = '';
+                // Create full path with /media/ prefix
+                const fullImagePath = fieldValue && fieldValue !== 'NOT_FOUND' 
+                    ? (fieldValue.startsWith('/media/') || fieldValue.startsWith('http') ? fieldValue : `/media/${fieldValue}`)
+                    : fieldValue;
+                
                 if (fieldValue && fieldValue !== 'NOT_FOUND') {
-                    imageHtml = `<img src="/media/${fieldValue}" alt="${fieldName}" class="table-image">`;
+                    // Add cache-busting timestamp to prevent browser caching stale images
+                    const cacheBuster = `?t=${Date.now()}`;
+                    imageHtml = `<img src="/media/${fieldValue}${cacheBuster}" alt="${fieldName}" class="table-image">`;
                 } else if (fieldValue === 'NOT_FOUND') {
                     imageHtml = `<div class="no-image passport-placeholder not-found"><i class="fa-solid fa-user-xmark"></i></div>`;
                 } else {
@@ -580,7 +587,7 @@ function createRowFromCard(card, index) {
                 html += `<td class="image-field image-cell" 
                     data-field-name="${fieldName}" 
                     data-field-type="image"
-                    data-original-value="${fieldValue}">
+                    data-original-value="${fullImagePath}">
                     <div class="image-with-edit">
                         ${imageHtml}
                         <button class="edit-photo-btn" data-card-id="${card.id}" title="Edit Card">Edit</button>

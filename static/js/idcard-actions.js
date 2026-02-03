@@ -201,7 +201,132 @@
                     }
                 }
             }
+            
+            // T key - Go to top of list (first row)
+            if (e.key === 't' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                const activeElement = document.activeElement;
+                if (!activeElement.matches('input, textarea')) {
+                    e.preventDefault();
+                    goToTableTop();
+                }
+            }
+            
+            // B key - Go to bottom of list (last row)
+            if (e.key === 'b' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                const activeElement = document.activeElement;
+                if (!activeElement.matches('input, textarea')) {
+                    e.preventDefault();
+                    goToTableBottom();
+                }
+            }
         });
+    }
+    
+    // Go to top of table (SR No. 1)
+    function goToTableTop() {
+        const tableBody = document.getElementById('cardsTableBody');
+        const tableContainer = document.querySelector('.table-container');
+        
+        if (tableBody && tableContainer) {
+            // Scroll to top
+            tableContainer.scrollTop = 0;
+            
+            // Select first row
+            const firstRow = tableBody.querySelector('tr');
+            if (firstRow) {
+                // Clear any existing selection
+                document.querySelectorAll('#cardsTableBody tr.selected').forEach(row => {
+                    row.classList.remove('selected');
+                    const checkbox = row.querySelector('.rowCheckbox');
+                    if (checkbox) checkbox.checked = false;
+                });
+                
+                // Select first row
+                firstRow.classList.add('selected');
+                const checkbox = firstRow.querySelector('.rowCheckbox');
+                if (checkbox) checkbox.checked = true;
+                
+                // Update selection count
+                if (typeof updateActionButtons === 'function') {
+                    updateActionButtons();
+                }
+                
+                // Scroll into view
+                firstRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    }
+    
+    // Go to bottom of table (last SR No.)
+    function goToTableBottom() {
+        const tableBody = document.getElementById('cardsTableBody');
+        const tableContainer = document.querySelector('.table-container');
+        
+        if (tableBody && tableContainer) {
+            // First, load all remaining data if lazy loading is active
+            if (window.IDCardApp && window.IDCardApp.lazyLoadState) {
+                const state = window.IDCardApp.lazyLoadState;
+                if (state.hasMore && typeof loadMoreData === 'function') {
+                    // Load all remaining data first
+                    loadAllRemainingData().then(() => {
+                        scrollToLastRow();
+                    });
+                } else {
+                    scrollToLastRow();
+                }
+            } else {
+                scrollToLastRow();
+            }
+        }
+    }
+    
+    // Helper to scroll to and select last row
+    function scrollToLastRow() {
+        const tableBody = document.getElementById('cardsTableBody');
+        const tableContainer = document.querySelector('.table-container');
+        
+        if (tableBody && tableContainer) {
+            const rows = tableBody.querySelectorAll('tr');
+            const lastRow = rows[rows.length - 1];
+            
+            if (lastRow) {
+                // Scroll to bottom
+                tableContainer.scrollTop = tableContainer.scrollHeight;
+                
+                // Clear any existing selection
+                document.querySelectorAll('#cardsTableBody tr.selected').forEach(row => {
+                    row.classList.remove('selected');
+                    const checkbox = row.querySelector('.rowCheckbox');
+                    if (checkbox) checkbox.checked = false;
+                });
+                
+                // Select last row
+                lastRow.classList.add('selected');
+                const checkbox = lastRow.querySelector('.rowCheckbox');
+                if (checkbox) checkbox.checked = true;
+                
+                // Update selection count
+                if (typeof updateActionButtons === 'function') {
+                    updateActionButtons();
+                }
+                
+                // Scroll into view
+                lastRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    }
+    
+    // Load all remaining data for going to bottom
+    async function loadAllRemainingData() {
+        if (!window.IDCardApp || !window.IDCardApp.lazyLoadState) return;
+        
+        const state = window.IDCardApp.lazyLoadState;
+        while (state.hasMore && typeof loadMoreData === 'function') {
+            await new Promise(resolve => {
+                loadMoreData();
+                setTimeout(resolve, 100); // Wait a bit between loads
+            });
+        }
     }
     
     // ==========================================

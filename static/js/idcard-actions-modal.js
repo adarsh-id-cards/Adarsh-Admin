@@ -160,14 +160,20 @@ function populateFormFields(cardData) {
         const imgSrc = photoPath.startsWith('/media/') || photoPath.startsWith('http') 
             ? photoPath 
             : `/media/${photoPath}`;
+        // Add cache-busting timestamp
+        const cacheBuster = `?t=${Date.now()}`;
         console.log('Setting image src to:', imgSrc);
         
         if (formPhotoPreview) {
             formPhotoPreview.classList.add('has-image');
-            formPhotoPreview.innerHTML = `<img src="${imgSrc}" alt="Photo">`;
+            formPhotoPreview.innerHTML = `<img src="${imgSrc}${cacheBuster}" alt="Photo">`;
         }
         if (photoPathDisplay) {
-            photoPathDisplay.textContent = photoPath;
+            // Show full path with /media/ prefix
+            const fullPhotoPath = photoPath.startsWith('/media/') || photoPath.startsWith('http') 
+                ? photoPath 
+                : `/media/${photoPath}`;
+            photoPathDisplay.textContent = fullPhotoPath;
         }
     } else if (photoPath === 'NOT_FOUND') {
         if (formPhotoPreview) {
@@ -286,12 +292,15 @@ function populateFormFields(cardData) {
                     const imgSrc = imgPath.startsWith('/media/') || imgPath.startsWith('http') 
                         ? imgPath 
                         : `/media/${imgPath}`;
+                    // Add cache-busting timestamp
+                    const cacheBuster = `?t=${Date.now()}`;
                     if (previewContainer) {
                         previewContainer.classList.add('has-image');
-                        previewContainer.innerHTML = `<img src="${imgSrc}" alt="${fieldName}">`;
+                        previewContainer.innerHTML = `<img src="${imgSrc}${cacheBuster}" alt="${fieldName}">`;
                     }
                     if (pathDisplay) {
-                        pathDisplay.textContent = imgPath;
+                        // Show full path with /media/ prefix
+                        pathDisplay.textContent = imgSrc;
                     }
                 } else if (imgPath === 'NOT_FOUND') {
                     if (previewContainer) {
@@ -347,28 +356,42 @@ function getFormData() {
     const imageFiles = {};
     const inputs = document.querySelectorAll('#formFieldsContainer .form-control, #formFieldsContainer .image-input');
     
+    console.log('getFormData: Found', inputs.length, 'inputs');
+    
     inputs.forEach(input => {
         const fieldName = input.getAttribute('data-field-name');
         const fieldType = input.getAttribute('data-field-type');
+        console.log(`  Input: ${fieldName}, type: ${fieldType}, inputType: ${input.type}`);
         if (fieldName) {
             if (fieldType === 'image') {
                 if (input.files && input.files[0]) {
                     imageFiles[fieldName] = input.files[0];
+                    console.log(`    -> Image file captured: ${input.files[0].name}`);
+                } else {
+                    console.log(`    -> No file selected for image field`);
                 }
             } else {
-                fieldData[fieldName] = input.value;
+                // Convert text values to uppercase
+                const value = input.value || '';
+                fieldData[fieldName] = typeof value === 'string' ? value.toUpperCase() : value;
             }
         }
     });
     
+    console.log('getFormData result:', { fieldData, imageFilesCount: Object.keys(imageFiles).length });
     return { fieldData, imageFiles };
 }
 
 function getMainPhotoFile() {
     const formPhotoInput = document.getElementById('formPhotoInput');
+    console.log('getMainPhotoFile - formPhotoInput element:', formPhotoInput);
+    console.log('getMainPhotoFile - files:', formPhotoInput?.files);
+    console.log('getMainPhotoFile - files[0]:', formPhotoInput?.files?.[0]);
     if (formPhotoInput && formPhotoInput.files && formPhotoInput.files[0]) {
+        console.log('getMainPhotoFile - returning file:', formPhotoInput.files[0].name);
         return formPhotoInput.files[0];
     }
+    console.log('getMainPhotoFile - returning null (no file selected)');
     return null;
 }
 
@@ -438,11 +461,19 @@ function createNewCard(fieldData, imageFiles, mainPhoto) {
 }
 
 function updateExistingCard(cardId, fieldData, imageFiles, mainPhoto) {
+    console.log('updateExistingCard called with:');
+    console.log('  cardId:', cardId);
+    console.log('  fieldData:', fieldData);
+    console.log('  imageFiles:', Object.keys(imageFiles));
+    console.log('  mainPhoto:', mainPhoto ? 'Yes' : 'No');
+    
     // Convert to uppercase
     const uppercaseFieldData = {};
     for (const [key, value] of Object.entries(fieldData)) {
         uppercaseFieldData[key] = typeof value === 'string' ? value.toUpperCase() : value;
     }
+    
+    console.log('  uppercaseFieldData:', uppercaseFieldData);
     
     const formData = new FormData();
     formData.append('field_data', JSON.stringify(uppercaseFieldData));
@@ -464,6 +495,7 @@ function updateExistingCard(cardId, fieldData, imageFiles, mainPhoto) {
     })
     .then(response => response.json())
     .then(data => {
+        console.log('Update response:', data);
         if (data.success) {
             if (typeof showToast === 'function') showToast('Card updated successfully!');
             closeSideModal();

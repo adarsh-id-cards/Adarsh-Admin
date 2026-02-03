@@ -210,72 +210,59 @@ function populateFilterOptions() {
     attachClassFilterHandlers();
     attachSectionFilterHandlers();
 }
-}
 
 function attachClassFilterHandlers() {
-    const classOptions = document.querySelectorAll('#classFilterOptions .dropdown-option');
+    // Use event delegation instead of cloning to avoid removing existing dropdown listeners
+    const classOptionsContainer = document.getElementById('classFilterOptions');
     
-    classOptions.forEach(option => {
-        // Remove existing listeners
-        const newOption = option.cloneNode(true);
-        option.parentNode.replaceChild(newOption, option);
-    });
-    
-    // Re-select and add new listeners
-    document.querySelectorAll('#classFilterOptions .dropdown-option').forEach(option => {
-        option.addEventListener('click', function() {
-            currentClassFilter = this.getAttribute('data-value');
+    if (classOptionsContainer && !classOptionsContainer.hasAttribute('data-filter-initialized')) {
+        classOptionsContainer.setAttribute('data-filter-initialized', 'true');
+        
+        classOptionsContainer.addEventListener('click', function(e) {
+            const option = e.target.closest('.dropdown-option');
+            if (!option) return;
+            
+            currentClassFilter = option.getAttribute('data-value');
             
             const filterText = document.getElementById('classFilterText');
             if (filterText) {
                 filterText.textContent = currentClassFilter === 'all' ? 'Class' : currentClassFilter;
             }
             
-            document.querySelectorAll('#classFilterOptions .dropdown-option').forEach(o => o.classList.remove('selected'));
-            this.classList.add('selected');
+            classOptionsContainer.querySelectorAll('.dropdown-option').forEach(o => o.classList.remove('selected'));
+            option.classList.add('selected');
             
             // Apply filters
             applyClassSectionFilters();
         });
-    });
+    }
 }
 
 function attachSectionFilterHandlers() {
-    const sectionOptions = document.querySelectorAll('#sectionFilterOptions .dropdown-option');
+    // Use event delegation instead of cloning to avoid removing existing dropdown listeners
+    const sectionOptionsContainer = document.getElementById('sectionFilterOptions');
     
-    sectionOptions.forEach(option => {
-        // Remove existing listeners
-        const newOption = option.cloneNode(true);
-        option.parentNode.replaceChild(newOption, option);
-    });
-    
-    // Re-select and add new listeners
-    document.querySelectorAll('#sectionFilterOptions .dropdown-option').forEach(option => {
-        option.addEventListener('click', function() {
-            currentSectionFilter = this.getAttribute('data-value');
+    if (sectionOptionsContainer && !sectionOptionsContainer.hasAttribute('data-filter-initialized')) {
+        sectionOptionsContainer.setAttribute('data-filter-initialized', 'true');
+        
+        sectionOptionsContainer.addEventListener('click', function(e) {
+            const option = e.target.closest('.dropdown-option');
+            if (!option) return;
+            
+            currentSectionFilter = option.getAttribute('data-value');
             
             const filterText = document.getElementById('sectionFilterText');
             if (filterText) {
                 filterText.textContent = currentSectionFilter === 'all' ? 'Section' : currentSectionFilter;
             }
             
-            document.querySelectorAll('#sectionFilterOptions .dropdown-option').forEach(o => o.classList.remove('selected'));
-            this.classList.add('selected');
+            sectionOptionsContainer.querySelectorAll('.dropdown-option').forEach(o => o.classList.remove('selected'));
+            option.classList.add('selected');
             
             // Apply filters
             applyClassSectionFilters();
         });
-    });
-}
-            
-            // Close dropdown
-            const dropdown = document.getElementById('sectionFilterDropdown');
-            if (dropdown) dropdown.classList.remove('open');
-            
-            // Apply filters
-            applyClassSectionFilters();
-        });
-    });
+    }
 }
 
 function getClassSectionColumnIndices() {

@@ -414,6 +414,7 @@
     color: #212529;
     transition: all 0.2s ease;
     background: #fff;
+    text-transform: uppercase;
 }
 
 .form-control:focus {
@@ -1140,6 +1141,7 @@ textarea.form-control {
     text-align: left;
     border-bottom: 1px solid rgba(0,0,0,0.05);
     vertical-align: middle;
+    text-transform: uppercase;
 }
 
 /* Dynamic field cells - auto width based on content */

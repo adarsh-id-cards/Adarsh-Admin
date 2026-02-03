@@ -3,6 +3,104 @@
 document.addEventListener('DOMContentLoaded', function() {
     
     // ====================
+    // TOAST FUNCTIONS
+    // ====================
+    function showToast(message, type = 'success') {
+        let toast = document.getElementById('toast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'toast';
+            toast.className = 'toast';
+            toast.innerHTML = '<i class="fa-solid fa-check-circle"></i><span id="toastMessage">Success!</span>';
+            document.body.appendChild(toast);
+        }
+        
+        const iconClass = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-times-circle' : 'fa-info-circle';
+        toast.querySelector('i').className = 'fa-solid ' + iconClass;
+        toast.querySelector('span').textContent = message;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // ====================
+    // API FUNCTIONS
+    // ====================
+    async function fetchClientDetails(clientId) {
+        try {
+            const response = await fetch(`/api/client/${clientId}/`);
+            const data = await response.json();
+            if (data.success) {
+                return data.client;
+            } else {
+                showToast(data.message || 'Failed to load client details', 'error');
+                return null;
+            }
+        } catch (error) {
+            showToast('Network error. Please try again.', 'error');
+            return null;
+        }
+    }
+    
+    async function createClient(formData) {
+        try {
+            const response = await fetch('/api/client/create/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+            return await response.json();
+        } catch (error) {
+            return { success: false, message: 'Network error. Please try again.' };
+        }
+    }
+    
+    async function updateClient(clientId, formData) {
+        try {
+            const response = await fetch(`/api/client/${clientId}/update/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+            return await response.json();
+        } catch (error) {
+            return { success: false, message: 'Network error. Please try again.' };
+        }
+    }
+    
+    async function toggleClientStatus(clientId) {
+        try {
+            const response = await fetch(`/api/client/${clientId}/toggle-status/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            return await response.json();
+        } catch (error) {
+            return { success: false, message: 'Network error. Please try again.' };
+        }
+    }
+    
+    async function deleteClientApi(clientId) {
+        try {
+            const response = await fetch(`/api/client/${clientId}/delete/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            return await response.json();
+        } catch (error) {
+            return { success: false, message: 'Network error. Please try again.' };
+        }
+    }
+    
+    async function fetchClientStaff(clientId) {
+        try {
+            const response = await fetch(`/api/client/${clientId}/staff/`);
+            return await response.json();
+        } catch (error) {
+            return { success: false, message: 'Network error. Please try again.' };
+        }
+    }
+
+    // ====================
     // Filter Dropdown
     // ====================
     const dropdownToggle = document.getElementById('dropdownToggle');
@@ -68,16 +166,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function enableActionButtons(enable) {
-        const addBtn = document.getElementById('addClientBtn');
         const editBtn = document.getElementById('editClientBtn');
         const activeBtn = document.getElementById('activeClientBtn');
         const deleteBtn = document.getElementById('deleteClientBtn');
         const viewBtn = document.getElementById('viewClientBtn');
         const viewStaffBtn = document.getElementById('viewStaffBtn');
         
-        // Add button is disabled when a row IS selected
-        if (addBtn) addBtn.disabled = enable;
-        // Other buttons are enabled when a row is selected
+        // Action buttons are enabled when a row is selected
         if (editBtn) editBtn.disabled = !enable;
         if (activeBtn) activeBtn.disabled = !enable;
         if (deleteBtn) deleteBtn.disabled = !enable;
@@ -146,19 +241,79 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.permission-toggle-item input').forEach(cb => cb.checked = false);
     }
     
-    function populateFormFromRow() {
-        if (!selectedRow) return;
+    function populateForm(clientData) {
+        if (!clientData) return;
         
-        const cells = selectedRow.querySelectorAll('td');
-        document.getElementById('clientName').value = cells[0].textContent;
-        document.getElementById('clientEmail').value = cells[1].textContent;
-        document.getElementById('clientPhone').value = cells[2].textContent;
-        document.getElementById('clientAddress').value = 'Sample Address, City, State - 123456';
+        const nameInput = document.getElementById('clientName');
+        const addressInput = document.getElementById('clientAddress');
+        const emailInput = document.getElementById('clientEmail');
+        const phoneInput = document.getElementById('clientPhone');
         
-        // Demo: randomly check some permissions
-        document.querySelectorAll('.permission-toggle-item input').forEach(cb => {
-            cb.checked = Math.random() > 0.5;
+        if (nameInput) nameInput.value = clientData.name || '';
+        if (addressInput) addressInput.value = clientData.address || '';
+        if (emailInput) emailInput.value = clientData.email || '';
+        if (phoneInput) phoneInput.value = clientData.phone || '';
+        
+        // Populate permissions (convert underscore to hyphen for HTML id)
+        const permissionFields = [
+            'perm_staff_list', 'perm_staff_add', 'perm_staff_edit', 'perm_staff_delete', 'perm_staff_status',
+            'perm_idcard_setting_list', 'perm_idcard_setting_add', 'perm_idcard_setting_edit', 
+            'perm_idcard_setting_delete', 'perm_idcard_setting_status',
+            'perm_idcard_pending_list', 'perm_idcard_verified_list', 'perm_idcard_pool_list',
+            'perm_idcard_approved_list', 'perm_idcard_download_list', 'perm_idcard_reprint_list',
+            'perm_idcard_add', 'perm_idcard_edit', 'perm_idcard_delete', 'perm_idcard_info',
+            'perm_idcard_approve', 'perm_idcard_verify', 'perm_idcard_bulk_upload', 
+            'perm_idcard_bulk_download', 'perm_idcard_created_at', 'perm_idcard_updated_at',
+            'perm_idcard_delete_from_pool', 'perm_delete_all_idcard', 'perm_reupload_idcard_image',
+            'perm_idcard_retrieve'
+        ];
+        
+        permissionFields.forEach(field => {
+            const htmlId = field.replace(/_/g, '-');
+            const el = document.getElementById(htmlId);
+            if (el && clientData[field] !== undefined) {
+                el.checked = clientData[field];
+            }
         });
+    }
+    
+    function getFormData() {
+        const formData = {
+            name: document.getElementById('clientName')?.value || '',
+            address: document.getElementById('clientAddress')?.value || '',
+            email: document.getElementById('clientEmail')?.value || '',
+            phone: document.getElementById('clientPhone')?.value || '',
+        };
+        
+        // Add password only if provided
+        const passwordInput = document.getElementById('clientPassword');
+        if (passwordInput && passwordInput.value) {
+            formData.password = passwordInput.value;
+        }
+        
+        // Collect permissions
+        const permissionFields = [
+            'perm_staff_list', 'perm_staff_add', 'perm_staff_edit', 'perm_staff_delete', 'perm_staff_status',
+            'perm_idcard_setting_list', 'perm_idcard_setting_add', 'perm_idcard_setting_edit', 
+            'perm_idcard_setting_delete', 'perm_idcard_setting_status',
+            'perm_idcard_pending_list', 'perm_idcard_verified_list', 'perm_idcard_pool_list',
+            'perm_idcard_approved_list', 'perm_idcard_download_list', 'perm_idcard_reprint_list',
+            'perm_idcard_add', 'perm_idcard_edit', 'perm_idcard_delete', 'perm_idcard_info',
+            'perm_idcard_approve', 'perm_idcard_verify', 'perm_idcard_bulk_upload', 
+            'perm_idcard_bulk_download', 'perm_idcard_created_at', 'perm_idcard_updated_at',
+            'perm_idcard_delete_from_pool', 'perm_delete_all_idcard', 'perm_reupload_idcard_image',
+            'perm_idcard_retrieve'
+        ];
+        
+        permissionFields.forEach(field => {
+            const htmlId = field.replace(/_/g, '-');
+            const el = document.getElementById(htmlId);
+            if (el) {
+                formData[field] = el.checked;
+            }
+        });
+        
+        return formData;
     }
     
     function enableFormInputs(enable) {
@@ -186,9 +341,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Edit button - opens drawer in edit mode
     const editClientBtn = document.getElementById('editClientBtn');
     if (editClientBtn) {
-        editClientBtn.addEventListener('click', function() {
-            if (selectedRow) {
+        editClientBtn.addEventListener('click', async function() {
+            if (!selectedClientId) return;
+            const clientData = await fetchClientDetails(selectedClientId);
+            if (clientData) {
                 openDrawer('edit');
+                populateForm(clientData);
             }
         });
     }
@@ -196,9 +354,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // View button - opens drawer in view mode
     const viewClientBtn = document.getElementById('viewClientBtn');
     if (viewClientBtn) {
-        viewClientBtn.addEventListener('click', function() {
-            if (selectedRow) {
+        viewClientBtn.addEventListener('click', async function() {
+            if (!selectedClientId) return;
+            const clientData = await fetchClientDetails(selectedClientId);
+            if (clientData) {
                 openDrawer('view');
+                populateForm(clientData);
             }
         });
     }
@@ -216,10 +377,25 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Form submission
     if (clientForm) {
-        clientForm.addEventListener('submit', function(e) {
+        clientForm.addEventListener('submit', async function(e) {
             e.preventDefault();
-            closeDrawer();
-            console.log('Form submitted in mode:', currentMode);
+            
+            const formData = getFormData();
+            let result;
+            
+            if (currentMode === 'edit' && selectedClientId) {
+                result = await updateClient(selectedClientId, formData);
+            } else if (currentMode === 'add') {
+                result = await createClient(formData);
+            }
+            
+            if (result && result.success) {
+                showToast(result.message, 'success');
+                closeDrawer();
+                setTimeout(() => location.reload(), 500);
+            } else {
+                showToast(result?.message || 'Operation failed', 'error');
+            }
         });
     }
     
@@ -276,28 +452,31 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     if (activeClientBtn) {
-        activeClientBtn.addEventListener('click', function() {
-            if (!selectedRow) return;
+        activeClientBtn.addEventListener('click', async function() {
+            if (!selectedClientId) return;
             
-            const statusBadge = selectedRow.querySelector('.status-badge');
-            if (!statusBadge) return;
+            const result = await toggleClientStatus(selectedClientId);
             
-            const isActive = statusBadge.classList.contains('active');
-            
-            if (isActive) {
-                // Deactivate
-                statusBadge.classList.remove('active');
-                statusBadge.classList.add('inactive');
-                statusBadge.textContent = 'Inactive';
+            if (result.success) {
+                showToast(result.message, 'success');
+                
+                // Update UI
+                const statusBadge = selectedRow.querySelector('.status-badge');
+                if (statusBadge) {
+                    if (result.status === 'active') {
+                        statusBadge.classList.remove('inactive');
+                        statusBadge.classList.add('active');
+                        statusBadge.textContent = 'Active';
+                    } else {
+                        statusBadge.classList.remove('active');
+                        statusBadge.classList.add('inactive');
+                        statusBadge.textContent = 'Inactive';
+                    }
+                }
+                updateActiveButtonState();
             } else {
-                // Activate
-                statusBadge.classList.remove('inactive');
-                statusBadge.classList.add('active');
-                statusBadge.textContent = 'Active';
+                showToast(result.message || 'Failed to update status', 'error');
             }
-            
-            updateActiveButtonState();
-            console.log('Status toggled for:', selectedRow.querySelector('td').textContent);
         });
     }
     
@@ -306,15 +485,22 @@ document.addEventListener('DOMContentLoaded', function() {
     // ====================
     const deleteClientBtn = document.getElementById('deleteClientBtn');
     if (deleteClientBtn) {
-        deleteClientBtn.addEventListener('click', function() {
-            if (!selectedRow) return;
+        deleteClientBtn.addEventListener('click', async function() {
+            if (!selectedClientId || !selectedRow) return;
             
             const clientName = selectedRow.querySelector('td').textContent;
             if (confirm(`Are you sure you want to delete "${clientName}"?`)) {
-                selectedRow.remove();
-                selectedRow = null;
-                enableActionButtons(false);
-                console.log('Deleted client:', clientName);
+                const result = await deleteClientApi(selectedClientId);
+                
+                if (result.success) {
+                    showToast(result.message, 'success');
+                    selectedRow.remove();
+                    selectedRow = null;
+                    selectedClientId = null;
+                    enableActionButtons(false);
+                } else {
+                    showToast(result.message || 'Failed to delete client', 'error');
+                }
             }
         });
     }
@@ -333,151 +519,81 @@ document.addEventListener('DOMContentLoaded', function() {
     const activeStaffCount = document.getElementById('activeStaffCount');
     const inactiveStaffCount = document.getElementById('inactiveStaffCount');
     
-    // Mock staff data for demo with more details
-    const mockStaffData = {
-        'roshan': [
-            { 
-                name: 'Amit Kumar', 
-                role: 'Manager', 
-                email: 'amit@example.com', 
-                phone: '9876543210',
-                status: 'active',
-                createdAt: '15-01-2026',
-                lastLogin: '01-02-2026 10:30 AM',
-                permissions: ['Id Card Add', 'Id Card Edit', 'Id Card Verify']
-            },
-            { 
-                name: 'Priya Singh', 
-                role: 'Data Entry', 
-                email: 'priya@example.com', 
-                phone: '9876543211',
-                status: 'active',
-                createdAt: '20-01-2026',
-                lastLogin: '31-01-2026 04:15 PM',
-                permissions: ['Id Card Add', 'Id Card Edit']
-            }
-        ],
-        'Sant Hirdaram Medical College (SHMC)': [
-            { 
-                name: 'Dr. Rajesh Sharma', 
-                role: 'Coordinator', 
-                email: 'rajesh@shmc.com', 
-                phone: '9876543212',
-                status: 'active',
-                createdAt: '21-01-2026',
-                lastLogin: '01-02-2026 09:00 AM',
-                permissions: ['Id Card Add', 'Id Card Edit', 'Id Card Delete', 'Id Card Verify', 'Id Card Approve']
-            },
-            { 
-                name: 'Sunita Verma', 
-                role: 'Admin Staff', 
-                email: 'sunita@shmc.com', 
-                phone: '9876543213',
-                status: 'active',
-                createdAt: '22-01-2026',
-                lastLogin: '01-02-2026 11:45 AM',
-                permissions: ['Id Card Add', 'Id Card Edit', 'Id Card Verify']
-            },
-            { 
-                name: 'Vikram Patel', 
-                role: 'Data Entry', 
-                email: 'vikram@shmc.com', 
-                phone: '9876543214',
-                status: 'inactive',
-                createdAt: '25-01-2026',
-                lastLogin: '28-01-2026 02:30 PM',
-                permissions: ['Id Card Add']
-            }
-        ],
-        'Umang Nasha Mukti Kendra': [],
-        'Mansarovar Global University': [
-            { 
-                name: 'Prof. Anil Gupta', 
-                role: 'HOD', 
-                email: 'anil@mgu.com', 
-                phone: '9876543215',
-                status: 'active',
-                createdAt: '30-12-2025',
-                lastLogin: '31-01-2026 06:00 PM',
-                permissions: ['Id Card Add', 'Id Card Edit', 'Id Card Delete', 'Id Card Verify', 'Id Card Approve', 'Bulk Upload']
-            }
-        ]
-    };
-    
-    function openStaffDrawer() {
-        if (!selectedRow) return;
+    async function openStaffDrawer() {
+        if (!selectedClientId || !selectedRow) return;
         
         const clientName = selectedRow.querySelector('td').textContent;
-        staffClientName.textContent = clientName;
+        if (staffClientName) staffClientName.textContent = clientName;
         
-        const staffData = mockStaffData[clientName] || [];
+        const result = await fetchClientStaff(selectedClientId);
         
-        // Update summary counts
-        const activeCount = staffData.filter(s => s.status === 'active').length;
-        const inactiveCount = staffData.filter(s => s.status === 'inactive').length;
-        
-        totalStaffCount.textContent = staffData.length;
-        activeStaffCount.textContent = activeCount;
-        inactiveStaffCount.textContent = inactiveCount;
-        
-        if (staffData.length === 0) {
-            staffList.style.display = 'none';
-            noStaffMessage.style.display = 'flex';
-        } else {
-            staffList.style.display = 'flex';
-            noStaffMessage.style.display = 'none';
+        if (result.success) {
+            const staffData = result.staff || [];
             
-            staffList.innerHTML = staffData.map(staff => `
-                <div class="staff-card">
-                    <div class="staff-card-header">
-                        <div class="staff-avatar ${staff.status}">
-                            <i class="fa-solid fa-user"></i>
-                        </div>
-                        <div class="staff-main-info">
-                            <div class="staff-name">${staff.name}</div>
-                            <div class="staff-role">${staff.role}</div>
-                        </div>
-                        <span class="staff-status-badge ${staff.status}">${staff.status === 'active' ? 'Active' : 'Inactive'}</span>
-                    </div>
-                    <div class="staff-card-body">
-                        <div class="staff-detail-row">
-                            <div class="staff-detail">
-                                <i class="fa-solid fa-envelope"></i>
-                                <span>${staff.email}</span>
+            // Update summary counts
+            if (totalStaffCount) totalStaffCount.textContent = result.total_count || staffData.length;
+            if (activeStaffCount) activeStaffCount.textContent = result.active_count || 0;
+            if (inactiveStaffCount) inactiveStaffCount.textContent = result.inactive_count || 0;
+            
+            if (staffData.length === 0) {
+                if (staffList) staffList.style.display = 'none';
+                if (noStaffMessage) noStaffMessage.style.display = 'flex';
+            } else {
+                if (staffList) staffList.style.display = 'flex';
+                if (noStaffMessage) noStaffMessage.style.display = 'none';
+                
+                if (staffList) {
+                    staffList.innerHTML = staffData.map(staff => `
+                        <div class="staff-card">
+                            <div class="staff-card-header">
+                                <div class="staff-avatar ${staff.status}">
+                                    <i class="fa-solid fa-user"></i>
+                                </div>
+                                <div class="staff-main-info">
+                                    <div class="staff-name">${staff.name}</div>
+                                    <div class="staff-role">${staff.role || 'Staff'}</div>
+                                </div>
+                                <span class="staff-status-badge ${staff.status}">${staff.status === 'active' ? 'Active' : 'Inactive'}</span>
                             </div>
-                            <div class="staff-detail">
-                                <i class="fa-solid fa-phone"></i>
-                                <span>${staff.phone}</span>
+                            <div class="staff-card-body">
+                                <div class="staff-detail-row">
+                                    <div class="staff-detail">
+                                        <i class="fa-solid fa-envelope"></i>
+                                        <span>${staff.email || 'N/A'}</span>
+                                    </div>
+                                    <div class="staff-detail">
+                                        <i class="fa-solid fa-phone"></i>
+                                        <span>${staff.phone || 'N/A'}</span>
+                                    </div>
+                                </div>
+                                <div class="staff-detail-row">
+                                    <div class="staff-detail">
+                                        <i class="fa-solid fa-calendar-plus"></i>
+                                        <span>Created: ${staff.created_at || 'N/A'}</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="staff-detail-row">
-                            <div class="staff-detail">
-                                <i class="fa-solid fa-calendar-plus"></i>
-                                <span>Created: ${staff.createdAt}</span>
-                            </div>
-                            <div class="staff-detail">
-                                <i class="fa-solid fa-clock"></i>
-                                <span>Last Login: ${staff.lastLogin}</span>
-                            </div>
-                        </div>
-                        <div class="staff-permissions">
-                            <div class="permissions-label"><i class="fa-solid fa-shield-halved"></i> Permissions:</div>
-                            <div class="permissions-tags">
-                                ${staff.permissions.map(p => `<span class="permission-tag">${p}</span>`).join('')}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
+                    `).join('');
+                }
+            }
+        } else {
+            showToast(result.message || 'Failed to load staff', 'error');
+            if (staffList) staffList.style.display = 'none';
+            if (noStaffMessage) noStaffMessage.style.display = 'flex';
         }
         
-        viewStaffDrawer.classList.add('open');
-        document.body.style.overflow = 'hidden';
+        if (viewStaffDrawer) {
+            viewStaffDrawer.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
     }
     
     function closeStaffDrawerFn() {
-        viewStaffDrawer.classList.remove('open');
-        document.body.style.overflow = '';
+        if (viewStaffDrawer) {
+            viewStaffDrawer.classList.remove('open');
+            document.body.style.overflow = '';
+        }
     }
     
     if (viewStaffBtn) {
