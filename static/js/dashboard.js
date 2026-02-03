@@ -411,5 +411,75 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // ====================
+    // Load Recent Client Updates
+    // ====================
+    function loadRecentClientUpdates() {
+        const tbody = document.getElementById('recentClientUpdatesBody');
+        if (!tbody) return;
+        
+        fetch('/api/recent-client-updates/?limit=5')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.clients.length > 0) {
+                    tbody.innerHTML = data.clients.map(client => `
+                        <tr>
+                            <td>
+                                <div class="client-info">
+                                    <div class="client-avatar">${client.initial}</div>
+                                    <span class="client-name">${client.name}</span>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                ${client.first_table_id 
+                                    ? `<a href="/table/${client.first_table_id}/cards/?status=pending" class="count-badge pending">${client.pending}</a>`
+                                    : `<span class="count-badge pending">${client.pending}</span>`
+                                }
+                            </td>
+                            <td class="text-center">
+                                ${client.first_table_id 
+                                    ? `<a href="/table/${client.first_table_id}/cards/?status=verified" class="count-badge verified">${client.verified}</a>`
+                                    : `<span class="count-badge verified">${client.verified}</span>`
+                                }
+                            </td>
+                            <td class="text-center">
+                                ${client.first_table_id 
+                                    ? `<a href="/table/${client.first_table_id}/cards/?status=approved" class="count-badge approved">${client.approved}</a>`
+                                    : `<span class="count-badge approved">${client.approved}</span>`
+                                }
+                            </td>
+                            <td class="text-center">
+                                ${client.first_table_id 
+                                    ? `<a href="/table/${client.first_table_id}/cards/?status=downloaded" class="count-badge downloaded">${client.downloaded}</a>`
+                                    : `<span class="count-badge downloaded">${client.downloaded}</span>`
+                                }
+                            </td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="text-center" style="padding: 40px; color: #888;">
+                                <i class="fa-solid fa-users-slash"></i> No recent client updates
+                            </td>
+                        </tr>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading recent client updates:', error);
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center" style="padding: 40px; color: #dc2626;">
+                            <i class="fa-solid fa-exclamation-triangle"></i> Error loading data
+                        </td>
+                    </tr>
+                `;
+            });
+    }
+    
+    // Load recent client updates on page load
+    loadRecentClientUpdates();
+    
     console.log('Dashboard loaded successfully');
 });

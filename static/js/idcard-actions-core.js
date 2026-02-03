@@ -7,6 +7,17 @@
 window.IDCardApp = window.IDCardApp || {};
 
 // ==========================================
+// TABLE ID HELPER
+// ==========================================
+function getTableId() {
+    return typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
+}
+
+// Expose globally
+window.getTableId = getTableId;
+window.IDCardApp.getTableId = getTableId;
+
+// ==========================================
 // CSRF TOKEN HELPER
 // ==========================================
 function getCSRFToken() {
@@ -255,6 +266,9 @@ window.IDCardApp.initSidebar = initSidebar;
 // CHECKBOX FUNCTIONALITY
 // ==========================================
 
+// Track last clicked checkbox for Shift+Click range selection
+let lastClickedCheckboxIndex = null;
+
 // Function to get current row checkboxes (live query)
 function getRowCheckboxes() {
     return document.querySelectorAll(".rowCheckbox");
@@ -318,17 +332,64 @@ function initCheckboxes() {
                 cb.checked = this.checked;
             });
             updateButtonStates();
+            
+            // If unchecking, also deactivate the Select All DB button
+            if (!this.checked) {
+                const selectAllDbBtn = document.getElementById('selectAllDbBtn');
+                if (selectAllDbBtn) {
+                    selectAllDbBtn.classList.remove('active');
+                    window.IDCardApp.allDbCardIds = null;
+                }
+            }
         });
     }
     
     // Individual row checkboxes - use event delegation
     const tableBody = document.getElementById('cardsTableBody');
     if (tableBody) {
+        // Handle Shift+Click for range selection
+        tableBody.addEventListener('click', function(e) {
+            if (e.target.classList.contains('rowCheckbox')) {
+                const rowCheckboxes = [...getRowCheckboxes()];
+                const currentIndex = rowCheckboxes.indexOf(e.target);
+                
+                // Shift+Click range selection
+                if (e.shiftKey && lastClickedCheckboxIndex !== null && currentIndex !== lastClickedCheckboxIndex) {
+                    e.preventDefault(); // Prevent default checkbox behavior
+                    
+                    const start = Math.min(lastClickedCheckboxIndex, currentIndex);
+                    const end = Math.max(lastClickedCheckboxIndex, currentIndex);
+                    
+                    // Check all checkboxes in range (set to checked state)
+                    for (let i = start; i <= end; i++) {
+                        if (rowCheckboxes[i]) {
+                            rowCheckboxes[i].checked = true;
+                        }
+                    }
+                    
+                    // Trigger change event for button state update
+                    e.target.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                
+                // Update last clicked index (only for checked boxes or regular clicks)
+                if (!e.shiftKey || e.target.checked) {
+                    lastClickedCheckboxIndex = currentIndex;
+                }
+            }
+        });
+        
+        // Handle checkbox state changes
         tableBody.addEventListener('change', function(e) {
             if (e.target.classList.contains('rowCheckbox')) {
                 const rowCheckboxes = getRowCheckboxes();
                 if (!e.target.checked) {
                     selectAll.checked = false;
+                    // Also deactivate Select All DB if any checkbox is unchecked
+                    const selectAllDbBtn = document.getElementById('selectAllDbBtn');
+                    if (selectAllDbBtn) {
+                        selectAllDbBtn.classList.remove('active');
+                        window.IDCardApp.allDbCardIds = null;
+                    }
                 } else if ([...rowCheckboxes].every(c => c.checked)) {
                     selectAll.checked = true;
                 }
@@ -337,22 +398,115 @@ function initCheckboxes() {
         });
     }
     
+    // Reset last clicked index when page changes or data reloads
+    window.IDCardApp.resetShiftClickIndex = function() {
+        lastClickedCheckboxIndex = null;
+    };
+    
+    // Select All Database button
+    initSelectAllDbButton();
+    
     // Initial button state
     updateButtonStates();
 }
 
+// Select All Database functionality
+function initSelectAllDbButton() {
+    const selectAllDbBtn = document.getElementById('selectAllDbBtn');
+    if (!selectAllDbBtn) return;
+    
+    selectAllDbBtn.addEventListener('click', async function() {
+        const tableId = window.IDCardApp.tableId;
+        const currentStatus = window.IDCardApp.currentStatus || new URLSearchParams(window.location.search).get('status') || 'pending';
+        
+        if (!tableId) {
+            showToast('Table ID not found', false);
+            return;
+        }
+        
+        // If already active, deselect all
+        if (this.classList.contains('active')) {
+            this.classList.remove('active');
+            window.IDCardApp.allDbCardIds = null;
+            
+            // Uncheck all visible checkboxes
+            const selectAll = document.getElementById("selectAll");
+            if (selectAll) {
+                selectAll.checked = false;
+                selectAll.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            showToast('Selection cleared');
+            return;
+        }
+        
+        // Show loading state
+        const originalContent = this.innerHTML;
+        this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading...';
+        this.disabled = true;
+        
+        try {
+            const response = await fetch(`/api/table/${tableId}/cards/all-ids/?status=${currentStatus}`);
+            const data = await response.json();
+            
+            if (data.success && data.card_ids) {
+                // Store all card IDs globally
+                window.IDCardApp.allDbCardIds = data.card_ids;
+                
+                // Mark button as active
+                this.classList.add('active');
+                
+                // Check all visible checkboxes
+                const selectAll = document.getElementById("selectAll");
+                if (selectAll) {
+                    selectAll.checked = true;
+                    const rowCheckboxes = getRowCheckboxes();
+                    rowCheckboxes.forEach(cb => {
+                        cb.checked = true;
+                    });
+                }
+                
+                updateButtonStates();
+                showToast(`Selected all ${data.total_count} cards`);
+            } else {
+                showToast(data.message || 'Failed to get card IDs', false);
+            }
+        } catch (error) {
+            console.error('Error fetching all card IDs:', error);
+            showToast('Error fetching card IDs', false);
+        } finally {
+            this.innerHTML = originalContent;
+            this.disabled = false;
+        }
+    });
+}
+
+// Override getSelectedCardIds to use all DB IDs when Select All DB is active
+const originalGetSelectedCardIds = getSelectedCardIds;
+function getSelectedCardIdsWithDbSelect() {
+    // If Select All DB is active, return all DB card IDs
+    if (window.IDCardApp.allDbCardIds && window.IDCardApp.allDbCardIds.length > 0) {
+        const selectAllDbBtn = document.getElementById('selectAllDbBtn');
+        if (selectAllDbBtn && selectAllDbBtn.classList.contains('active')) {
+            return window.IDCardApp.allDbCardIds;
+        }
+    }
+    // Otherwise, return selected visible checkboxes
+    return originalGetSelectedCardIds();
+}
+
 // Expose globally
 window.getRowCheckboxes = getRowCheckboxes;
-window.getSelectedCardIds = getSelectedCardIds;
+window.getSelectedCardIds = getSelectedCardIdsWithDbSelect;
 window.getAllVisibleCardIds = getAllVisibleCardIds;
 window.getCardIdsForAction = getCardIdsForAction;
 window.updateButtonStates = updateButtonStates;
 window.IDCardApp.getRowCheckboxes = getRowCheckboxes;
-window.IDCardApp.getSelectedCardIds = getSelectedCardIds;
+window.IDCardApp.getSelectedCardIds = getSelectedCardIdsWithDbSelect;
 window.IDCardApp.getAllVisibleCardIds = getAllVisibleCardIds;
 window.IDCardApp.getCardIdsForAction = getCardIdsForAction;
 window.IDCardApp.updateButtonStates = updateButtonStates;
 window.IDCardApp.initCheckboxes = initCheckboxes;
+window.IDCardApp.initSelectAllDbButton = initSelectAllDbButton;
 
 // ==========================================
 // DROPDOWN FUNCTIONALITY

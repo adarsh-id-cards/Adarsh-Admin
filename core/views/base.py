@@ -34,6 +34,53 @@ def dashboard(request):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+def api_recent_client_updates(request):
+    """API endpoint to get recent clients with their ID card status counts"""
+    try:
+        limit = int(request.GET.get('limit', 5))
+        
+        # Get recent active clients
+        clients = Client.objects.filter(status='active').order_by('-updated_at')[:limit]
+        
+        results = []
+        for client in clients:
+            # Get all ID card tables for this client through groups
+            tables = IDCardTable.objects.filter(group__client=client)
+            
+            # Get first table ID for linking (if exists)
+            first_table = tables.first()
+            first_table_id = first_table.id if first_table else None
+            
+            # Count cards by status across all tables
+            pending_count = IDCard.objects.filter(table__in=tables, status='pending').count()
+            verified_count = IDCard.objects.filter(table__in=tables, status='verified').count()
+            approved_count = IDCard.objects.filter(table__in=tables, status='approved').count()
+            downloaded_count = IDCard.objects.filter(table__in=tables, status='downloaded').count()
+            
+            results.append({
+                'id': client.id,
+                'name': client.name,
+                'initial': client.name[0].upper() if client.name else 'C',
+                'first_table_id': first_table_id,
+                'pending': pending_count,
+                'verified': verified_count,
+                'approved': approved_count,
+                'downloaded': downloaded_count,
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'clients': results
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["GET"])
 def api_global_search(request):
     """API endpoint for global search across all ID cards within clients"""
     try:

@@ -8,6 +8,9 @@ urlpatterns = [
     # Global Search API
     path('api/global-search/', views.api_global_search, name='api_global_search'),
     
+    # Recent Client Updates API
+    path('api/recent-client-updates/', views.api_recent_client_updates, name='api_recent_client_updates'),
+    
     # Staff Management
     path('manage-staff/', views.manage_staff, name='manage_staff'),
     
@@ -58,6 +61,7 @@ urlpatterns = [
     
     # ID Card APIs
     path('api/table/<int:table_id>/cards/', views.api_idcard_list, name='api_idcard_list'),
+    path('api/table/<int:table_id>/cards/all-ids/', views.api_idcard_all_ids, name='api_idcard_all_ids'),
     path('api/table/<int:table_id>/card/create/', views.api_idcard_create, name='api_idcard_create'),
     path('api/card/<int:card_id>/', views.api_idcard_get, name='api_idcard_get'),
     path('api/card/<int:card_id>/update/', views.api_idcard_update, name='api_idcard_update'),

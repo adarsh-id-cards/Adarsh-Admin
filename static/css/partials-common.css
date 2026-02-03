@@ -448,26 +448,46 @@
    Pagination Styles 
    ==================== */
 /* Note: Main pagination-bar styles are in common.css
-   These provide fallback/additional styles */
+   These provide additional/matching styles */
 .pagination-bar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--space-sm) var(--space-md);
-    background: var(--bg-card);
-    border-radius: 0;
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.98);
     border-top: 2px solid var(--border-default);
-    gap: var(--space-lg);
-    flex-wrap: wrap;
+    border-radius: 0;
+    position: fixed;
+    bottom: 0;
+    left: 200px;
+    right: 0;
+    z-index: 50;
+    overflow: visible;
+    transition: left 0.3s ease;
+}
+
+body.sidebar-collapsed .pagination-bar {
+    left: 60px;
+}
+
+.pagination-left {
+    display: flex;
+    align-items: center;
 }
 
 .pagination-info {
-    font-size: var(--font-size-md);
-    color: var(--text-secondary);
+    font-size: 13px;
+    color: #666;
 }
 
 .pagination-info strong {
-    color: var(--text-primary);
+    color: #2c3e50;
+}
+
+.pagination-center {
+    display: flex;
+    align-items: center;
+    gap: 0;
 }
 
 .pagination-controls {
@@ -477,16 +497,28 @@
 }
 
 .pagination-controls label {
-    font-size: var(--font-size-md);
-    color: var(--text-secondary);
+    font-size: 13px;
+    color: #666;
 }
 
 .per-page-dropdown {
-    padding: 6px var(--space-md);
-    border: 1px solid var(--border-default);
+    padding: 6px 12px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
     border-radius: 0;
-    font-size: var(--font-size-md);
+    font-size: 13px;
     cursor: pointer;
+}
+
+.pagination-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    overflow: visible;
+}
+
+.pagination-right label {
+    font-size: 13px;
+    color: #666;
 }
 
 .page-nav {
@@ -495,36 +527,79 @@
     gap: 5px;
 }
 
-.page-btn {
+.page-btn,
+.pagination-btn {
     width: 32px;
     height: 32px;
-    border: 1px solid var(--border-default);
+    border: 1px solid rgba(0, 0, 0, 0.15);
     border-radius: 0;
-    background: var(--bg-white);
+    background: #fff;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--text-secondary);
-    font-size: var(--font-size-base);
-    transition: all var(--transition-base);
+    color: #666;
+    font-size: 12px;
+    transition: all 0.2s ease;
+    margin-left: -1px;
 }
 
-.page-btn:not(:disabled):hover {
-    background: var(--gray-100);
-    border-color: var(--blue);
-    color: var(--blue);
+.page-btn:first-child,
+.pagination-btn:first-child {
+    margin-left: 0;
 }
 
-.page-btn:disabled {
+.page-btn:not(:disabled):hover,
+.pagination-btn:not(:disabled):hover {
+    background: #f5f5f5;
+    border-color: #3498db;
+    color: #3498db;
+}
+
+.page-btn:disabled,
+.pagination-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    background: #f5f5f5;
+}
+
+.page-numbers {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin: 0;
+}
+
+.page-num {
+    min-width: 32px;
+    height: 32px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    background: #fff;
+    border-radius: 0;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: #666;
+    transition: all 0.2s ease;
+    margin-left: -1px;
+}
+
+.page-num:hover {
+    background: #f5f5f5;
+    border-color: #3498db;
+    color: #3498db;
+}
+
+.page-num.active {
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    border-color: transparent;
+    color: #fff;
 }
 
 .page-indicator {
-    font-size: var(--font-size-md);
-    color: var(--text-secondary);
-    padding: 0 var(--space-sm);
+    font-size: 13px;
+    color: #666;
+    padding: 0 8px;
 }
 
 /* ==================== 
@@ -1199,7 +1274,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px 24px;
+    padding: 0 16px;
+    height: 50px;
     background: #fff;
     border-bottom: 1px solid var(--gray-200);
     position: sticky;
@@ -1214,12 +1290,21 @@
     gap: 16px;
 }
 
-#sidebar-toggle {
-    width: 40px;
-    height: 40px;
-    border: none;
-    background: var(--gray-100);
-    border-radius: var(--radius);
+.nav-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-left: 0;
+}
+
+.sidebar-toggle,
+#sidebar-toggle,
+#sidebarToggle {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--border-light, #e5e7eb);
+    background: #fff;
+    border-radius: 8px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -1227,9 +1312,13 @@
     color: var(--gray-600);
     font-size: 16px;
     transition: all var(--transition);
+    flex-shrink: 0;
+    margin-right: 12px;
 }
 
-#sidebar-toggle:hover {
+.sidebar-toggle:hover,
+#sidebar-toggle:hover,
+#sidebarToggle:hover {
     background: var(--gray-200);
     color: var(--gray-800);
 }
@@ -1276,7 +1365,10 @@
     }
     
     .pagination-bar {
+        left: 0;
         flex-direction: column;
+        gap: 8px;
+        padding: 8px 12px;
         text-align: center;
     }
     

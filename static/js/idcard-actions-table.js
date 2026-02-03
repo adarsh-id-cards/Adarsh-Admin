@@ -238,6 +238,11 @@ function renderTable() {
     const tableBody = document.getElementById('cardsTableBody');
     if (!tableBody) return;
     
+    // Reset Shift+Click selection index when table is re-rendered
+    if (window.IDCardApp && window.IDCardApp.resetShiftClickIndex) {
+        window.IDCardApp.resetShiftClickIndex();
+    }
+    
     const existingNoResults = tableBody.querySelector('.no-results-row');
     if (existingNoResults) existingNoResults.remove();
     

@@ -53,6 +53,9 @@ class Client(models.Model):
     
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='client_profile')
     
+    # Unique folder ID for storing images (never changes even if client name changes)
+    image_folder_uuid = models.UUIDField(default=uuid.uuid4, editable=False)
+    
     # Basic Information
     name = models.CharField(max_length=200)
     photo = models.ImageField(upload_to='client_photos/', blank=True, null=True)
@@ -224,6 +227,8 @@ class IDCard(models.Model):
     field_data = models.JSONField(default=dict, help_text='Dynamic field values based on table fields')
     # Common fields
     photo = models.ImageField(upload_to='id_photos/', blank=True, null=True)
+    # Original photo name from Excel (for matching during image reupload)
+    original_photo_name = models.CharField(max_length=255, blank=True, null=True, help_text='Original photo name from Excel for matching')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

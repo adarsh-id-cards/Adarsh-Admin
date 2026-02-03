@@ -70,9 +70,9 @@ function retrieveCard(cardId) {
 // ==========================================
 
 function bulkVerify(cardIds) {
-    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : null;
+    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
     if (!tableId) {
-        if (typeof showToast === 'function') showToast('Error: Table ID not found', 'error');
+        if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
         return;
     }
     if (typeof apiCall === 'function') {
@@ -85,9 +85,9 @@ function bulkVerify(cardIds) {
 }
 
 function bulkApprove(cardIds) {
-    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : null;
+    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
     if (!tableId) {
-        if (typeof showToast === 'function') showToast('Error: Table ID not found', 'error');
+        if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
         return;
     }
     if (typeof apiCall === 'function') {
@@ -100,9 +100,9 @@ function bulkApprove(cardIds) {
 }
 
 function bulkUnapprove(cardIds) {
-    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : null;
+    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
     if (!tableId) {
-        if (typeof showToast === 'function') showToast('Error: Table ID not found', 'error');
+        if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
         return;
     }
     if (typeof apiCall === 'function') {
@@ -115,9 +115,9 @@ function bulkUnapprove(cardIds) {
 }
 
 function bulkUnverify(cardIds) {
-    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : null;
+    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
     if (!tableId) {
-        if (typeof showToast === 'function') showToast('Error: Table ID not found', 'error');
+        if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
         return;
     }
     if (typeof apiCall === 'function') {
@@ -130,9 +130,9 @@ function bulkUnverify(cardIds) {
 }
 
 function bulkDelete(cardIds) {
-    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : null;
+    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
     if (!tableId) {
-        if (typeof showToast === 'function') showToast('Error: Table ID not found', 'error');
+        if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
         return;
     }
     // Move to pool instead of permanent delete
@@ -146,9 +146,9 @@ function bulkDelete(cardIds) {
 }
 
 function bulkRetrieve(cardIds) {
-    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : null;
+    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
     if (!tableId) {
-        if (typeof showToast === 'function') showToast('Error: Table ID not found', 'error');
+        if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
         return;
     }
     if (typeof apiCall === 'function') {
@@ -161,9 +161,9 @@ function bulkRetrieve(cardIds) {
 }
 
 function bulkDeletePermanent(cardIds) {
-    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : null;
+    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
     if (!tableId) {
-        if (typeof showToast === 'function') showToast('Error: Table ID not found', 'error');
+        if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
         return;
     }
     
@@ -181,7 +181,7 @@ function bulkDeletePermanent(cardIds) {
 }
 
 function createCard(fieldData) {
-    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : null;
+    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
     if (!tableId) {
         if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
         return;

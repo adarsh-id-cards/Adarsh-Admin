@@ -99,7 +99,7 @@ body {
   font-size: var(--font-size-lg);
   transition: all var(--transition-base);
   flex-shrink: 0;
-  margin-right: var(--space-md);
+  margin-right: 12px;
 }
 
 .sidebar-toggle:hover {
@@ -454,15 +454,19 @@ body.sidebar-collapsed main.main-content {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 var(--space-md);
+  padding: 0 16px;
   border-bottom: 1px solid var(--border-light);
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 /* Nav Left */
 .nav-left {
   display: flex;
   align-items: center;
-  gap: var(--space-md);
+  gap: 12px;
+  padding-left: 0;
 }
 
 .logo-box {

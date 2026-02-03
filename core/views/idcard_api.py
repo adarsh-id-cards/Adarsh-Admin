@@ -10,59 +10,118 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 import time
 import os
+from datetime import datetime
 from ..models import IDCardGroup, IDCard, IDCardTable
 
 
-# Counter for unique filenames within same millisecond
-_image_upload_counter = 0
-
-def generate_image_filename(original_filename, is_reupload=False, existing_name=None):
+def generate_image_filename(batch_counter, original_ext='.jpg'):
     """
-    Generate a unique filename for uploaded images.
-    Format: {13-digit-timestamp}_{3-digit-counter}.ext
-    For reupload: {existing_name}_{5-digit-time}_{3-digit-counter}.ext
-    """
-    global _image_upload_counter
+    Generate a unique filename for NEW uploaded images.
+    Format: {14-digit-timestamp}_{3-digit-counter}.ext
+    Example: 20260203145230_001.jpg
     
+    Args:
+        batch_counter: The sequential number within the current upload batch (starts from 1)
+        original_ext: The original file extension
+    
+    Returns:
+        New filename string
+    """
     try:
         # Get file extension
-        _, ext = os.path.splitext(original_filename) if original_filename else ('', '.jpg')
-        if not ext:
-            ext = '.jpg'
-        ext = ext.lower()
+        ext = original_ext.lower() if original_ext else '.jpg'
+        if not ext.startswith('.'):
+            ext = '.' + ext
         
         # Ensure valid image extension
         valid_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
         if ext not in valid_extensions:
             ext = '.jpg'
         
-        # Increment counter (reset if over 999)
-        _image_upload_counter = (_image_upload_counter + 1) % 1000
+        # Generate 14-digit timestamp: YYYYMMDDHHmmss
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
         
-        if is_reupload and existing_name:
-            # For reupload: add 5-digit time suffix + counter to existing name
-            # Remove extension from existing name if present
-            base_existing = os.path.splitext(existing_name)[0] if existing_name else 'image'
-            time_suffix = str(int(time.time() * 1000) % 100000).zfill(5)  # Last 5 digits of timestamp
-            new_filename = f"{base_existing}_{time_suffix}_{str(_image_upload_counter).zfill(3)}{ext}"
+        # Format counter as 3 digits
+        counter_str = str(batch_counter).zfill(3)
+        
+        return f"{timestamp}_{counter_str}{ext}"
+    except Exception as e:
+        # Fallback: generate a simple unique filename
+        import uuid
+        return f"img_{uuid.uuid4().hex[:12]}{original_ext or '.jpg'}"
+
+
+def generate_updated_image_filename(existing_path, new_ext=None):
+    """
+    Generate updated filename for EXISTING images (update/reupload).
+    Keeps the base name and adds _XXXXXX (6-digit timestamp suffix).
+    If already has suffix, adds another one.
+    
+    Example: 
+    - First upload: 20260203145230_001.jpg
+    - First update: 20260203145230_001_152345.jpg
+    - Second update: 20260203145230_001_152345_153012.jpg
+    
+    Args:
+        existing_path: The current file path or filename
+        new_ext: Optional new extension (if different from original)
+    
+    Returns:
+        New filename string with update suffix
+    """
+    try:
+        # Extract just the filename from path
+        if existing_path:
+            filename = os.path.basename(existing_path)
         else:
-            # For first upload: 13-digit millisecond timestamp + counter
-            timestamp_ms = str(int(time.time() * 1000))  # 13-digit millisecond timestamp
-            new_filename = f"{timestamp_ms}_{str(_image_upload_counter).zfill(3)}{ext}"
+            # No existing file - generate fresh name
+            return generate_image_filename(1, new_ext or '.jpg')
+        
+        # Get base name and extension
+        base_name, current_ext = os.path.splitext(filename)
+        
+        # Use new extension if provided, otherwise keep current
+        ext = new_ext.lower() if new_ext else current_ext.lower()
+        if not ext.startswith('.'):
+            ext = '.' + ext
+        
+        # Ensure valid image extension
+        valid_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+        if ext not in valid_extensions:
+            ext = '.jpg'
+        
+        # Generate 6-digit timestamp suffix: HHmmss
+        timestamp_suffix = datetime.now().strftime('%H%M%S')
+        
+        # Append suffix to base name
+        new_filename = f"{base_name}_{timestamp_suffix}{ext}"
         
         return new_filename
     except Exception as e:
         # Fallback: generate a simple unique filename
         import uuid
-        fallback_ext = '.jpg'
-        try:
-            if original_filename:
-                _, fallback_ext = os.path.splitext(original_filename)
-                if not fallback_ext:
-                    fallback_ext = '.jpg'
-        except:
-            pass
-        return f"img_{uuid.uuid4().hex[:12]}{fallback_ext}"
+        return f"updated_{uuid.uuid4().hex[:12]}{new_ext or '.jpg'}"
+
+
+def get_client_image_folder(client):
+    """
+    Get the folder path for storing client images.
+    Creates the folder if it doesn't exist.
+    
+    Returns: folder path relative to MEDIA_ROOT like 'id_card_images/{uuid}/'
+    """
+    folder_path = f"id_card_images/{client.image_folder_uuid}"
+    
+    # Ensure folder exists
+    from django.conf import settings
+    full_path = os.path.join(settings.MEDIA_ROOT, folder_path)
+    os.makedirs(full_path, exist_ok=True)
+    
+    return folder_path
+
+
+# Counter for unique filenames within same millisecond (legacy - kept for backward compatibility)
+_image_upload_counter = 0
 
 
 def safe_save_image(storage, file_path, file_content, fallback_name=None):
@@ -402,11 +461,40 @@ def api_idcard_list(request, table_id):
 
 
 @csrf_exempt
+@require_http_methods(["GET"])
+def api_idcard_all_ids(request, table_id):
+    """API endpoint to get all card IDs for a table (for Select All functionality)"""
+    try:
+        table = get_object_or_404(IDCardTable, id=table_id)
+        status_filter = request.GET.get('status', None)
+        
+        # Base queryset
+        cards_query = IDCard.objects.filter(table=table)
+        if status_filter and status_filter in ['pending', 'verified', 'pool', 'approved', 'download', 'reprint']:
+            cards_query = cards_query.filter(status=status_filter)
+        
+        # Get only IDs (efficient query)
+        card_ids = list(cards_query.values_list('id', flat=True))
+        
+        return JsonResponse({
+            'success': True,
+            'card_ids': card_ids,
+            'total_count': len(card_ids)
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+
+@csrf_exempt
 @require_http_methods(["POST"])
 def api_idcard_create(request, table_id):
     """API endpoint to create a new ID Card with file upload support"""
     try:
         table = get_object_or_404(IDCardTable, id=table_id)
+        
+        # Get client for folder path
+        client = table.group.client
+        client_image_folder = get_client_image_folder(client)
         
         # Helper function to convert string values to uppercase
         def uppercase_field_data(data):
@@ -426,19 +514,24 @@ def api_idcard_create(request, table_id):
             field_data = uppercase_field_data(field_data)
             
             # Handle image fields from table configuration
+            image_counter = 0
             for field in table.fields:
                 if field['type'] == 'image':
                     field_name = field['name']
                     file_key = f"image_{field_name}"
                     if file_key in request.FILES:
                         try:
-                            # Save the image with renamed filename (13-digit timestamp + counter)
+                            # Save the image with new filename (14-digit timestamp + counter) for NEW cards
                             uploaded_file = request.FILES[file_key]
                             from django.core.files.storage import default_storage
                             
-                            # Generate new filename with 13-digit timestamp + counter
-                            new_filename = generate_image_filename(uploaded_file.name)
-                            file_path = f"id_card_images/{table_id}/{new_filename}"
+                            # Get file extension
+                            original_ext = os.path.splitext(uploaded_file.name)[1].lower() or '.jpg'
+                            
+                            # Generate new filename with 14-digit timestamp + counter (for NEW cards)
+                            image_counter += 1
+                            new_filename = generate_image_filename(image_counter, original_ext)
+                            file_path = f"{client_image_folder}/{new_filename}"
                             
                             # Try to save the image
                             saved_path, renamed, success = safe_save_image(
@@ -448,8 +541,6 @@ def api_idcard_create(request, table_id):
                             
                             if success and saved_path:
                                 field_data[field_name] = saved_path
-                                # Store the renamed filename for matching during reupload
-                                field_data[f"_renamed_{field_name}"] = renamed
                             else:
                                 # Log the error but continue - don't break the whole operation
                                 print(f"Warning: Could not save image for field {field_name}")
@@ -530,6 +621,10 @@ def api_idcard_update(request, card_id):
         card = get_object_or_404(IDCard, id=card_id)
         table = card.table
         
+        # Get client for folder path
+        client = table.group.client
+        client_image_folder = get_client_image_folder(client)
+        
         # Helper function to convert string values to uppercase
         def uppercase_field_data(data):
             result = {}
@@ -552,19 +647,32 @@ def api_idcard_update(request, card_id):
             existing_field_data.update(new_field_data)
             
             # Handle image fields from table configuration
+            image_counter = 0
             for field in table.fields:
                 if field['type'] == 'image':
                     field_name = field['name']
                     file_key = f"image_{field_name}"
                     if file_key in request.FILES:
                         try:
-                            # Save the image with renamed filename (13-digit timestamp + counter)
+                            # Save the image with versioned filename
                             uploaded_file = request.FILES[file_key]
                             from django.core.files.storage import default_storage
                             
-                            # Generate new filename with 13-digit timestamp + counter
-                            new_filename = generate_image_filename(uploaded_file.name)
-                            file_path = f"id_card_images/{table.id}/{new_filename}"
+                            # Get file extension from uploaded file
+                            original_ext = os.path.splitext(uploaded_file.name)[1].lower() or '.jpg'
+                            
+                            # Check if there's an existing image for this field
+                            existing_image_path = existing_field_data.get(field_name, '')
+                            
+                            if existing_image_path and existing_image_path != 'NOT_FOUND':
+                                # Use versioned filename (keeps base name + adds _XXXXXX suffix)
+                                new_filename = generate_updated_image_filename(existing_image_path, original_ext)
+                            else:
+                                # New image - generate fresh filename with 14-digit timestamp + counter
+                                image_counter += 1
+                                new_filename = generate_image_filename(image_counter, original_ext)
+                            
+                            file_path = f"{client_image_folder}/{new_filename}"
                             
                             # Try to save the image
                             saved_path, renamed, success = safe_save_image(
@@ -574,8 +682,6 @@ def api_idcard_update(request, card_id):
                             
                             if success and saved_path:
                                 existing_field_data[field_name] = saved_path
-                                # Store the renamed filename for matching during reupload
-                                existing_field_data[f"_renamed_{field_name}"] = renamed
                             else:
                                 # Log the error but continue
                                 print(f"Warning: Could not save image for field {field_name}")
@@ -830,7 +936,7 @@ def api_idcard_bulk_upload(request, table_id):
         
         # Check if ZIP file with photos is also uploaded
         photos_zip_file = request.FILES.get('photos_zip', None)
-        zip_photos = {}  # Dictionary to map filename (without extension) to image bytes
+        zip_photos = {}  # Dictionary to map filename (without extension) to image bytes - CASE SENSITIVE
         
         if photos_zip_file:
             try:
@@ -844,7 +950,8 @@ def api_idcard_bulk_upload(request, table_id):
                         file_in_zip = zip_info.filename
                         # Get filename without path and extension
                         base_name = os.path.basename(file_in_zip)
-                        name_without_ext = os.path.splitext(base_name)[0].upper()  # Uppercase for case-insensitive matching
+                        # CASE SENSITIVE - keep original case, no extension
+                        name_without_ext = os.path.splitext(base_name)[0]
                         ext = os.path.splitext(base_name)[1].lower()
                         
                         # Only process image files
@@ -867,6 +974,10 @@ def api_idcard_bulk_upload(request, table_id):
             except Exception as zip_error:
                 # Continue without photos - don't fail the entire upload
                 pass
+        
+        # Get client for image folder path
+        client = table.group.client
+        client_image_folder = get_client_image_folder(client)
         
         # Get all table fields (text fields for matching, image fields to include with empty values)
         all_table_fields = table.fields
@@ -1118,7 +1229,10 @@ def api_idcard_bulk_upload(request, table_id):
                             field_data[field_name] = ''
                     
                     # Process image fields - try to match with ZIP photos
+                    # Batch counter for this upload (reset per batch)
                     photos_matched = 0
+                    original_photo_name_value = None  # Track original photo name from Excel
+                    
                     for img_field in image_fields:
                         # Get the photo reference value from the tracked column
                         photo_column_value = None
@@ -1130,12 +1244,13 @@ def api_idcard_bulk_upload(request, table_id):
                                 cell_value = row[col_idx]
                                 if cell_value is not None:
                                     # Handle numeric values - convert float 1.0 to "1"
+                                    # CASE SENSITIVE - do NOT convert to uppercase
                                     if isinstance(cell_value, float) and cell_value == int(cell_value):
-                                        photo_column_value = str(int(cell_value)).upper()
+                                        photo_column_value = str(int(cell_value))
                                     elif isinstance(cell_value, int):
-                                        photo_column_value = str(cell_value).upper()
+                                        photo_column_value = str(cell_value)
                                     else:
-                                        photo_column_value = str(cell_value).strip().upper()
+                                        photo_column_value = str(cell_value).strip()
                         else:
                             # Fallback: look for column named PHOTO or use photo_column_idx
                             ref_col_idx = photo_column_idx if photo_column_idx is not None else None
@@ -1149,26 +1264,30 @@ def api_idcard_bulk_upload(request, table_id):
                             if ref_col_idx is not None and ref_col_idx < len(row):
                                 cell_value = row[ref_col_idx]
                                 if cell_value is not None:
-                                    # Handle numeric values
+                                    # Handle numeric values - CASE SENSITIVE
                                     if isinstance(cell_value, float) and cell_value == int(cell_value):
-                                        photo_column_value = str(int(cell_value)).upper()
+                                        photo_column_value = str(int(cell_value))
                                     elif isinstance(cell_value, int):
-                                        photo_column_value = str(cell_value).upper()
+                                        photo_column_value = str(cell_value)
                                     else:
-                                        photo_column_value = str(cell_value).strip().upper()
+                                        photo_column_value = str(cell_value).strip()
                         
-                        # Try to match photo from ZIP - ONLY set if matched, otherwise empty for placeholder
+                        # Store original photo name from Excel for later matching during reupload
+                        if photo_column_value:
+                            original_photo_name_value = photo_column_value
+                        
+                        # Try to match photo from ZIP - CASE SENSITIVE match
                         if photo_column_value and zip_photos and photo_column_value in zip_photos:
                             try:
                                 photo_info = zip_photos[photo_column_value]
                                 
-                                # Generate new filename with 13-digit timestamp + counter
+                                # Generate new filename with 14-digit timestamp + batch counter
+                                cards_created += 1  # Increment before for 1-based counter
                                 original_ext = photo_info['ext']
-                                new_filename = generate_image_filename(f"photo{original_ext}")
+                                new_filename = generate_image_filename(cards_created, original_ext)
                                 
-                                # Simple path: id_card_images/{table_id}/
-                                folder_path = f"id_card_images/{table_id}"
-                                file_path = f"{folder_path}/{new_filename}"
+                                # Use client's unique folder: id_card_images/{client_uuid}/
+                                file_path = f"{client_image_folder}/{new_filename}"
                                 
                                 # Save the image with error handling
                                 saved_path, renamed, success = safe_save_image(
@@ -1178,27 +1297,27 @@ def api_idcard_bulk_upload(request, table_id):
                                 
                                 if success and saved_path:
                                     field_data[img_field] = saved_path
-                                    # Store the renamed filename for matching during reupload
-                                    field_data[f"_renamed_{img_field}"] = renamed
                                     photos_matched += 1
                                     total_photos_matched += 1
                                 else:
                                     field_data[img_field] = 'NOT_FOUND'  # Save failed
+                                cards_created -= 1  # Revert since we incremented early
                             except Exception as photo_error:
                                 # Log but don't break the whole process
                                 print(f"Error saving photo (XLSX) for {photo_column_value}: {photo_error}")
                                 field_data[img_field] = 'NOT_FOUND'  # Value given but save failed
                         elif photo_column_value:
-                            # Value given but image not found in ZIP
+                            # Value given but image not found in ZIP - store for later reupload matching
                             field_data[img_field] = 'NOT_FOUND'
                         else:
                             # No value given at all - show colorful placeholder
                             field_data[img_field] = ''
                     
-                    # Create the card
+                    # Create the card with original_photo_name for future matching
                     IDCard.objects.create(
                         table=table,
                         field_data=field_data,
+                        original_photo_name=original_photo_name_value,
                         status='pending'
                     )
                     cards_created += 1
@@ -1270,7 +1389,10 @@ def api_idcard_bulk_upload(request, table_id):
                         field_data[field_name] = str(value).strip().upper() if value else ''  # Convert to uppercase
                     
                     # Process image fields - try to match with ZIP photos
+                    # Batch counter for this upload (reset per batch)
                     photos_matched = 0
+                    original_photo_name_value = None  # Track original photo name from Excel
+                    
                     for img_field in image_fields:
                         # Get the photo reference value from the tracked column
                         photo_column_value = None
@@ -1280,28 +1402,34 @@ def api_idcard_bulk_upload(request, table_id):
                             csv_header = csv_image_ref_columns[img_field]
                             cell_value = row.get(csv_header, '')
                             if cell_value and str(cell_value).strip():
-                                photo_column_value = str(cell_value).strip().upper()
+                                # CASE SENSITIVE - do NOT convert to uppercase
+                                photo_column_value = str(cell_value).strip()
                         else:
                             # Fallback: look for column named PHOTO or matching image field name
                             for csv_header, cell_value in row.items():
                                 header_upper = csv_header.upper() if csv_header else ''
                                 if header_upper == 'PHOTO' or header_upper == img_field.upper():
                                     if cell_value and str(cell_value).strip():
-                                        photo_column_value = str(cell_value).strip().upper()
+                                        # CASE SENSITIVE
+                                        photo_column_value = str(cell_value).strip()
                                     break
                         
-                        # Try to match photo from ZIP - ONLY set if matched, otherwise empty for placeholder
+                        # Store original photo name from Excel for later matching during reupload
+                        if photo_column_value:
+                            original_photo_name_value = photo_column_value
+                        
+                        # Try to match photo from ZIP - CASE SENSITIVE match
                         if photo_column_value and zip_photos and photo_column_value in zip_photos:
                             try:
                                 photo_info = zip_photos[photo_column_value]
                                 
-                                # Generate new filename with 13-digit timestamp + counter
+                                # Generate new filename with 14-digit timestamp + batch counter
+                                cards_created += 1  # Increment before for 1-based counter
                                 original_ext = photo_info['ext']
-                                new_filename = generate_image_filename(f"photo{original_ext}")
+                                new_filename = generate_image_filename(cards_created, original_ext)
                                 
-                                # Simple path: id_card_images/{table_id}/
-                                folder_path = f"id_card_images/{table_id}"
-                                file_path = f"{folder_path}/{new_filename}"
+                                # Use client's unique folder: id_card_images/{client_uuid}/
+                                file_path = f"{client_image_folder}/{new_filename}"
                                 
                                 # Save the image with error handling
                                 saved_path, renamed, success = safe_save_image(
@@ -1311,26 +1439,27 @@ def api_idcard_bulk_upload(request, table_id):
                                 
                                 if success and saved_path:
                                     field_data[img_field] = saved_path
-                                    # Store the renamed filename for matching during reupload
-                                    field_data[f"_renamed_{img_field}"] = renamed
                                     photos_matched += 1
                                     total_photos_matched += 1
                                 else:
                                     field_data[img_field] = 'NOT_FOUND'  # Save failed
+                                cards_created -= 1  # Revert since we incremented early
                             except Exception as photo_error:
                                 # Log but don't break the whole process
                                 print(f"Error saving photo (CSV) for {photo_column_value}: {photo_error}")
                                 field_data[img_field] = 'NOT_FOUND'  # Value given but save failed
                         elif photo_column_value:
-                            # Value given but image not found in ZIP
+                            # Value given but image not found in ZIP - store for later reupload matching
                             field_data[img_field] = 'NOT_FOUND'
                         else:
                             # No value given at all - show colorful placeholder
                             field_data[img_field] = ''
                     
+                    # Create the card with original_photo_name for future matching
                     IDCard.objects.create(
                         table=table,
                         field_data=field_data,
+                        original_photo_name=original_photo_name_value,
                         status='pending'
                     )
                     cards_created += 1
@@ -1427,16 +1556,10 @@ def api_idcard_download_images(request, table_id):
                                     
                                     # Validate image before adding to ZIP
                                     if img_data and len(img_data) >= 100:
-                                        # Use the stored renamed filename if available, otherwise use original
-                                        renamed_filename = field_data.get(f"_renamed_{img_field}", '')
-                                        if renamed_filename:
-                                            # Use the stored renamed filename (13-digit timestamp + counter)
-                                            download_filename = renamed_filename
-                                        else:
-                                            # Fallback: use filename from path
-                                            download_filename = os.path.basename(img_path)
+                                        # Use filename from path (already renamed with 14-digit timestamp format)
+                                        download_filename = os.path.basename(img_path)
                                         
-                                        # Add to ZIP with the renamed filename
+                                        # Add to ZIP with the filename
                                         zf.writestr(download_filename, img_data)
                                         images_added += 1
                                     else:
@@ -1478,8 +1601,9 @@ def api_idcard_download_images(request, table_id):
 def api_idcard_reupload_images(request, table_id):
     """
     API endpoint to reupload images from a ZIP file.
-    Matches ZIP filenames to stored renamed filenames (_renamed_{field} in field_data).
-    On match, saves new image with additional suffix: {existing_name}_{5-digit-time}_{counter}.ext
+    Matches ZIP filenames (without extension) to original_photo_name stored on each IDCard.
+    On match, saves new image with 14-digit timestamp format in client's UUID folder.
+    Uses CASE SENSITIVE matching.
     """
     try:
         import zipfile
@@ -1488,6 +1612,10 @@ def api_idcard_reupload_images(request, table_id):
         from django.core.files.base import ContentFile
         
         table = get_object_or_404(IDCardTable, id=table_id)
+        
+        # Get client for folder path
+        client = table.group.client
+        client_image_folder = get_client_image_folder(client)
         
         if 'zip_file' not in request.FILES:
             return JsonResponse({'success': False, 'message': 'No ZIP file uploaded!'}, status=400)
@@ -1500,14 +1628,20 @@ def api_idcard_reupload_images(request, table_id):
             except:
                 card_ids = []
         
-        # Get cards to process
+        # Get cards to process - only those with original_photo_name set and missing images
         if card_ids:
             cards = IDCard.objects.filter(table=table, id__in=card_ids)
         else:
             cards = IDCard.objects.filter(table=table)
         
-        if not cards.exists():
-            return JsonResponse({'success': False, 'message': 'No cards found!'}, status=400)
+        # Filter to cards that have original_photo_name stored
+        cards_with_photo_ref = cards.exclude(original_photo_name__isnull=True).exclude(original_photo_name='')
+        
+        if not cards_with_photo_ref.exists():
+            return JsonResponse({
+                'success': False, 
+                'message': 'No cards found with stored photo references! Upload Excel data first.'
+            }, status=400)
         
         # Get image field names from table config
         image_fields = [f['name'] for f in table.fields if f.get('type') == 'image']
@@ -1518,9 +1652,9 @@ def api_idcard_reupload_images(request, table_id):
         if not image_fields:
             return JsonResponse({'success': False, 'message': 'No image fields configured in this table!'}, status=400)
         
-        # Read ZIP file and extract image data
+        # Read ZIP file and extract image data - CASE SENSITIVE keys
         zip_file = request.FILES['zip_file']
-        zip_photos = {}  # Map: filename_without_ext -> {bytes, ext, original_name}
+        zip_photos = {}  # Map: filename_without_ext (CASE SENSITIVE) -> {bytes, ext, original_name}
         invalid_images = 0
         
         try:
@@ -1532,7 +1666,7 @@ def api_idcard_reupload_images(request, table_id):
                     
                     file_in_zip = zip_info.filename
                     base_name = os.path.basename(file_in_zip)
-                    name_without_ext = os.path.splitext(base_name)[0]
+                    name_without_ext = os.path.splitext(base_name)[0]  # CASE SENSITIVE - no .upper()
                     ext = os.path.splitext(base_name)[1].lower()
                     
                     # Only process image files
@@ -1561,63 +1695,68 @@ def api_idcard_reupload_images(request, table_id):
         if not zip_photos:
             return JsonResponse({'success': False, 'message': 'No images found in the ZIP file!'}, status=400)
         
-        # Process cards and match images
+        # Process cards and match images using original_photo_name
         images_matched = 0
         images_not_matched = 0
         cards_updated = 0
+        batch_counter = 0  # Counter for this reupload batch
         
-        for card in cards:
+        for card in cards_with_photo_ref:
             field_data = card.field_data or {}
             card_updated = False
             
-            for img_field in image_fields:
-                # Get the stored renamed filename for this field
-                renamed_key = f"_renamed_{img_field}"
-                stored_renamed = field_data.get(renamed_key, '')
-                
-                if not stored_renamed:
-                    continue
-                
-                # Get the base name without extension from stored renamed
-                stored_base = os.path.splitext(stored_renamed)[0]
-                
-                # Check if this matches any file in the ZIP
-                if stored_base in zip_photos:
-                    try:
-                        photo_info = zip_photos[stored_base]
-                        
-                        # Generate new filename with reupload suffix
-                        # Format: {existing_base}_{5-digit-time}_{counter}.ext
-                        new_filename = generate_image_filename(
-                            f"photo{photo_info['ext']}", 
-                            is_reupload=True, 
-                            existing_name=stored_renamed
-                        )
-                        
-                        # Save the new image with error handling
-                        folder_path = f"id_card_images/{table_id}"
-                        file_path = f"{folder_path}/{new_filename}"
-                        
-                        saved_path, renamed, success = safe_save_image(
-                            default_storage, file_path, ContentFile(photo_info['bytes']),
-                            fallback_name=f"reupload_fallback_{int(time.time())}{photo_info['ext']}"
-                        )
-                        
-                        if success and saved_path:
-                            # Update field_data with new path and renamed filename
+            # Get the original photo name stored on this card - CASE SENSITIVE
+            original_photo_ref = card.original_photo_name
+            
+            if not original_photo_ref:
+                continue
+            
+            # Check if this matches any file in the ZIP - CASE SENSITIVE match
+            if original_photo_ref in zip_photos:
+                try:
+                    photo_info = zip_photos[original_photo_ref]
+                    batch_counter += 1
+                    
+                    # Check if there's an existing image for any image field
+                    existing_image_path = None
+                    for img_field in image_fields:
+                        current_value = field_data.get(img_field, '')
+                        if current_value and current_value not in ['NOT_FOUND', '']:
+                            existing_image_path = current_value
+                            break
+                    
+                    # Generate filename based on whether we're updating or creating
+                    if existing_image_path:
+                        # Use versioned filename (keeps base name + adds _XXXXXX suffix)
+                        new_filename = generate_updated_image_filename(existing_image_path, photo_info['ext'])
+                    else:
+                        # New image - generate fresh filename with 14-digit timestamp + batch counter
+                        new_filename = generate_image_filename(batch_counter, photo_info['ext'])
+                    
+                    # Save to client's UUID folder
+                    file_path = f"{client_image_folder}/{new_filename}"
+                    
+                    saved_path, renamed, success = safe_save_image(
+                        default_storage, file_path, ContentFile(photo_info['bytes']),
+                        fallback_name=f"reupload_fallback_{int(time.time())}{photo_info['ext']}"
+                    )
+                    
+                    if success and saved_path:
+                        # Update field_data with new path for ALL image fields
+                        for img_field in image_fields:
+                            # Update all image fields (whether empty, NOT_FOUND, or has existing image)
                             field_data[img_field] = saved_path
-                            field_data[renamed_key] = renamed
-                            
-                            images_matched += 1
                             card_updated = True
-                        else:
-                            print(f"Warning: Could not save reuploaded image for {stored_base}")
-                    except Exception as save_error:
-                        # Log but don't break the whole process
-                        print(f"Error saving reuploaded image for {stored_base}: {save_error}")
-                        continue
-                else:
-                    images_not_matched += 1
+                        
+                        images_matched += 1
+                    else:
+                        print(f"Warning: Could not save reuploaded image for {original_photo_ref}")
+                except Exception as save_error:
+                    # Log but don't break the whole process
+                    print(f"Error saving reuploaded image for {original_photo_ref}: {save_error}")
+                    continue
+            else:
+                images_not_matched += 1
             
             if card_updated:
                 card.field_data = field_data
@@ -1628,7 +1767,7 @@ def api_idcard_reupload_images(request, table_id):
             invalid_msg = f" ({invalid_images} invalid images skipped)" if invalid_images > 0 else ""
             return JsonResponse({
                 'success': False, 
-                'message': f'No matching images found! ZIP contains {len(zip_photos)} valid images{invalid_msg} but none matched the stored filenames.'
+                'message': f'No matching images found! ZIP contains {len(zip_photos)} valid images{invalid_msg} but none matched the stored photo references (case-sensitive).'
             }, status=400)
         
         invalid_msg = f" ({invalid_images} invalid images skipped)" if invalid_images > 0 else ""

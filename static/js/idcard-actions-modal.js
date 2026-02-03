@@ -391,7 +391,7 @@ function fetchCardAndOpenModal(mode, cardId) {
 }
 
 function createNewCard(fieldData, imageFiles, mainPhoto) {
-    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : null;
+    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
     if (!tableId) {
         if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
         return;
@@ -514,9 +514,10 @@ function initDeleteModal() {
     if (confirmDeleteModal) {
         confirmDeleteModal.addEventListener('click', function() {
             const cardIds = window.pendingDeleteCardIds;
-            const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : null;
+            const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
             
             if (!cardIds || cardIds.length === 0 || !tableId) {
+                if (typeof showToast === 'function') showToast('Error: No cards selected or Table ID not found', false);
                 closeDeleteModalFn();
                 return;
             }
@@ -539,7 +540,7 @@ function initDeleteModal() {
                     if (typeof showToast === 'function') showToast(`${data.deleted_count} card(s) permanently deleted`);
                     location.reload();
                 } else {
-                    if (typeof showToast === 'function') showToast(data.message || 'Error deleting cards', 'error');
+                    if (typeof showToast === 'function') showToast(data.message || 'Error deleting cards', false);
                     confirmDeleteModal.disabled = false;
                     confirmDeleteModal.innerHTML = '<i class="fa-solid fa-trash"></i> Delete Permanently';
                 }
@@ -547,7 +548,7 @@ function initDeleteModal() {
             .catch(error => {
                 console.error('Error:', error);
                 closeDeleteModalFn();
-                if (typeof showToast === 'function') showToast('Error deleting cards', 'error');
+                if (typeof showToast === 'function') showToast('Error deleting cards', false);
                 confirmDeleteModal.disabled = false;
                 confirmDeleteModal.innerHTML = '<i class="fa-solid fa-trash"></i> Delete Permanently';
             });
@@ -706,9 +707,9 @@ function initModalModule() {
 }
 
 function directPermanentDelete(cardIds) {
-    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : null;
+    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
     if (!tableId) {
-        if (typeof showToast === 'function') showToast('Error: Table ID not found', 'error');
+        if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
         return;
     }
     
@@ -726,12 +727,12 @@ function directPermanentDelete(cardIds) {
             if (typeof showToast === 'function') showToast(`${data.deleted_count} card(s) permanently deleted`);
             location.reload();
         } else {
-            if (typeof showToast === 'function') showToast(data.message || 'Failed to delete cards', 'error');
+            if (typeof showToast === 'function') showToast(data.message || 'Failed to delete cards', false);
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        if (typeof showToast === 'function') showToast('Failed to delete cards', 'error');
+        if (typeof showToast === 'function') showToast('Failed to delete cards', false);
     });
 }
 

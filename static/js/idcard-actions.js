@@ -55,6 +55,17 @@
     function initializeApp() {
         console.log('IDCard Actions: Starting initialization...');
         
+        // Set global table ID from template variable
+        if (typeof TABLE_ID !== 'undefined') {
+            window.IDCardApp.tableId = TABLE_ID;
+        }
+        if (typeof CURRENT_STATUS !== 'undefined') {
+            window.IDCardApp.currentStatus = CURRENT_STATUS;
+        }
+        if (typeof CLIENT_ID !== 'undefined') {
+            window.IDCardApp.clientId = CLIENT_ID;
+        }
+        
         // Verify all modules are loaded
         if (!verifyModulesLoaded()) {
             console.error('IDCard Actions: Some modules failed to load. Check script order in HTML.');
