@@ -1,65 +1,63 @@
-/* Manage Staff Page Specific Styles */
+/* ============================================
+   MANAGE STAFF PAGE - Specific Styles
+   Uses CSS Variables from variables.css
+   ============================================ */
 
-/* Note: Action bar button styles (.btn-add, .btn-edit, .btn-view, etc.) 
-   are now in common.css for consistency across all pages */
-
-/* Status Badge */
-.status-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 3px 10px;
-    border-radius: 12px;
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-
+/* ===========================================
+   STATUS BADGE - Staff Page
+   =========================================== */
 .status-badge.active {
-    background: #22c55e;
-    color: #fff;
+    background: var(--green);
+    color: var(--text-white);
 }
 
 .status-badge.inactive {
-    background: #ef4444;
-    color: #fff;
+    background: var(--red);
+    color: var(--text-white);
 }
 
-.status-badge.pending {
-    background: #f59e0b;
-    color: #fff;
+/* ===========================================
+   TABLE COLUMN WIDTHS - Staff Specific
+   Staff table has checkbox as column 1
+   =========================================== */
+/* Checkbox column */
+.data-table th:nth-child(1), 
+.data-table td:nth-child(1) {
+    width: 40px;
+    min-width: 40px;
+    max-width: 40px;
+    text-align: center;
 }
 
-/* Table Column Widths */
 /* Name column */
-th:nth-child(1),
-td:nth-child(1) {
+.data-table th:nth-child(2), 
+.data-table td:nth-child(2) {
     width: auto;
     min-width: 180px;
     text-align: left;
 }
 
 /* Email column */
-th:nth-child(2),
-td:nth-child(2) {
+.data-table th:nth-child(3), 
+.data-table td:nth-child(3) {
     width: auto;
     min-width: 200px;
     text-align: left;
 }
 
-/* Mobile column */
-th:nth-child(3),
-td:nth-child(3) {
-    width: 110px;
-    min-width: 110px;
-    max-width: 110px;
+/* Phone column */
+.data-table th:nth-child(4), 
+.data-table td:nth-child(4) {
+    width: 120px;
+    min-width: 120px;
+    max-width: 120px;
     white-space: nowrap;
     text-align: left;
 }
 
 /* Status column */
-th:nth-child(4),
-td:nth-child(4) {
+.data-table th:nth-child(5), 
+.data-table td:nth-child(5) {
     width: 100px;
     min-width: 100px;
     max-width: 100px;
@@ -67,9 +65,9 @@ td:nth-child(4) {
     white-space: nowrap;
 }
 
-/* Create At column */
-th:nth-child(5),
-td:nth-child(5) {
+/* Created At column */
+.data-table th:nth-child(6), 
+.data-table td:nth-child(6) {
     width: 150px;
     min-width: 150px;
     max-width: 150px;
@@ -78,8 +76,8 @@ td:nth-child(5) {
 }
 
 /* Updated At column */
-th:nth-child(6),
-td:nth-child(6) {
+.data-table th:nth-child(7), 
+.data-table td:nth-child(7) {
     width: 150px;
     min-width: 150px;
     max-width: 150px;
@@ -87,353 +85,99 @@ td:nth-child(6) {
     text-align: left;
 }
 
-/* Table Row Selection */
-.table-container tbody tr {
-    cursor: pointer;
-}
-
-.table-container tbody tr.selected {
-    background: rgba(102, 126, 234, 0.15);
-}
-
-.table-container tbody tr:hover {
-    background: rgba(102, 126, 234, 0.08);
-}
-
-.table-container tbody tr.selected:hover {
-    background: rgba(102, 126, 234, 0.2);
-}
-
-/* ====================
-   Button Groups
-   ==================== */
-.actions {
-    display: flex;
-    align-items: center;
-    gap: 0;
-}
-
-.btn-group {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-.btn-group-divider {
-    width: 1px;
-    height: 22px;
-    background: rgba(0, 0, 0, 0.15);
-    margin: 0 10px;
-}
-
-/* Inactive button style (red) */
-.btn-inactive {
-    background: #ef4444 !important;
-    color: #fff !important;
-    border: none !important;
-}
-
-.btn-inactive:hover:not(:disabled) {
-    background: #dc2626 !important;
-    color: #fff !important;
-}
-
-.btn-inactive:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    color: #fff !important;
-}
-
-/* ====================
-   Staff Drawer Form Styles
-   ==================== */
-
-/* Form fills the drawer and allows scrolling */
-#staff-drawer .drawer-content {
-    display: flex;
-    flex-direction: column;
+/* ===========================================
+   STAFF DRAWER - Specific Styles
+   =========================================== */
+#staff-drawer {
     overflow: hidden;
 }
 
-#staff-drawer #staffForm {
+#staff-drawer .drawer-form {
     display: flex;
     flex-direction: column;
     flex: 1;
     overflow: hidden;
+    min-height: 0;
 }
 
 #staff-drawer .drawer-body {
     flex: 1;
     overflow-y: auto;
-    padding: 20px 25px;
+    overflow-x: hidden;
+    padding: 25px;
+    min-height: 0;
 }
 
 #staff-drawer .drawer-footer {
     flex-shrink: 0;
 }
 
-/* Profile Upload Section */
-.profile-upload-section {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 24px;
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
-    border-radius: 12px;
-    margin-bottom: 20px;
-    border: 1px dashed rgba(102, 126, 234, 0.3);
-}
+/* ===========================================
+   PROFILE UPLOAD - Staff Drawer
+   =========================================== */
+/* Shared with manage-client.css, can override if needed */
 
-.profile-preview {
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    font-size: 40px;
-    margin-bottom: 16px;
-    overflow: hidden;
-    border: 4px solid #fff;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-}
-
-.profile-preview img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.profile-upload-controls {
-    text-align: center;
-}
-
-.upload-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 20px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: #fff;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-
-.upload-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-}
-
-.upload-hint {
-    margin-top: 8px;
-    font-size: 11px;
-    color: #888;
-}
-
-/* Form Sections */
-.form-section {
-    margin-bottom: 20px;
-}
-
-.section-title {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    color: #2c3e50;
-    margin-bottom: 14px;
-    padding-bottom: 8px;
-    border-bottom: 2px solid rgba(102, 126, 234, 0.2);
-}
-
-.section-title i {
-    color: #667eea;
-}
-
-/* Form Groups */
-.form-group {
-    margin-bottom: 14px;
-}
-
-.form-group label {
-    display: block;
-    font-size: 12px;
-    font-weight: 500;
-    color: #555;
-    margin-bottom: 5px;
-}
-
-.form-group label .required {
-    color: #ef4444;
-}
-
-.form-group input,
-.form-group textarea,
-.form-group select {
-    width: 100%;
-    padding: 10px 12px;
-    font-size: 13px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    background: #fff;
-    transition: all 0.2s;
-}
-
-.form-group input:focus,
-.form-group textarea:focus,
-.form-group select:focus {
-    outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
-}
-
-.form-group textarea {
-    resize: vertical;
-    min-height: 80px;
-}
-
-.form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 14px;
-}
+/* ===========================================
+   FORM STYLES - Staff Drawer
+   =========================================== */
+/* Most form styles shared in manage-client.css */
 
 /* Permissions Section */
 .permissions-section {
-    background: #fafbfc;
-    padding: 16px;
-    border-radius: 10px;
-    border: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-.permission-category {
-    margin-bottom: 16px;
-}
-
-.permission-category:last-child {
-    margin-bottom: 0;
+    background: var(--gray-50);
+    padding: var(--space-lg);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--border-light);
 }
 
 .category-header {
-    font-size: 11px;
-    font-weight: 600;
-    color: #667eea;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--primary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-bottom: 10px;
-    padding: 6px 10px;
-    background: rgba(102, 126, 234, 0.1);
-    border-radius: 6px;
+    margin-bottom: var(--space-md);
+    padding: var(--space-sm) var(--space-md);
+    background: rgba(var(--primary-rgb), 0.1);
+    border-radius: var(--radius-md);
 }
 
 .permission-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
+    gap: var(--space-sm);
 }
 
 .permission-toggle-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 10px;
-    background: #fff;
-    border-radius: 6px;
-    border: 1px solid rgba(0, 0, 0, 0.06);
+    padding: var(--space-sm) var(--space-md);
+    background: var(--bg-white);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-light);
 }
 
 .permission-label {
-    font-size: 11px;
-    color: #555;
+    font-size: var(--font-size-sm);
+    color: var(--gray-600);
 }
 
-/* Toggle Switch */
-.toggle-switch {
-    position: relative;
-    width: 36px;
-    height: 20px;
-    flex-shrink: 0;
-}
+/* ===========================================
+   TOGGLE SWITCH - Shared Styles
+   =========================================== */
+/* Toggle switch styles are in manage-client.css */
 
-.toggle-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
+/* ===========================================
+   DELETE MODAL - Staff Specific
+   =========================================== */
+/* Delete modal styles are in manage-client.css */
 
-.toggle-slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #ccc;
-    transition: 0.3s;
-    border-radius: 20px;
-}
-
-.toggle-slider:before {
-    position: absolute;
-    content: "";
-    height: 14px;
-    width: 14px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: 0.3s;
-    border-radius: 50%;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.toggle-switch input:checked + .toggle-slider {
-    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-}
-
-.toggle-switch input:checked + .toggle-slider:before {
-    transform: translateX(16px);
-}
-
-.toggle-switch input:disabled + .toggle-slider {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-/* ==================== DELETE MODAL STYLES ==================== */
-.delete-icon {
-    width: 60px;
-    height: 60px;
-    margin: 0 auto 16px;
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.delete-icon i {
-    font-size: 24px;
-    color: #fff;
-}
-
-.warning-text {
-    font-size: 12px;
-    color: #6b7280;
-    margin-top: 8px;
-}
-
-.btn-danger {
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-    color: #fff !important;
-    border: none !important;
-}
-
-.btn-danger:hover {
-    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+/* ===========================================
+   RESPONSIVE
+   =========================================== */
+@media (max-width: 600px) {
+    .permission-grid {
+        grid-template-columns: 1fr;
+    }
 }

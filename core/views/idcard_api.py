@@ -326,20 +326,45 @@ def api_idcard_table_list(request, group_id):
 @csrf_exempt
 @require_http_methods(["GET"])
 def api_idcard_list(request, table_id):
-    """API endpoint to list all ID Cards for a table, optionally filtered by status"""
+    """API endpoint to list ID Cards for a table with pagination support for lazy loading"""
     try:
         table = get_object_or_404(IDCardTable, id=table_id)
         status_filter = request.GET.get('status', None)
         
-        cards = IDCard.objects.filter(table=table)
+        # Pagination parameters
+        offset = int(request.GET.get('offset', 0))
+        limit = int(request.GET.get('limit', 100))
+        
+        # Base queryset ordered by ID
+        cards_query = IDCard.objects.filter(table=table).order_by('id')
         if status_filter and status_filter in ['pending', 'verified', 'pool', 'approved', 'download', 'reprint']:
-            cards = cards.filter(status=status_filter)
+            cards_query = cards_query.filter(status=status_filter)
+        
+        # Get total count before slicing
+        total_count = cards_query.count()
+        
+        # Apply pagination
+        cards = cards_query[offset:offset + limit]
         
         card_list = []
-        for card in cards:
+        for idx, card in enumerate(cards):
+            # Build ordered fields based on table structure
+            ordered_fields = []
+            for field in table.fields:
+                field_name = field['name']
+                field_type = field['type']
+                field_value = card.field_data.get(field_name, '')
+                ordered_fields.append({
+                    'name': field_name,
+                    'type': field_type,
+                    'value': field_value,
+                })
+            
             card_list.append({
                 'id': card.id,
+                'sr_no': offset + idx + 1,
                 'field_data': card.field_data,
+                'ordered_fields': ordered_fields,
                 'photo': card.photo.url if card.photo else None,
                 'status': card.status,
                 'status_display': card.get_status_display(),
@@ -361,6 +386,10 @@ def api_idcard_list(request, table_id):
         return JsonResponse({
             'success': True,
             'cards': card_list,
+            'total_count': total_count,
+            'offset': offset,
+            'limit': limit,
+            'has_more': offset + limit < total_count,
             'status_counts': status_counts,
             'table': {
                 'id': table.id,

@@ -1,0 +1,134 @@
+{% load static %}
+<!-- Side Modal for Add/Edit/View -->
+<div class="side-modal-overlay" id="sideModalOverlay">
+  <div class="side-modal" id="sideModal">
+    <div class="side-modal-header">
+      <h3 id="sideModalTitle">
+        <i class="fa-solid fa-plus"></i>
+        <span>Add New Card</span>
+      </h3>
+      <button class="side-modal-close" id="closeSideModal" title="Close">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    
+    <div class="side-modal-body">
+      <form id="cardForm">
+        <!-- Photo Upload Section -->
+        <div class="form-photo-section">
+          <div class="form-photo-preview" id="formPhotoPreview">
+            <i class="fa-solid fa-user"></i>
+          </div>
+          <div class="form-photo-controls">
+            <label class="photo-upload-label" id="photoUploadLabel">
+              <input type="file" id="formPhotoInput" accept="image/*" hidden>
+              <span class="btn btn-upload">
+                <i class="fa-solid fa-camera"></i> Upload Photo
+              </span>
+            </label>
+            <p class="photo-hint">Passport size photo (35x45mm)</p>
+            <div class="photo-path-display" id="photoPathDisplay">No image</div>
+          </div>
+        </div>
+
+        <!-- Dynamic Form Fields - Generated from table.fields -->
+        <div class="form-fields-grid" id="formFieldsContainer">
+          {% for field in table.fields %}
+          {% if field.type == 'image' and field.name|upper == 'PHOTO' %}
+          <!-- Skip PHOTO field - handled by top photo section -->
+          {% elif field.type == 'image' %}
+          <div class="form-group image-field-inline">
+            <label for="field_{{ forloop.counter }}">{{ field.name }}</label>
+            <div class="image-field-row">
+              <div class="image-preview-small" id="preview_{{ forloop.counter }}">
+                <i class="fa-solid fa-image"></i>
+              </div>
+              <div class="image-field-info">
+                <label class="image-upload-btn-inline">
+                  <input type="file" 
+                         id="field_{{ forloop.counter }}" 
+                         name="{{ field.name }}" 
+                         class="form-control image-input"
+                         data-field-name="{{ field.name }}"
+                         data-field-type="{{ field.type }}"
+                         data-preview-id="preview_{{ forloop.counter }}"
+                         accept="image/*" hidden>
+                  <span class="btn btn-upload-inline">
+                    <i class="fa-solid fa-upload"></i> Upload
+                  </span>
+                </label>
+                <div class="image-path-display" id="path_{{ forloop.counter }}">No image</div>
+              </div>
+            </div>
+          </div>
+          {% elif field.type == 'textarea' %}
+          <div class="form-group full-width">
+            <label for="field_{{ forloop.counter }}">{{ field.name }}</label>
+            <textarea id="field_{{ forloop.counter }}" 
+                      name="{{ field.name }}" 
+                      class="form-control"
+                      data-field-name="{{ field.name }}"
+                      data-field-type="{{ field.type }}"
+                      rows="3"
+                      placeholder="Enter {{ field.name|lower }}..."></textarea>
+          </div>
+          {% elif field.type == 'date' %}
+          <div class="form-group">
+            <label for="field_{{ forloop.counter }}">{{ field.name }}</label>
+            <input type="date" 
+                   id="field_{{ forloop.counter }}" 
+                   name="{{ field.name }}" 
+                   class="form-control"
+                   data-field-name="{{ field.name }}"
+                   data-field-type="{{ field.type }}">
+          </div>
+          {% elif field.type == 'number' %}
+          <div class="form-group">
+            <label for="field_{{ forloop.counter }}">{{ field.name }}</label>
+            <input type="text" 
+                   id="field_{{ forloop.counter }}" 
+                   name="{{ field.name }}" 
+                   class="form-control"
+                   data-field-name="{{ field.name }}"
+                   data-field-type="{{ field.type }}"
+                   placeholder="Enter {{ field.name|lower }}...">
+          </div>
+          {% elif field.type == 'email' %}
+          <div class="form-group">
+            <label for="field_{{ forloop.counter }}">{{ field.name }}</label>
+            <input type="email" 
+                   id="field_{{ forloop.counter }}" 
+                   name="{{ field.name }}" 
+                   class="form-control"
+                   data-field-name="{{ field.name }}"
+                   data-field-type="{{ field.type }}"
+                   placeholder="Enter {{ field.name|lower }}...">
+          </div>
+          {% else %}
+          <div class="form-group">
+            <label for="field_{{ forloop.counter }}">{{ field.name }}</label>
+            <input type="text" 
+                   id="field_{{ forloop.counter }}" 
+                   name="{{ field.name }}" 
+                   class="form-control"
+                   data-field-name="{{ field.name }}"
+                   data-field-type="{{ field.type }}"
+                   placeholder="Enter {{ field.name|lower }}...">
+          </div>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </form>
+    </div>
+    
+    <div class="side-modal-footer">
+      <button class="btn btn-secondary" id="cancelSideModal">
+        <i class="fa-solid fa-xmark"></i> Cancel
+      </button>
+      <button class="btn btn-primary" id="saveSideModal">
+        <i class="fa-solid fa-check"></i>
+        <span>Save</span>
+      </button>
+    </div>
+  </div>
+</div>

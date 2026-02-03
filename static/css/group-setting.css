@@ -51,12 +51,12 @@
 .no-tables {
     text-align: center;
     padding: 60px 20px;
-    color: #6b7280;
+    color: var(--gray-500);
 }
 
 .no-tables i {
     font-size: 48px;
-    color: #d1d5db;
+    color: var(--gray-300);
     margin-bottom: 16px;
     display: block;
 }
@@ -64,7 +64,7 @@
 .no-tables h3 {
     font-size: 18px;
     font-weight: 600;
-    color: #374151;
+    color: var(--gray-700);
     margin: 0 0 8px 0;
 }
 
@@ -73,24 +73,7 @@
     font-size: 14px;
 }
 
-/* Settings Button */
-.btn-settings {
-    background: #6b7280;
-    color: #fff !important;
-    border: none;
-}
-
-.btn-settings:hover:not(:disabled) {
-    background: #4b5563;
-    color: #fff !important;
-}
-
-.btn-settings:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    color: #fff !important;
-}
-
+/* Note: btn-settings styles are now in common.css for consistency */
 /* Note: Action bar button styles (.btn-add, .btn-edit, .btn-view, etc.) 
    are now in common.css for consistency across all pages */
 
@@ -131,14 +114,14 @@ th:last-child, td:last-child {
 .field-list-label {
   font-size: 12px;
   font-weight: 500;
-  color: #2c3e50;
+  color: var(--text-primary);
   margin-bottom: 6px;
   display: block;
 }
 
 .field-list-hint {
   font-size: 10px;
-  color: #888;
+  color: var(--text-muted);
   opacity: 0.7;
   margin-bottom: 12px;
 }
@@ -155,9 +138,9 @@ th:last-child, td:last-child {
 
 .field-list-item {
   display: table-row;
-  background: #f4f4f4;
+  background: var(--bg-body);
   font-size: 12px;
-  color: #333;
+  color: var(--text-primary);
   user-select: none;
   cursor: grab;
 }
@@ -170,7 +153,7 @@ th:last-child, td:last-child {
   display: table-cell;
   vertical-align: middle;
   padding: 10px 8px;
-  background: #f4f4f4;
+  background: var(--bg-body);
 }
 
 .field-list-item > *:first-child {
@@ -184,7 +167,7 @@ th:last-child, td:last-child {
 }
 
 .field-drag {
-  color: #aaa;
+  color: var(--text-light);
   cursor: grab;
   width: 30px;
   text-align: center;
@@ -503,13 +486,7 @@ th:last-child, td:last-child {
   background: #c82333 !important;
 }
 
-/* Button Separator */
-.btn-separator {
-  width: 1px;
-  height: 24px;
-  background: rgba(0, 0, 0, 0.1);
-  margin: 0 8px;
-}
+/* Note: .btn-separator styles are now in common.css */
 
 /* Table Row Hover and Selected */
 #tablesBody tr {

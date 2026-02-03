@@ -8,9 +8,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=12">
-  <link rel="stylesheet" href="{% static 'css/common.css' %}?v=12">
-  <link rel="stylesheet" href="{% static 'css/manage-client.css' %}?v=12">
+  <link rel="stylesheet" href="{% static 'css/variables.css' %}?v=1">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=38">
+  <link rel="stylesheet" href="{% static 'css/common.css' %}?v=38">
+  <link rel="stylesheet" href="{% static 'css/manage-client.css' %}?v=36">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
@@ -543,7 +544,7 @@
                 </tr>
             </thead>
 
-            <tbody>
+            <tbody id="client-table-body">
                 {% for client in clients %}
                 <tr data-client-id="{{ client.id }}" data-client-status="{{ client.status }}">
                     <td>{{ client.name }}</td>
@@ -645,9 +646,8 @@
         setTimeout(() => toast.classList.remove('show'), 3000);
       }
 
-      // ==================== ROW SELECTION ====================
-      tbody.addEventListener('click', function(e) {
-        const row = e.target.closest('tr');
+      // ==================== SELECT ROW FUNCTION ====================
+      function selectRow(row) {
         if (row && row.dataset.clientId) {
           tbody.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
           row.classList.add('selected');
@@ -671,6 +671,46 @@
             activeClientBtn.classList.add('btn-active');
           }
         }
+      }
+
+      // ==================== HIGHLIGHT FROM SEARCH ====================
+      function highlightSearchResult() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const highlightId = urlParams.get('highlight');
+        
+        if (highlightId) {
+          // Find the row with this client ID
+          const targetRow = document.querySelector(`tr[data-client-id="${highlightId}"]`);
+          
+          if (targetRow) {
+            // Select the row (this uses the existing selection mechanism)
+            selectRow(targetRow);
+            
+            // Scroll to the row with a small delay to ensure page is loaded
+            setTimeout(() => {
+              targetRow.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center' 
+              });
+            }, 100);
+            
+            // Clean URL without highlight param after a short delay
+            setTimeout(() => {
+              const newUrl = new URL(window.location);
+              newUrl.searchParams.delete('highlight');
+              window.history.replaceState({}, '', newUrl);
+            }, 1000);
+          }
+        }
+      }
+      
+      // Call highlight function on page load
+      highlightSearchResult();
+
+      // ==================== ROW SELECTION ====================
+      tbody.addEventListener('click', function(e) {
+        const row = e.target.closest('tr');
+        selectRow(row);
       });
 
       // ==================== PERMISSIONS LIST ====================

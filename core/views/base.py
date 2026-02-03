@@ -35,9 +35,9 @@ def dashboard(request):
 @csrf_exempt
 @require_http_methods(["GET"])
 def api_global_search(request):
-    """API endpoint for global search across all clients and ID cards"""
+    """API endpoint for global search across all ID cards within clients"""
     try:
-        query = request.GET.get('q', '').strip().upper()
+        query = request.GET.get('q', '').strip()
         filter_type = request.GET.get('filter', 'all')
         
         if not query or len(query) < 2:
@@ -48,32 +48,22 @@ def api_global_search(request):
             })
         
         results = []
+        query_upper = query.upper()
         
-        # Search in Clients
-        clients = Client.objects.all()
-        for client in clients:
-            if query in client.name.upper():
-                results.append({
-                    'type': 'client',
-                    'id': client.id,
-                    'title': client.name,
-                    'subtitle': f'Client • {client.status.title()}',
-                    'matched_field': 'Name',
-                    'matched_value': client.name,
-                    'url': f'/client/{client.id}/groups/',
-                    'icon': 'fa-building',
-                    'status': client.status
-                })
-        
-        # Search in ID Cards
-        cards = IDCard.objects.select_related('table', 'table__group').all()
+        # Use database-level search with field_data JSON contains (case-insensitive via icontains)
+        # This is much faster than loading all records into Python
+        cards = IDCard.objects.select_related(
+            'table', 'table__group', 'table__group__client'
+        ).filter(
+            field_data__icontains=query
+        )[:100]  # Limit at database level for speed
         
         for card in cards:
             field_data = card.field_data or {}
-            match_found = False
             matched_field = ''
             matched_value = ''
             
+            # Find which field matched
             for field_name, field_value in field_data.items():
                 if not field_value:
                     continue
@@ -90,42 +80,45 @@ def api_global_search(request):
                     elif filter_type == 'mobile' and 'MOBILE' not in field_name_upper and 'PHONE' not in field_name_upper and 'MOB' not in field_name_upper:
                         continue
                 
-                if query in field_value_str:
-                    match_found = True
+                if query_upper in field_value_str:
                     matched_field = field_name
                     matched_value = str(field_value)
                     break
             
-            if match_found:
-                # Get display name from first text field
-                display_name = ''
-                if card.table and card.table.fields:
-                    for field in card.table.fields:
-                        if field.get('type') in ['text', 'textarea'] and field.get('name') in field_data:
-                            display_name = field_data.get(field.get('name'), '')
-                            break
+            # Skip if filter was applied but no matching field found
+            if filter_type != 'all' and not matched_field:
+                continue
                 
-                client_name = card.table.group.client.name if card.table and card.table.group else 'Unknown'
-                table_name = card.table.name if card.table else 'Unknown'
-                
-                results.append({
-                    'type': 'idcard',
-                    'id': card.id,
-                    'title': display_name or f'Card #{card.id}',
-                    'subtitle': f'{client_name} • {table_name} • {card.get_status_display()}',
-                    'matched_field': matched_field,
-                    'matched_value': matched_value,
-                    'url': f'/table/{card.table.id}/cards/?status={card.status}&highlight={card.id}' if card.table else '#',
-                    'icon': 'fa-id-card',
-                    'status': card.status,
-                    'photo': card.photo.url if card.photo else None
-                })
+            # Get display name from first text field
+            display_name = ''
+            if card.table and card.table.fields:
+                for field in card.table.fields:
+                    if field.get('type') in ['text', 'textarea'] and field.get('name') in field_data:
+                        display_name = field_data.get(field.get('name'), '')
+                        break
+            
+            client_name = card.table.group.client.name if card.table and card.table.group else 'Unknown'
+            table_name = card.table.name if card.table else 'Unknown'
+            
+            results.append({
+                'type': 'idcard',
+                'id': card.id,
+                'title': display_name or f'Card #{card.id}',
+                'subtitle': f'{client_name} • {table_name} • {card.get_status_display()}',
+                'matched_field': matched_field or 'Field',
+                'matched_value': matched_value or query,
+                'url': f'/table/{card.table.id}/cards/?status={card.status}&highlight={card.id}' if card.table else '#',
+                'icon': 'fa-id-card',
+                'status': card.status,
+                'photo': card.photo.url if card.photo else None
+            })
+            
+            # Stop after 50 results for speed
+            if len(results) >= 50:
+                break
         
-        # Sort by type (clients first, then cards)
-        results.sort(key=lambda x: (0 if x['type'] == 'client' else 1, x['title']))
-        
-        # Limit results
-        results = results[:50]
+        # Sort by title
+        results.sort(key=lambda x: x['title'])
         
         return JsonResponse({
             'success': True,
@@ -204,10 +197,19 @@ def idcard_actions(request, table_id):
     table = get_object_or_404(IDCardTable, id=table_id)
     status_filter = request.GET.get('status', None)
     
+    # Initial load limit for lazy loading (first 100 records)
+    INITIAL_LOAD_LIMIT = 100
+    
     # Order by id ascending to maintain upload order (first uploaded = first shown)
-    id_cards = IDCard.objects.filter(table=table).order_by('id')
+    id_cards_query = IDCard.objects.filter(table=table).order_by('id')
     if status_filter and status_filter in ['pending', 'verified', 'pool', 'approved', 'download', 'reprint']:
-        id_cards = id_cards.filter(status=status_filter)
+        id_cards_query = id_cards_query.filter(status=status_filter)
+    
+    # Get total count for this status
+    total_count = id_cards_query.count()
+    
+    # Only load first batch for initial page render
+    id_cards = id_cards_query[:INITIAL_LOAD_LIMIT]
     
     # Get counts for all statuses
     status_counts = {
@@ -225,7 +227,7 @@ def idcard_actions(request, table_id):
     
     # Enrich each card with ordered field values matching table.fields
     enriched_cards = []
-    for card in id_cards:
+    for idx, card in enumerate(id_cards):
         ordered_fields = []
         for field in table.fields:
             field_name = field['name']
@@ -238,6 +240,7 @@ def idcard_actions(request, table_id):
             })
         enriched_cards.append({
             'id': card.id,
+            'sr_no': idx + 1,
             'photo': card.photo,
             'status': card.status,
             'get_status_display': card.get_status_display(),
@@ -254,6 +257,9 @@ def idcard_actions(request, table_id):
         'id_cards': enriched_cards,
         'current_status': status_filter,
         'status_counts': status_counts,
+        'total_count': total_count,
+        'initial_load_limit': INITIAL_LOAD_LIMIT,
+        'has_more': total_count > INITIAL_LOAD_LIMIT,
     }
     return render(request, 'idcard-actions.html', context)
 

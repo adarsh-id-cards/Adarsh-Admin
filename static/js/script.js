@@ -212,3 +212,72 @@ function performSearch() {
         row.style.display = matches ? "" : "none";
     });
 }
+
+// ==========================================
+// GLOBAL KEYBOARD SHORTCUT: X TO CLOSE MODALS
+// ==========================================
+document.addEventListener('keydown', function(e) {
+    // Only respond to 'X' key (not Ctrl+X, Alt+X etc.)
+    if (e.key.toLowerCase() !== 'x' || e.ctrlKey || e.altKey || e.metaKey) return;
+    
+    // Don't trigger if typing in input/textarea
+    const activeElement = document.activeElement;
+    if (activeElement && (
+        activeElement.tagName === 'INPUT' || 
+        activeElement.tagName === 'TEXTAREA' || 
+        activeElement.isContentEditable
+    )) return;
+    
+    let closed = false;
+    
+    // Try to close side modal (ID Card Actions page)
+    const sideModalOverlay = document.getElementById('sideModalOverlay');
+    if (sideModalOverlay && sideModalOverlay.classList.contains('active')) {
+        sideModalOverlay.classList.remove('active');
+        closed = true;
+    }
+    
+    // Try to close staff drawer
+    const staffDrawer = document.getElementById('staff-drawer');
+    const staffDrawerOverlay = document.getElementById('staff-drawer-overlay');
+    if (staffDrawer && staffDrawer.classList.contains('open')) {
+        staffDrawer.classList.remove('open');
+        if (staffDrawerOverlay) staffDrawerOverlay.classList.remove('active');
+        closed = true;
+    }
+    
+    // Try to close client drawer
+    const clientDrawer = document.getElementById('client-drawer');
+    const clientDrawerOverlay = document.getElementById('client-drawer-overlay');
+    if (clientDrawer && clientDrawer.classList.contains('open')) {
+        clientDrawer.classList.remove('open');
+        if (clientDrawerOverlay) clientDrawerOverlay.classList.remove('active');
+        closed = true;
+    }
+    
+    // Try to close upload modal
+    const uploadModalOverlay = document.getElementById('uploadModalOverlay');
+    if (uploadModalOverlay && uploadModalOverlay.classList.contains('active')) {
+        uploadModalOverlay.classList.remove('active');
+        closed = true;
+    }
+    
+    // Try to close delete modal
+    const deleteModalOverlay = document.getElementById('deleteModalOverlay');
+    if (deleteModalOverlay && deleteModalOverlay.classList.contains('active')) {
+        deleteModalOverlay.classList.remove('active');
+        closed = true;
+    }
+    
+    // Try to close image sort modal
+    const imageSortModalOverlay = document.getElementById('imageSortModalOverlay');
+    if (imageSortModalOverlay && imageSortModalOverlay.classList.contains('active')) {
+        imageSortModalOverlay.classList.remove('active');
+        closed = true;
+    }
+    
+    // Prevent default if we closed something
+    if (closed) {
+        e.preventDefault();
+    }
+});

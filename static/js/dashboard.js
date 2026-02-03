@@ -214,7 +214,7 @@ document.addEventListener('DOMContentLoaded', function() {
             globalSearchResults.innerHTML = `
                 <div class="search-placeholder">
                     <i class="fa-solid fa-search"></i>
-                    <p>Search across all clients and ID cards</p>
+                    <p>Search across all ID cards</p>
                     <span>Enter at least 2 characters to search</span>
                 </div>
             `;
@@ -259,7 +259,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 globalSearchResults.innerHTML = `
                     <div class="search-placeholder">
                         <i class="fa-solid fa-search"></i>
-                        <p>Search across all clients and ID cards</p>
+                        <p>Search across all ID cards</p>
                         <span>Enter at least 2 characters to search</span>
                     </div>
                 `;
@@ -285,7 +285,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     globalSearchResults.innerHTML = `
                         <div class="search-placeholder">
                             <i class="fa-solid fa-search"></i>
-                            <p>${query.length === 0 ? 'Search across all clients and ID cards' : 'Enter at least 2 characters'}</p>
+                            <p>${query.length === 0 ? 'Search across all ID cards' : 'Enter at least 2 characters'}</p>
                             <span>Enter at least 2 characters to search</span>
                         </div>
                     `;
@@ -303,10 +303,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 `;
             }
             
-            // Debounce search
+            // Debounce search - reduced to 200ms for faster response
             searchTimeout = setTimeout(() => {
                 performGlobalSearch(query);
-            }, 300);
+            }, 200);
         });
     }
     
@@ -395,6 +395,16 @@ document.addEventListener('DOMContentLoaded', function() {
             item.addEventListener('click', function() {
                 const url = this.getAttribute('data-url');
                 if (url && url !== '#') {
+                    // Show loading state on the clicked item
+                    this.innerHTML = `
+                        <div class="result-icon"><i class="fa-solid fa-spinner fa-spin"></i></div>
+                        <div class="result-info">
+                            <div class="result-title">Loading...</div>
+                            <div class="result-subtitle">Navigating to the record</div>
+                        </div>
+                    `;
+                    this.style.pointerEvents = 'none';
+                    // Navigate
                     window.location.href = url;
                 }
             });

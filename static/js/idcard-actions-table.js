@@ -1,0 +1,912 @@
+// ID Card Actions - Table Management Module
+// Contains: Pagination, lazy loading, row management, table rendering
+
+// ==========================================
+// STATE VARIABLES
+// ==========================================
+let allRows = [];
+let filteredRows = [];
+let currentPage = 1;
+let rowsPerPage = 50;
+let currentFilter = 'all';
+let currentSort = 'sr-asc';
+let searchQuery = '';
+let currentFilterField = 'all';
+let endlessScrollMode = true;
+
+// Lazy loading state
+const lazyLoadState = {
+    isLoading: false,
+    hasMore: false,
+    totalCount: 0,
+    loadedCount: 0,
+    batchSize: 100,
+    triggerOffset: 15,
+    tableId: typeof TABLE_ID !== 'undefined' ? TABLE_ID : null,
+    currentStatus: typeof CURRENT_STATUS !== 'undefined' ? CURRENT_STATUS : 'pending'
+};
+
+// Expose state globally
+window.IDCardApp = window.IDCardApp || {};
+window.IDCardApp.tableState = {
+    get allRows() { return allRows; },
+    get filteredRows() { return filteredRows; },
+    get currentPage() { return currentPage; },
+    set currentPage(val) { currentPage = val; },
+    get rowsPerPage() { return rowsPerPage; },
+    set rowsPerPage(val) { rowsPerPage = val; },
+    get searchQuery() { return searchQuery; },
+    set searchQuery(val) { searchQuery = val; },
+    get lazyLoadState() { return lazyLoadState; }
+};
+
+// ==========================================
+// INITIALIZE ROWS
+// ==========================================
+
+function initializeRows() {
+    const tableBody = document.getElementById('cardsTableBody');
+    if (!tableBody) return;
+    allRows = Array.from(tableBody.querySelectorAll('tr[data-card-id]'));
+    filteredRows = [...allRows];
+}
+
+// ==========================================
+// LAZY LOAD STATE INITIALIZATION
+// ==========================================
+
+function earlyInitLazyLoadState() {
+    const paginationBar = document.getElementById('paginationBar');
+    if (paginationBar) {
+        lazyLoadState.totalCount = parseInt(paginationBar.dataset.totalCount) || 0;
+        lazyLoadState.hasMore = paginationBar.dataset.hasMore === 'true';
+        lazyLoadState.loadedCount = parseInt(paginationBar.dataset.initialLoaded) || 0;
+        if (!lazyLoadState.tableId && paginationBar.dataset.tableId) {
+            lazyLoadState.tableId = parseInt(paginationBar.dataset.tableId);
+        }
+        if (paginationBar.dataset.status) {
+            lazyLoadState.currentStatus = paginationBar.dataset.status;
+        }
+        console.log('Early lazy load init:', lazyLoadState);
+    }
+}
+
+function initLazyLoadState() {
+    const paginationBar = document.getElementById('paginationBar');
+    console.log('paginationBar element:', paginationBar);
+    if (paginationBar) {
+        console.log('paginationBar dataset:', paginationBar.dataset);
+        lazyLoadState.totalCount = parseInt(paginationBar.dataset.totalCount) || 0;
+        lazyLoadState.hasMore = paginationBar.dataset.hasMore === 'true';
+        lazyLoadState.loadedCount = parseInt(paginationBar.dataset.initialLoaded) || allRows.length;
+        if (!lazyLoadState.tableId && paginationBar.dataset.tableId) {
+            lazyLoadState.tableId = parseInt(paginationBar.dataset.tableId);
+        }
+        if (paginationBar.dataset.status) {
+            lazyLoadState.currentStatus = paginationBar.dataset.status;
+        }
+        console.log('Lazy load state after init:', JSON.stringify(lazyLoadState));
+    } else {
+        console.warn('paginationBar not found!');
+        lazyLoadState.loadedCount = allRows.length;
+        lazyLoadState.totalCount = allRows.length;
+        lazyLoadState.hasMore = false;
+    }
+    
+    updateLazyLoadPaginationInfo();
+}
+
+// ==========================================
+// DATE/NAME/SR HELPERS
+// ==========================================
+
+function getRowDate(row) {
+    const cells = row.querySelectorAll('td');
+    const dateCell = cells[cells.length - 2];
+    if (!dateCell) return new Date(0);
+    
+    const dateText = dateCell.textContent.trim();
+    const parsed = Date.parse(dateText.replace(/-/g, ' '));
+    return isNaN(parsed) ? new Date(0) : new Date(parsed);
+}
+
+function getRowName(row) {
+    const cells = row.querySelectorAll('td');
+    if (cells.length > 2) {
+        return cells[2].textContent.trim().toLowerCase();
+    }
+    return '';
+}
+
+function getRowSrNo(row) {
+    const cells = row.querySelectorAll('td');
+    if (cells.length > 1) {
+        return parseInt(cells[1].textContent.trim()) || 0;
+    }
+    return 0;
+}
+
+function getFieldColumnIndex(fieldName) {
+    const headerRow = document.querySelector('.idcard-table thead tr');
+    if (!headerRow) return -1;
+    
+    const headers = headerRow.querySelectorAll('th');
+    for (let i = 0; i < headers.length; i++) {
+        const headerText = headers[i].textContent.trim().toUpperCase();
+        if (headerText === fieldName.toUpperCase()) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+// ==========================================
+// FILTER AND SORT
+// ==========================================
+
+function searchRows(query) {
+    searchQuery = query.toLowerCase().trim();
+    applyFiltersAndSort();
+}
+
+function filterByField(fieldName) {
+    currentFilterField = fieldName;
+    applyFiltersAndSort();
+}
+
+function sortRows(sortValue) {
+    currentSort = sortValue;
+    applyFiltersAndSort();
+}
+
+function applyFiltersAndSort() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    
+    const monthAgo = new Date(today);
+    monthAgo.setMonth(monthAgo.getMonth() - 1);
+    
+    const filterColumnIndex = currentFilterField !== 'all' ? getFieldColumnIndex(currentFilterField) : -1;
+    
+    filteredRows = allRows.filter(row => {
+        if (searchQuery) {
+            if (currentFilterField === 'all') {
+                const rowText = row.textContent.toLowerCase();
+                if (!rowText.includes(searchQuery)) {
+                    return false;
+                }
+            } else if (filterColumnIndex >= 0) {
+                const cells = row.querySelectorAll('td');
+                if (filterColumnIndex < cells.length) {
+                    const cellText = cells[filterColumnIndex].textContent.toLowerCase();
+                    if (!cellText.includes(searchQuery)) {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            }
+        }
+        
+        if (currentFilter !== 'all' && (currentFilter === 'today' || currentFilter === 'week' || currentFilter === 'month')) {
+            const rowDate = getRowDate(row);
+            rowDate.setHours(0, 0, 0, 0);
+            
+            if (currentFilter === 'today') {
+                if (rowDate.getTime() !== today.getTime()) return false;
+            } else if (currentFilter === 'week') {
+                if (rowDate < weekAgo) return false;
+            } else if (currentFilter === 'month') {
+                if (rowDate < monthAgo) return false;
+            }
+        }
+        
+        return true;
+    });
+    
+    filteredRows.sort((a, b) => {
+        switch (currentSort) {
+            case 'name-asc':
+                return getRowName(a).localeCompare(getRowName(b));
+            case 'name-desc':
+                return getRowName(b).localeCompare(getRowName(a));
+            case 'date-new':
+                return getRowDate(b) - getRowDate(a);
+            case 'date-old':
+                return getRowDate(a) - getRowDate(b);
+            case 'sr-asc':
+                return getRowSrNo(a) - getRowSrNo(b);
+            case 'sr-desc':
+                return getRowSrNo(b) - getRowSrNo(a);
+            default:
+                return 0;
+        }
+    });
+    
+    currentPage = 1;
+    renderTable();
+}
+
+// ==========================================
+// RENDER TABLE
+// ==========================================
+
+function renderTable() {
+    const tableBody = document.getElementById('cardsTableBody');
+    if (!tableBody) return;
+    
+    const existingNoResults = tableBody.querySelector('.no-results-row');
+    if (existingNoResults) existingNoResults.remove();
+    
+    const totalRows = filteredRows.length;
+    
+    if (endlessScrollMode) {
+        allRows.forEach(row => row.style.display = 'none');
+        filteredRows.forEach(row => row.style.display = '');
+        updatePaginationInfoEndless(totalRows);
+    } else {
+        allRows.forEach(row => row.style.display = 'none');
+        
+        const totalPages = Math.ceil(totalRows / rowsPerPage) || 1;
+        
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+        
+        const startIndex = (currentPage - 1) * rowsPerPage;
+        const endIndex = Math.min(startIndex + rowsPerPage, totalRows);
+        
+        for (let i = startIndex; i < endIndex; i++) {
+            if (filteredRows[i]) {
+                filteredRows[i].style.display = '';
+            }
+        }
+        
+        updatePaginationInfo(totalRows > 0 ? startIndex + 1 : 0, endIndex, totalRows, totalPages);
+    }
+    
+    if (totalRows === 0 && allRows.length > 0) {
+        const colCount = tableBody.closest('table').querySelectorAll('thead th').length;
+        const noResultsRow = document.createElement('tr');
+        noResultsRow.className = 'no-results-row';
+        noResultsRow.innerHTML = `
+            <td colspan="${colCount}" class="no-cards">
+                <div class="empty-state">
+                    <i class="fa-solid fa-search"></i>
+                    <h3>No Results Found</h3>
+                    <p>Try adjusting your search or filter criteria</p>
+                </div>
+            </td>
+        `;
+        tableBody.appendChild(noResultsRow);
+    }
+}
+
+// ==========================================
+// PAGINATION UI UPDATES
+// ==========================================
+
+function updatePaginationInfoEndless(totalLoaded) {
+    const paginationInfo = document.querySelector('.pagination-info');
+    if (paginationInfo) {
+        const totalCount = lazyLoadState.totalCount || totalLoaded;
+        const hasMore = lazyLoadState.hasMore;
+        
+        if (hasMore) {
+            paginationInfo.innerHTML = `Showing <strong>1-${totalLoaded}</strong> of <strong>${totalLoaded}</strong> loaded (${totalCount} total)`;
+        } else {
+            paginationInfo.innerHTML = `Showing <strong>all ${totalLoaded}</strong> results`;
+        }
+    }
+    
+    updatePageNumbersForEndless(totalLoaded);
+}
+
+function updatePageNumbersForEndless(totalLoaded) {
+    const totalCount = lazyLoadState.totalCount || totalLoaded;
+    const totalPages = Math.ceil(totalCount / rowsPerPage) || 1;
+    
+    const tableContainer = document.querySelector('.idcard-table');
+    let virtualPage = 1;
+    if (tableContainer) {
+        const scrollPercentage = tableContainer.scrollTop / (tableContainer.scrollHeight - tableContainer.clientHeight || 1);
+        virtualPage = Math.max(1, Math.ceil(scrollPercentage * totalPages));
+    }
+    
+    const pageNumbersContainer = document.querySelector('.page-numbers');
+    if (pageNumbersContainer) {
+        pageNumbersContainer.innerHTML = '';
+        
+        let startPage = Math.max(1, virtualPage - 2);
+        let endPage = Math.min(totalPages, virtualPage + 2);
+        
+        if (endPage - startPage < 4) {
+            if (startPage === 1) {
+                endPage = Math.min(totalPages, 5);
+            } else if (endPage === totalPages) {
+                startPage = Math.max(1, totalPages - 4);
+            }
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            const btn = document.createElement('button');
+            btn.className = 'page-num' + (i === virtualPage ? ' active' : '');
+            btn.textContent = i;
+            btn.addEventListener('click', () => jumpToPage(i));
+            pageNumbersContainer.appendChild(btn);
+        }
+    }
+    
+    const firstBtn = document.getElementById('firstPage');
+    const prevBtn = document.getElementById('prevPage');
+    const nextBtn = document.getElementById('nextPage');
+    const lastBtn = document.getElementById('lastPage');
+    
+    if (firstBtn) firstBtn.disabled = virtualPage === 1;
+    if (prevBtn) prevBtn.disabled = virtualPage === 1;
+    if (nextBtn) nextBtn.disabled = virtualPage === totalPages || totalPages === 0;
+    if (lastBtn) lastBtn.disabled = virtualPage === totalPages || totalPages === 0;
+}
+
+function updatePaginationInfo(start, end, total, totalPages) {
+    const paginationInfo = document.querySelector('.pagination-info');
+    if (paginationInfo) {
+        if (total === 0) {
+            paginationInfo.innerHTML = 'Showing <strong>0</strong> results';
+        } else {
+            paginationInfo.innerHTML = `Showing <strong>${start}-${end}</strong> of <strong>${total}</strong> results`;
+        }
+    }
+    
+    const pageNumbersContainer = document.querySelector('.page-numbers');
+    if (pageNumbersContainer) {
+        pageNumbersContainer.innerHTML = '';
+        
+        let startPage = Math.max(1, currentPage - 2);
+        let endPage = Math.min(totalPages, currentPage + 2);
+        
+        if (endPage - startPage < 4) {
+            if (startPage === 1) {
+                endPage = Math.min(totalPages, 5);
+            } else if (endPage === totalPages) {
+                startPage = Math.max(1, totalPages - 4);
+            }
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            const btn = document.createElement('button');
+            btn.className = 'page-num' + (i === currentPage ? ' active' : '');
+            btn.textContent = i;
+            btn.addEventListener('click', () => goToPage(i));
+            pageNumbersContainer.appendChild(btn);
+        }
+    }
+    
+    const firstBtn = document.getElementById('firstPage');
+    const prevBtn = document.getElementById('prevPage');
+    const nextBtn = document.getElementById('nextPage');
+    const lastBtn = document.getElementById('lastPage');
+    
+    if (firstBtn) firstBtn.disabled = currentPage === 1;
+    if (prevBtn) prevBtn.disabled = currentPage === 1;
+    if (nextBtn) nextBtn.disabled = currentPage === totalPages || totalPages === 0;
+    if (lastBtn) lastBtn.disabled = currentPage === totalPages || totalPages === 0;
+}
+
+function updateLazyLoadPaginationInfo() {
+    if (!endlessScrollMode) return;
+    
+    const paginationInfo = document.querySelector('.pagination-info');
+    if (paginationInfo) {
+        if (lazyLoadState.hasMore) {
+            paginationInfo.innerHTML = `Showing <strong>1-${lazyLoadState.loadedCount}</strong> of <strong>${lazyLoadState.loadedCount}</strong> loaded (${lazyLoadState.totalCount} total)`;
+        } else {
+            paginationInfo.innerHTML = `Showing <strong>all ${lazyLoadState.loadedCount}</strong> results`;
+        }
+    }
+    
+    updatePageNumbersForEndless(lazyLoadState.loadedCount);
+}
+
+// ==========================================
+// PAGINATION NAVIGATION
+// ==========================================
+
+function jumpToPage(page) {
+    const rowsPerPageValue = rowsPerPage;
+    const targetRowIndex = (page - 1) * rowsPerPageValue;
+    
+    if (targetRowIndex >= filteredRows.length && lazyLoadState.hasMore) {
+        endlessScrollMode = false;
+        currentPage = page;
+        goToPage(page);
+        return;
+    }
+    
+    if (filteredRows[targetRowIndex]) {
+        filteredRows[targetRowIndex].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+async function goToPage(page) {
+    const rowsNeeded = page * rowsPerPage;
+    
+    if (rowsNeeded > lazyLoadState.loadedCount && lazyLoadState.hasMore) {
+        showTableLoadingOverlay(true);
+        
+        while (lazyLoadState.loadedCount < rowsNeeded && lazyLoadState.hasMore) {
+            await loadMoreData();
+        }
+        
+        showTableLoadingOverlay(false);
+    }
+    
+    if (endlessScrollMode) {
+        const targetRowIndex = (page - 1) * rowsPerPage;
+        const totalPages = Math.ceil(lazyLoadState.totalCount / rowsPerPage) || 1;
+        
+        if (page >= 1 && page <= totalPages) {
+            if (filteredRows[targetRowIndex]) {
+                filteredRows[targetRowIndex].scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            currentPage = page;
+            renderTable();
+        }
+    } else {
+        const totalPages = Math.ceil(filteredRows.length / rowsPerPage) || 1;
+        if (page >= 1 && page <= totalPages) {
+            currentPage = page;
+            renderTable();
+            checkLoadMore();
+        }
+    }
+}
+
+function goToFirstPage() {
+    if (endlessScrollMode) {
+        const tableContainer = document.querySelector('.idcard-table');
+        if (tableContainer) {
+            tableContainer.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    } else {
+        goToPage(1);
+    }
+}
+
+function goToPrevPage() {
+    if (endlessScrollMode) {
+        const tableContainer = document.querySelector('.idcard-table');
+        if (tableContainer) {
+            tableContainer.scrollBy({ top: -tableContainer.clientHeight * 0.8, behavior: 'smooth' });
+        }
+    } else {
+        goToPage(currentPage - 1);
+    }
+}
+
+function goToNextPage() {
+    if (endlessScrollMode) {
+        const tableContainer = document.querySelector('.idcard-table');
+        if (tableContainer) {
+            tableContainer.scrollBy({ top: tableContainer.clientHeight * 0.8, behavior: 'smooth' });
+        }
+    } else {
+        goToPage(currentPage + 1);
+    }
+}
+
+async function goToLastPage() {
+    if (lazyLoadState.hasMore) {
+        await loadAllData();
+    }
+    if (endlessScrollMode) {
+        const tableContainer = document.querySelector('.idcard-table');
+        if (tableContainer) {
+            tableContainer.scrollTo({ top: tableContainer.scrollHeight, behavior: 'smooth' });
+        }
+    } else {
+        const totalPages = Math.ceil(filteredRows.length / rowsPerPage) || 1;
+        goToPage(totalPages);
+    }
+}
+
+function setRowsPerPage(count) {
+    rowsPerPage = parseInt(count) || 10;
+    currentPage = 1;
+    renderTable();
+}
+
+// ==========================================
+// LAZY LOADING FUNCTIONS
+// ==========================================
+
+function showLazyLoadIndicator(show) {
+    const indicator = document.getElementById('lazyLoadIndicator');
+    if (indicator) {
+        indicator.style.display = show ? 'flex' : 'none';
+    }
+}
+
+function showTableLoadingOverlay(show) {
+    const tableWrapper = document.querySelector('.table-wrapper');
+    if (!tableWrapper) return;
+    
+    let overlay = tableWrapper.querySelector('.table-loading-overlay');
+    
+    if (show) {
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.className = 'table-loading-overlay';
+            overlay.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Loading data...</span>';
+            tableWrapper.appendChild(overlay);
+        }
+        overlay.style.display = 'flex';
+    } else if (overlay) {
+        overlay.style.display = 'none';
+    }
+}
+
+function createRowFromCard(card, index) {
+    const tr = document.createElement('tr');
+    tr.setAttribute('data-card-id', card.id);
+    tr.setAttribute('data-sr-no', card.sr_no);
+    
+    let html = `<td><input type="checkbox" class="rowCheckbox"></td>`;
+    html += `<td class="sr-no-cell">${card.sr_no}</td>`;
+    
+    if (card.ordered_fields) {
+        card.ordered_fields.forEach(field => {
+            const fieldName = field.name;
+            const fieldType = field.type;
+            const fieldValue = field.value || '';
+            
+            if (fieldType === 'image' || fieldName.toLowerCase() === 'photo') {
+                let imageHtml = '';
+                if (fieldValue && fieldValue !== 'NOT_FOUND') {
+                    imageHtml = `<img src="/media/${fieldValue}" alt="${fieldName}" class="table-image">`;
+                } else if (fieldValue === 'NOT_FOUND') {
+                    imageHtml = `<div class="no-image passport-placeholder not-found"><i class="fa-solid fa-user-xmark"></i></div>`;
+                } else {
+                    imageHtml = `<div class="no-image colorful-placeholder"><i class="fa-solid fa-user-astronaut"></i></div>`;
+                }
+                
+                html += `<td class="image-field image-cell" 
+                    data-field-name="${fieldName}" 
+                    data-field-type="image"
+                    data-original-value="${fieldValue}">
+                    <div class="image-with-edit">
+                        ${imageHtml}
+                        <button class="edit-photo-btn" data-card-id="${card.id}" title="Edit Card">Edit</button>
+                    </div>
+                </td>`;
+            } else {
+                const textClass = fieldType === 'textarea' ? 'long-text' : 
+                                 (fieldType === 'date' || fieldType === 'number') ? 'short-text' :
+                                 fieldValue.length <= 10 ? 'short-text' :
+                                 fieldValue.length > 40 ? 'long-text' : 'medium-text';
+                
+                html += `<td class="dynamic-field editable-cell ${textClass}" 
+                    data-field-name="${fieldName}" 
+                    data-field-type="${fieldType}"
+                    data-original-value="${fieldValue}"
+                    title="Click to edit">
+                    <span class="cell-value">${fieldValue}</span>
+                </td>`;
+            }
+        });
+    }
+    
+    html += `<td class="action-cell">
+        <div class="action-buttons">
+            ${getRowActionButtons(lazyLoadState.currentStatus, card.id)}
+        </div>
+    </td>`;
+    
+    html += `<td>${card.updated_at || ''}</td>`;
+    html += `<td>Admin</td>`;
+    
+    tr.innerHTML = html;
+    return tr;
+}
+
+function getRowActionButtons(status, cardId) {
+    switch(status) {
+        case 'pending':
+            return `<button class="verify-row-btn" data-card-id="${cardId}">Verify</button>`;
+        case 'verified':
+            return `<button class="approve-row-btn" data-card-id="${cardId}">Approve</button>
+                    <button class="unverify-row-btn" data-card-id="${cardId}">Unverify</button>`;
+        case 'approved':
+            return `<button class="download-row-btn" data-card-id="${cardId}">Download</button>
+                    <button class="unapprove-row-btn" data-card-id="${cardId}">Unapprove</button>`;
+        case 'download':
+            return `<span class="status-badge download">Downloaded</span>`;
+        case 'pool':
+            return `<button class="retrieve-row-btn" data-card-id="${cardId}">Retrieve</button>`;
+        default:
+            return `<span class="status-badge ${status}">${status}</span>`;
+    }
+}
+
+function attachRowEventHandlers(row) {
+    row.querySelectorAll('.verify-row-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (typeof verifyCard === 'function') verifyCard(this.getAttribute('data-card-id'));
+        });
+    });
+    
+    row.querySelectorAll('.approve-row-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (typeof approveCard === 'function') approveCard(this.getAttribute('data-card-id'));
+        });
+    });
+    
+    row.querySelectorAll('.unapprove-row-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (typeof unapproveCard === 'function') unapproveCard(this.getAttribute('data-card-id'));
+        });
+    });
+    
+    row.querySelectorAll('.unverify-row-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (typeof unverifyCard === 'function') unverifyCard(this.getAttribute('data-card-id'));
+        });
+    });
+    
+    row.querySelectorAll('.download-row-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (typeof downloadCard === 'function') downloadCard(this.getAttribute('data-card-id'));
+        });
+    });
+    
+    row.querySelectorAll('.retrieve-row-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (typeof retrieveCard === 'function') retrieveCard(this.getAttribute('data-card-id'));
+        });
+    });
+    
+    row.querySelectorAll('.editable-cell:not(.image-field)').forEach(cell => {
+        cell.addEventListener('dblclick', function() {
+            if (typeof startCellEdit === 'function') {
+                startCellEdit(this);
+            }
+        });
+    });
+}
+
+async function loadMoreData() {
+    if (lazyLoadState.isLoading || !lazyLoadState.hasMore || !lazyLoadState.tableId) {
+        console.log('loadMoreData skipped:', { isLoading: lazyLoadState.isLoading, hasMore: lazyLoadState.hasMore, tableId: lazyLoadState.tableId });
+        return;
+    }
+    
+    console.log('loadMoreData starting...');
+    lazyLoadState.isLoading = true;
+    showLazyLoadIndicator(true);
+    
+    try {
+        const offset = lazyLoadState.loadedCount;
+        const url = `/api/table/${lazyLoadState.tableId}/cards/?status=${lazyLoadState.currentStatus}&offset=${offset}&limit=${lazyLoadState.batchSize}`;
+        
+        const response = await fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to load more data');
+        }
+        
+        const data = await response.json();
+        
+        if (data.cards && data.cards.length > 0) {
+            const tableBody = document.getElementById('cardsTableBody');
+            
+            data.cards.forEach((card, index) => {
+                const row = createRowFromCard(card, index);
+                tableBody.appendChild(row);
+                allRows.push(row);
+                attachRowEventHandlers(row);
+            });
+            
+            lazyLoadState.loadedCount += data.cards.length;
+            lazyLoadState.hasMore = data.has_more;
+            lazyLoadState.totalCount = data.total_count;
+            
+            filteredRows = [...allRows];
+            if (searchQuery) {
+                applyFiltersAndSort();
+            } else {
+                renderTable();
+            }
+            
+            updateLazyLoadPaginationInfo();
+            
+            const paginationBar = document.getElementById('paginationBar');
+            if (paginationBar) {
+                paginationBar.dataset.hasMore = data.has_more.toString();
+                paginationBar.dataset.totalCount = data.total_count.toString();
+                paginationBar.dataset.initialLoaded = lazyLoadState.loadedCount.toString();
+            }
+            
+            console.log(`Loaded ${data.cards.length} more cards. Total loaded: ${lazyLoadState.loadedCount}/${lazyLoadState.totalCount}`);
+        }
+        
+    } catch (error) {
+        console.error('Error loading more data:', error);
+        if (typeof showToast === 'function') showToast('Failed to load more data', false);
+    } finally {
+        lazyLoadState.isLoading = false;
+        showLazyLoadIndicator(false);
+    }
+}
+
+function checkLoadMore() {
+    if (!lazyLoadState.hasMore || lazyLoadState.isLoading) {
+        return;
+    }
+    
+    if (lazyLoadState.loadedCount < 200 && lazyLoadState.hasMore) {
+        console.log('Auto-loading more data (less than 200 rows loaded)');
+        loadMoreData();
+        return;
+    }
+    
+    const tableContainer = document.querySelector('.idcard-table');
+    if (tableContainer) {
+        const scrollTop = tableContainer.scrollTop;
+        const scrollHeight = tableContainer.scrollHeight;
+        const clientHeight = tableContainer.clientHeight;
+        const scrollRemaining = scrollHeight - scrollTop - clientHeight;
+        
+        const threshold = Math.max(800, scrollHeight * 0.2);
+        if (scrollRemaining < threshold) {
+            console.log(`Lazy load triggered: scrollRemaining=${scrollRemaining}px, threshold=${threshold}px, loaded=${lazyLoadState.loadedCount}/${lazyLoadState.totalCount}`);
+            loadMoreData();
+        }
+    }
+}
+
+async function loadAllData() {
+    if (!lazyLoadState.hasMore || lazyLoadState.isLoading || !lazyLoadState.tableId) {
+        return;
+    }
+    
+    showTableLoadingOverlay(true);
+    
+    try {
+        while (lazyLoadState.hasMore) {
+            await loadMoreData();
+        }
+    } finally {
+        showTableLoadingOverlay(false);
+    }
+}
+
+// ==========================================
+// HIGHLIGHT SEARCH RESULT
+// ==========================================
+
+function highlightSearchResult() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const highlightId = urlParams.get('highlight');
+    
+    if (highlightId) {
+        const targetRow = document.querySelector(`tr[data-card-id="${highlightId}"]`);
+        
+        if (targetRow) {
+            const rowIndex = allRows.indexOf(targetRow);
+            
+            if (rowIndex !== -1) {
+                const targetPage = Math.floor(rowIndex / rowsPerPage) + 1;
+                currentPage = targetPage;
+                renderTable();
+                
+                requestAnimationFrame(() => {
+                    targetRow.classList.add('search-highlight');
+                    targetRow.scrollIntoView({ 
+                        behavior: 'auto',
+                        block: 'center' 
+                    });
+                    
+                    const checkbox = targetRow.querySelector('.rowCheckbox');
+                    if (checkbox) {
+                        checkbox.checked = true;
+                        checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                });
+                
+                setTimeout(() => {
+                    targetRow.classList.remove('search-highlight');
+                    const newUrl = new URL(window.location);
+                    newUrl.searchParams.delete('highlight');
+                    window.history.replaceState({}, '', newUrl);
+                }, 8000);
+            }
+        }
+    }
+}
+
+// ==========================================
+// INITIALIZATION
+// ==========================================
+
+function initTableModule() {
+    earlyInitLazyLoadState();
+    initializeRows();
+    lazyLoadState.loadedCount = allRows.length;
+    renderTable();
+    highlightSearchResult();
+    initLazyLoadState();
+    console.log('Lazy load initialized:', lazyLoadState);
+    renderTable();
+    
+    setTimeout(() => {
+        console.log('Running initial checkLoadMore...');
+        checkLoadMore();
+    }, 500);
+    
+    // Scroll listener
+    const idcardTable = document.querySelector('.idcard-table');
+    if (idcardTable) {
+        console.log('Scroll listener attached to .idcard-table');
+        idcardTable.addEventListener('scroll', function() {
+            checkLoadMore();
+            if (endlessScrollMode) {
+                updatePageNumbersForEndless(filteredRows.length);
+            }
+        });
+    } else {
+        console.error('Could not find .idcard-table element for scroll listener');
+    }
+    
+    window.addEventListener('scroll', function() {
+        checkLoadMore();
+    });
+    
+    // Background loading interval
+    const lazyLoadInterval = setInterval(() => {
+        if (lazyLoadState.hasMore && !lazyLoadState.isLoading) {
+            checkLoadMore();
+        } else if (!lazyLoadState.hasMore) {
+            console.log('All data loaded, stopping interval');
+            clearInterval(lazyLoadInterval);
+        }
+    }, 1000);
+    
+    // Pagination button handlers
+    document.getElementById('firstPage')?.addEventListener('click', goToFirstPage);
+    document.getElementById('prevPage')?.addEventListener('click', goToPrevPage);
+    document.getElementById('nextPage')?.addEventListener('click', goToNextPage);
+    document.getElementById('lastPage')?.addEventListener('click', goToLastPage);
+}
+
+// Expose functions globally
+window.initializeRows = initializeRows;
+window.searchRows = searchRows;
+window.filterByField = filterByField;
+window.sortRows = sortRows;
+window.applyFiltersAndSort = applyFiltersAndSort;
+window.renderTable = renderTable;
+window.goToPage = goToPage;
+window.goToFirstPage = goToFirstPage;
+window.goToPrevPage = goToPrevPage;
+window.goToNextPage = goToNextPage;
+window.goToLastPage = goToLastPage;
+window.setRowsPerPage = setRowsPerPage;
+window.loadMoreData = loadMoreData;
+window.checkLoadMore = checkLoadMore;
+window.loadAllData = loadAllData;
+window.attachRowEventHandlers = attachRowEventHandlers;
+window.lazyLoadState = lazyLoadState;
+
+window.IDCardApp.initTableModule = initTableModule;
+window.IDCardApp.searchRows = searchRows;
+window.IDCardApp.filterByField = filterByField;
+window.IDCardApp.sortRows = sortRows;
+window.IDCardApp.setRowsPerPage = setRowsPerPage;
+
+console.log('IDCard Actions Table module loaded');

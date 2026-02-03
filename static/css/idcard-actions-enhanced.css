@@ -1,0 +1,809 @@
+/* ==========================================
+   ID CARD ACTIONS - ENHANCED UI STYLES
+   Additional styling improvements for better UX
+   ========================================== */
+
+/* ==========================================
+   ACTION BAR IMPROVEMENTS
+   ========================================== */
+
+.action-buttons-bar {
+    background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+    border: 1px solid var(--border-default);
+    border-bottom: 2px solid var(--border-default);
+    padding: 10px 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.action-buttons-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Note: .action-divider styles are now in common.css */
+
+/* Enhanced Button Styles - Small consistent size */
+.action-buttons-group .btn.action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    position: relative;
+    overflow: hidden;
+    min-height: 32px;
+}
+
+.action-buttons-group .btn.action-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 100%);
+    pointer-events: none;
+}
+
+.action-buttons-group .btn.action-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.action-buttons-group .btn.action-btn:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.action-buttons-group .btn.action-btn i {
+    font-size: 11px;
+}
+
+/* Blue buttons - improved gradient */
+.action-buttons-group .btn.btn-blue {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: #fff;
+}
+
+.action-buttons-group .btn.btn-blue:hover:not(:disabled) {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+/* Green buttons - improved gradient */
+.action-buttons-group .btn.btn-green {
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    color: #fff;
+}
+
+.action-buttons-group .btn.btn-green:hover:not(:disabled) {
+    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+}
+
+/* Red buttons - improved gradient */
+.action-buttons-group .btn.btn-red {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: #fff;
+}
+
+.action-buttons-group .btn.btn-red:hover:not(:disabled) {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+}
+
+/* Danger button - for permanent delete */
+.action-buttons-group .btn.btn-danger {
+    background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+    color: #fff;
+    animation: pulse-danger 2s infinite;
+}
+
+@keyframes pulse-danger {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(185, 28, 28, 0.4); }
+    50% { box-shadow: 0 0 0 4px rgba(185, 28, 28, 0); }
+}
+
+/* Disabled state */
+.action-buttons-group .btn.action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* ==========================================
+   SEARCH AND FILTER BAR IMPROVEMENTS
+   ========================================== */
+
+.search-filter-bar {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-top: none;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.search-filter-left,
+.search-filter-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* Search Box Enhancement - Override for idcard page */
+.idcard-actions-page .search-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 280px;
+    background: var(--bg-white);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    padding: 0;
+}
+
+.idcard-actions-page .search-box .search-icon {
+    position: absolute;
+    left: 12px;
+    color: var(--gray-400);
+    font-size: 14px;
+    pointer-events: none;
+    transition: color 0.2s ease;
+}
+
+.idcard-actions-page .search-box .search-input {
+    width: 100%;
+    padding: 8px 40px 8px 36px;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    transition: all 0.2s ease;
+    background: transparent;
+}
+
+.idcard-actions-page .search-box:focus-within {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.1);
+}
+
+.search-box .search-input:focus {
+    outline: none;
+}
+
+.search-box:focus-within .search-icon {
+    color: var(--primary);
+}
+
+.search-box .search-input::placeholder {
+    color: var(--gray-400);
+}
+
+.search-clear-btn {
+    position: absolute;
+    right: 8px;
+    background: #e5e7eb;
+    border: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+    transition: all 0.2s ease;
+}
+
+.search-clear-btn:hover {
+    background: #d1d5db;
+    color: #374151;
+}
+
+/* Dropdown Enhancements */
+.custom-dropdown {
+    position: relative;
+}
+
+.custom-dropdown .dropdown-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: #ffffff;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.custom-dropdown .dropdown-toggle:hover {
+    border-color: #3b82f6;
+    background: #f8fafc;
+}
+
+.custom-dropdown .dropdown-toggle i:first-child {
+    color: #6b7280;
+}
+
+.custom-dropdown .dropdown-toggle .fa-chevron-down {
+    font-size: 10px;
+    color: #9ca3af;
+    transition: transform 0.2s ease;
+}
+
+.custom-dropdown.open .dropdown-toggle .fa-chevron-down {
+    transform: rotate(180deg);
+}
+
+.custom-dropdown .dropdown-options {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 100%;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    z-index: 100;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.2s ease;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.custom-dropdown.open .dropdown-options {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.custom-dropdown .dropdown-option {
+    padding: 10px 14px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #374151;
+    transition: all 0.15s ease;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.custom-dropdown .dropdown-option:last-child {
+    border-bottom: none;
+}
+
+.custom-dropdown .dropdown-option:hover {
+    background: #f8fafc;
+    color: #3b82f6;
+}
+
+.custom-dropdown .dropdown-option.selected {
+    background: #eff6ff;
+    color: #2563eb;
+    font-weight: 500;
+}
+
+/* Image Sort and Search All Buttons */
+.image-sort-btn,
+.search-all-btn {
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+    color: #ffffff !important;
+    border: none !important;
+}
+
+.image-sort-btn:hover,
+.search-all-btn:hover {
+    background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(79, 70, 229, 0.3);
+}
+
+/* ==========================================
+   TABLE IMPROVEMENTS
+   ========================================== */
+
+.table-wrapper {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-top: none;
+    overflow: hidden;
+}
+
+.idcard-table {
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+.idcard-table::-webkit-scrollbar {
+    height: 8px;
+}
+
+.idcard-table::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+.idcard-table::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+.idcard-table::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+.idcard-table table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.idcard-table thead {
+    background: var(--primary-gradient);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.idcard-table thead th {
+    padding: 12px 14px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-white);
+    border-bottom: none;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.idcard-table tbody tr {
+    border-bottom: 1px solid #f1f5f9;
+    transition: background 0.15s ease;
+}
+
+.idcard-table tbody tr:hover {
+    background: #fafbfc;
+}
+
+.idcard-table tbody tr.selected {
+    background: #eff6ff;
+}
+
+.idcard-table tbody td {
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #374151;
+    vertical-align: middle;
+}
+
+/* Editable cells */
+.editable-cell {
+    position: relative;
+    cursor: text;
+}
+
+.editable-cell:hover {
+    background: rgba(59, 130, 246, 0.05);
+}
+
+.editable-cell::after {
+    content: '\f303';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+    color: #3b82f6;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.editable-cell:hover::after {
+    opacity: 0.5;
+}
+
+/* Row Action Buttons */
+.row-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.row-action-btn:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+}
+
+.row-action-btn.verify-row-btn,
+.row-action-btn.approve-row-btn {
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    color: #ffffff;
+}
+
+.row-action-btn.verify-row-btn:hover,
+.row-action-btn.approve-row-btn:hover {
+    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+}
+
+.row-action-btn.unverify-row-btn,
+.row-action-btn.unapprove-row-btn,
+.row-action-btn.retrieve-row-btn {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #ffffff;
+}
+
+.row-action-btn.download-row-btn {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: #ffffff;
+}
+
+/* Image Cell Enhancement */
+.image-cell {
+    padding: 6px 10px !important;
+}
+
+.image-with-edit {
+    position: relative;
+    display: inline-block;
+}
+
+.table-image {
+    width: 50px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 2px solid #e2e8f0;
+    transition: all 0.2s ease;
+}
+
+.image-with-edit:hover .table-image {
+    border-color: #3b82f6;
+}
+
+.edit-photo-btn {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    width: 24px;
+    height: 24px;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: #ffffff;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    font-size: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all 0.2s ease;
+}
+
+.image-with-edit:hover .edit-photo-btn {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* Placeholder Images */
+.no-image {
+    width: 50px;
+    height: 60px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+}
+
+.colorful-placeholder {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: rgba(255,255,255,0.8);
+}
+
+.passport-placeholder.not-found {
+    background: #f1f5f9;
+    color: #94a3b8;
+    border: 2px dashed #cbd5e1;
+}
+
+/* ==========================================
+   PAGINATION IMPROVEMENTS
+   ========================================== */
+
+.pagination-bar {
+    background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+    border: 1px solid #e2e8f0;
+    border-top: none;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.pagination-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.pagination-info {
+    font-size: 13px;
+    color: #64748b;
+}
+
+.pagination-info strong {
+    color: #1e293b;
+}
+
+.pagination-selected {
+    font-size: 12px;
+    color: #3b82f6;
+    background: #eff6ff;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.pagination-center {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.pagination-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+    background: #f8fafc;
+    border-color: #3b82f6;
+    color: #3b82f6;
+}
+
+.pagination-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.page-numbers {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.page-num {
+    min-width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    color: #475569;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.15s ease;
+}
+
+.page-num:hover {
+    background: #f8fafc;
+    border-color: #3b82f6;
+    color: #3b82f6;
+}
+
+.page-num.active {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    border-color: #2563eb;
+    color: #ffffff;
+}
+
+.pagination-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.pagination-right label {
+    font-size: 13px;
+    color: #64748b;
+}
+
+/* ==========================================
+   LAZY LOAD INDICATOR
+   ========================================== */
+
+.lazy-load-indicator {
+    padding: 20px;
+    text-align: center;
+    color: #64748b;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+}
+
+.lazy-load-indicator i {
+    color: #3b82f6;
+    font-size: 16px;
+}
+
+/* ==========================================
+   EMPTY STATE
+   ========================================== */
+
+.empty-state {
+    padding: 60px 20px;
+    text-align: center;
+    color: #64748b;
+}
+
+.empty-state i {
+    font-size: 48px;
+    color: #cbd5e1;
+    margin-bottom: 16px;
+}
+
+.empty-state h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0 0 8px 0;
+}
+
+.empty-state p {
+    font-size: 14px;
+    color: #64748b;
+    margin: 0 0 20px 0;
+}
+
+.empty-add-btn {
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    color: #ffffff;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.empty-add-btn:hover {
+    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
+}
+
+/* ==========================================
+   STATUS BADGES
+   ========================================== */
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 12px;
+    text-transform: capitalize;
+}
+
+.status-badge.download {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-badge.pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-badge.verified {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.status-badge.approved {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-badge.pool {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* ==========================================
+   RESPONSIVE ADJUSTMENTS
+   ========================================== */
+
+@media (max-width: 1200px) {
+    .action-buttons-group .btn.action-btn .btn-text {
+        display: none;
+    }
+    
+    .action-buttons-group .btn.action-btn {
+        padding: 8px 10px;
+    }
+    
+    .search-box {
+        min-width: 200px;
+    }
+    
+    .dropdown-text {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .search-filter-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .search-filter-left,
+    .search-filter-right {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .search-box {
+        flex: 1;
+        min-width: auto;
+    }
+    
+    .pagination-bar {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .pagination-left,
+    .pagination-right {
+        justify-content: center;
+    }
+}

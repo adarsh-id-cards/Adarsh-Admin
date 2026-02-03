@@ -4,10 +4,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // ==================== ELEMENTS ====================
     const staffDrawer = document.getElementById('staff-drawer');
-    const staffForm = document.getElementById('staffForm');
-    const drawerTitle = document.getElementById('drawerTitleText');
-    const drawerIcon = document.getElementById('drawerIcon');
-    const submitBtn = document.getElementById('submitStaffBtn');
+    const staffDrawerOverlay = document.getElementById('staff-drawer-overlay');
+    const staffForm = document.getElementById('staff-form');
+    const drawerTitle = document.getElementById('drawer-title-text');
+    const drawerIcon = document.getElementById('drawer-icon');
+    const submitBtn = document.getElementById('drawer-submit-btn');
     
     const addStaffBtn = document.getElementById('addStaffBtn');
     const editStaffBtn = document.getElementById('editStaffBtn');
@@ -15,11 +16,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const deleteStaffBtn = document.getElementById('deleteStaffBtn');
     const activeStaffBtn = document.getElementById('activeStaffBtn');
     
-    const closeStaffDrawer = document.getElementById('closeStaffDrawer');
-    const cancelStaffDrawer = document.getElementById('cancelStaffDrawer');
+    const closeStaffDrawer = document.getElementById('drawer-close-btn');
+    const cancelStaffDrawer = document.getElementById('drawer-cancel-btn');
     
-    const table = document.getElementById('staffTable');
-    const tbody = table ? table.querySelector('tbody') : null;
+    const table = document.getElementById('staff-table');
+    const tbody = document.getElementById('staff-table-body');
     
     let selectedStaffId = null;
     let selectedRow = null;
@@ -45,18 +46,76 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ==================== ROW SELECTION ====================
+    console.log('Staff page loaded - tbody:', tbody ? 'found' : 'NOT FOUND');
+    
+    function selectStaffRow(row) {
+        console.log('selectStaffRow called', row);
+        if (!row || !row.dataset.staffId) return;
+        
+        // Remove selection from all rows and uncheck all checkboxes
+        if (tbody) {
+            tbody.querySelectorAll('tr').forEach(r => {
+                r.classList.remove('selected');
+                const cb = r.querySelector('.row-checkbox');
+                if (cb) cb.checked = false;
+            });
+        }
+        
+        // Select current row and check its checkbox
+        row.classList.add('selected');
+        const checkbox = row.querySelector('.row-checkbox');
+        console.log('Checkbox found:', checkbox);
+        if (checkbox) {
+            checkbox.checked = true;
+            console.log('Checkbox checked:', checkbox.checked);
+        }
+        
+        selectedRow = row;
+        selectedStaffId = row.dataset.staffId;
+        enableActionButtons(true);
+        updateActiveButtonState();
+    }
+    
+    function clearStaffSelection() {
+        if (tbody) {
+            tbody.querySelectorAll('tr').forEach(r => {
+                r.classList.remove('selected');
+                const cb = r.querySelector('.row-checkbox');
+                if (cb) cb.checked = false;
+            });
+        }
+        selectedRow = null;
+        selectedStaffId = null;
+        enableActionButtons(false);
+    }
+    
+    // Set up row click handlers
     if (tbody) {
+        console.log('Setting up row click handlers on tbody');
+        // Row click - select row and check checkbox
         tbody.addEventListener('click', function(e) {
+            console.log('Row click detected, target:', e.target.tagName);
+            // If clicking directly on checkbox, let the change handler deal with it
+            if (e.target.type === 'checkbox') return;
+            
             const row = e.target.closest('tr');
-            if (row && row.dataset.staffId) {
-                // Remove selection from all rows
-                tbody.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
-                // Select current row
-                row.classList.add('selected');
-                selectedRow = row;
-                selectedStaffId = row.dataset.staffId;
-                enableActionButtons(true);
-                updateActiveButtonState();
+            console.log('Row found:', row, 'staffId:', row?.dataset?.staffId);
+            if (row && row.dataset.staffId && !row.classList.contains('no-data-row')) {
+                selectStaffRow(row);
+            }
+        });
+        
+        // Checkbox change handler
+        tbody.addEventListener('change', function(e) {
+            if (e.target.type === 'checkbox' && e.target.classList.contains('row-checkbox')) {
+                const row = e.target.closest('tr');
+                if (row && row.dataset.staffId) {
+                    if (e.target.checked) {
+                        selectStaffRow(row);
+                    } else {
+                        clearStaffSelection();
+                    }
+                }
             }
         });
     }
@@ -87,9 +146,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ==================== PERMISSION FIELDS ====================
     const permissionFields = [
-        'perm_staff_list', 'perm_staff_add', 'perm_staff_edit', 'perm_staff_delete', 'perm_staff_status',
-        'perm_idcard_setting_list', 'perm_idcard_setting_add', 'perm_idcard_setting_edit', 
-        'perm_idcard_setting_delete', 'perm_idcard_setting_status'
+        'perm-staff-list', 'perm-staff-add', 'perm-staff-edit', 'perm-staff-delete', 'perm-staff-status',
+        'perm-idcard-setting-list', 'perm-idcard-setting-add', 'perm-idcard-setting-edit', 
+        'perm-idcard-setting-delete', 'perm-idcard-setting-status'
     ];
 
     // ==================== DRAWER FUNCTIONS ====================
@@ -103,29 +162,32 @@ document.addEventListener('DOMContentLoaded', function() {
             if (el) el.checked = false;
         });
         
+        const submitBtnText = document.getElementById('submit-btn-text');
+        
         if (mode === 'add') {
             drawerTitle.textContent = 'Add New Staff';
             drawerIcon.className = 'fa-solid fa-user-plus';
-            submitBtn.textContent = 'Add Staff';
+            if (submitBtnText) submitBtnText.textContent = 'Add Staff';
             submitBtn.style.display = 'inline-flex';
             enableFormInputs(true);
         } else if (mode === 'edit') {
             drawerTitle.textContent = 'Edit Staff';
             drawerIcon.className = 'fa-solid fa-pen-to-square';
-            submitBtn.textContent = 'Save Changes';
+            if (submitBtnText) submitBtnText.textContent = 'Save Changes';
             submitBtn.style.display = 'inline-flex';
             enableFormInputs(true);
             
             if (staffData) {
-                document.getElementById('staffName').value = staffData.name || '';
-                document.getElementById('staffEmail').value = staffData.email || '';
-                document.getElementById('staffPhone').value = staffData.phone || '';
-                document.getElementById('staffAddress').value = staffData.address || '';
+                document.getElementById('staff-name').value = staffData.name || '';
+                document.getElementById('staff-email').value = staffData.email || '';
+                document.getElementById('staff-phone').value = staffData.phone || '';
+                document.getElementById('staff-address').value = staffData.address || '';
                 
                 // Set permissions from staff data
                 permissionFields.forEach(field => {
                     const el = document.getElementById(field);
-                    if (el) el.checked = staffData[field] === true;
+                    const apiField = field.replace(/-/g, '_');
+                    if (el) el.checked = staffData[apiField] === true;
                 });
             }
         } else if (mode === 'view') {
@@ -135,25 +197,28 @@ document.addEventListener('DOMContentLoaded', function() {
             enableFormInputs(false);
             
             if (staffData) {
-                document.getElementById('staffName').value = staffData.name || '';
-                document.getElementById('staffEmail').value = staffData.email || '';
-                document.getElementById('staffPhone').value = staffData.phone || '';
-                document.getElementById('staffAddress').value = staffData.address || '';
+                document.getElementById('staff-name').value = staffData.name || '';
+                document.getElementById('staff-email').value = staffData.email || '';
+                document.getElementById('staff-phone').value = staffData.phone || '';
+                document.getElementById('staff-address').value = staffData.address || '';
                 
                 // Set permissions from staff data
                 permissionFields.forEach(field => {
                     const el = document.getElementById(field);
-                    if (el) el.checked = staffData[field] === true;
+                    const apiField = field.replace(/-/g, '_');
+                    if (el) el.checked = staffData[apiField] === true;
                 });
             }
         }
         
         staffDrawer.classList.add('open');
+        if (staffDrawerOverlay) staffDrawerOverlay.classList.add('active');
         document.body.style.overflow = 'hidden';
     }
     
     function closeDrawer() {
         staffDrawer.classList.remove('open');
+        if (staffDrawerOverlay) staffDrawerOverlay.classList.remove('active');
         document.body.style.overflow = '';
     }
     
@@ -290,16 +355,19 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             
             const formData = {
-                name: document.getElementById('staffName').value,
-                email: document.getElementById('staffEmail').value,
-                phone: document.getElementById('staffPhone').value,
-                address: document.getElementById('staffAddress').value,
+                name: document.getElementById('staff-name').value,
+                email: document.getElementById('staff-email').value,
+                phone: document.getElementById('staff-phone').value,
+                address: document.getElementById('staff-address').value,
+                password: document.getElementById('staff-password').value,
+                is_active: document.getElementById('staff-status').value === 'true',
             };
             
-            // Add all permissions
+            // Add all permissions (convert hyphen-case to underscore for API)
             permissionFields.forEach(field => {
                 const el = document.getElementById(field);
-                if (el) formData[field] = el.checked;
+                const apiField = field.replace(/-/g, '_');
+                if (el) formData[apiField] = el.checked;
             });
             
             let result;
@@ -332,17 +400,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Close drawer on overlay click
-    if (staffDrawer) {
-        staffDrawer.addEventListener('click', function(e) {
-            if (e.target === staffDrawer) {
-                closeDrawer();
-            }
-        });
+    if (staffDrawerOverlay) {
+        staffDrawerOverlay.addEventListener('click', closeDrawer);
     }
 
     // ==================== PROFILE PICTURE UPLOAD ====================
-    const profilePicInput = document.getElementById('staffProfilePic');
-    const profilePreview = document.getElementById('profilePreview');
+    const profilePicInput = document.getElementById('profile-input');
+    const profilePreview = document.getElementById('profile-preview');
     
     if (profilePicInput && profilePreview) {
         console.log('Profile pic input found, attaching listener');
@@ -367,46 +431,50 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ==================== FILTER & SEARCH ====================
-    const dropdownToggle = document.getElementById('dropdownToggle');
-    const dropdownOptions = document.getElementById('dropdownOptions');
-    const filterDropdown = document.getElementById('filterDropdown');
-    const selectedText = document.getElementById('selectedText');
-    const searchInput = document.getElementById('searchInput');
+    const dropdownToggle = document.getElementById('statusToggle');
+    const dropdownOptions = document.getElementById('statusOptions');
+    const filterDropdown = document.getElementById('status-dropdown');
+    const selectedText = document.getElementById('statusSelectedText');
+    const searchInput = document.getElementById('search-input');
     
-    let currentFilter = 'all';
+    let currentFilter = '';
     
+    // Column map for staff table (with checkbox as column 0)
     const filterColumnMap = {
-        'all': null,
-        'name': 0,
-        'email': 1,
-        'mobile': 2
+        '': null,  // All - search all columns
+        'active': 4,  // Status column
+        'inactive': 4
     };
     
     function performSearch() {
         const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
-        const rows = document.querySelectorAll('.table-container tbody tr');
+        const rows = document.querySelectorAll('.data-table tbody tr');
         
         rows.forEach(row => {
             if (row.classList.contains('no-data-row')) return;
             
             const cells = row.querySelectorAll('td');
-            let match = false;
+            let matchSearch = false;
+            let matchStatus = true;
             
-            if (currentFilter === 'all' || !searchTerm) {
-                cells.forEach(cell => {
-                    if (cell.textContent.toLowerCase().includes(searchTerm)) {
-                        match = true;
-                    }
-                });
-            } else {
-                const columnIndex = filterColumnMap[currentFilter];
-                if (columnIndex !== null && cells[columnIndex]) {
-                    const cellText = cells[columnIndex].textContent.toLowerCase();
-                    match = cellText.includes(searchTerm);
-                }
+            // Check status filter first
+            if (currentFilter === 'active' || currentFilter === 'inactive') {
+                const rowStatus = row.dataset.staffStatus;
+                matchStatus = rowStatus === currentFilter;
             }
             
-            row.style.display = match ? '' : 'none';
+            // Then check search term
+            if (!searchTerm) {
+                matchSearch = true;
+            } else {
+                cells.forEach(cell => {
+                    if (cell.textContent.toLowerCase().includes(searchTerm)) {
+                        matchSearch = true;
+                    }
+                });
+            }
+            
+            row.style.display = (matchSearch && matchStatus) ? '' : 'none';
         });
     }
     

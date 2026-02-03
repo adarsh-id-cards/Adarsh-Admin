@@ -8,9 +8,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=12">
-  <link rel="stylesheet" href="{% static 'css/common.css' %}?v=12">
-  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=12">
+  <link rel="stylesheet" href="{% static 'css/variables.css' %}?v=1">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=36">
+  <link rel="stylesheet" href="{% static 'css/common.css' %}?v=36">
+  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=36">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
@@ -33,7 +34,7 @@
       <div class="nav-right">
         <button class="global-search-btn" id="globalSearchBtn">
           <i class="fa-solid fa-magnifying-glass"></i>
-          <span>Search everywhere...</span>
+          <span>Search ID cards...</span>
           <kbd>Ctrl+K</kbd>
         </button>
       </div>
@@ -334,7 +335,7 @@
       <div class="global-search-header">
         <div class="search-input-group">
           <i class="fa-solid fa-magnifying-glass"></i>
-          <input type="text" id="globalSearchInput" placeholder="Search clients, ID cards, names, addresses..." autocomplete="off">
+          <input type="text" id="globalSearchInput" placeholder="Search ID cards by name, address, mobile..." autocomplete="off">
           <button class="clear-global-search" id="clearGlobalSearch" style="display: none;">
             <i class="fa-solid fa-xmark"></i>
           </button>
@@ -346,7 +347,6 @@
             <option value="name">Name</option>
             <option value="address">Address</option>
             <option value="mobile">Mobile</option>
-            <option value="client">Client Name</option>
           </select>
         </div>
         <button class="close-global-search" id="closeGlobalSearch">
@@ -357,7 +357,7 @@
       <div class="global-search-body" id="globalSearchResults">
         <div class="search-placeholder">
           <i class="fa-solid fa-search"></i>
-          <p>Search across all clients and ID cards</p>
+          <p>Search across all ID cards</p>
           <span>Enter at least 2 characters to search</span>
         </div>
       </div>

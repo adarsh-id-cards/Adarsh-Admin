@@ -44,30 +44,29 @@ document.addEventListener('DOMContentLoaded', function() {
     // ====================
     // Table Row Selection (Single select only)
     // ====================
-    const tableRows = document.querySelectorAll('.table-container tbody tr');
+    const tbody = document.getElementById('client-table-body');
     let selectedRow = null;
-    
-    tableRows.forEach(row => {
-        row.addEventListener('click', function() {
-            if (selectedRow === this) {
-                // Deselect if clicking same row
-                this.classList.remove('selected');
-                selectedRow = null;
-                enableActionButtons(false);
-            } else {
+    let selectedClientId = null;
+
+    if (tbody) {
+        tbody.addEventListener('click', function(e) {
+            const row = e.target.closest('tr');
+            if (row && row.dataset.clientId && !row.classList.contains('no-data-row')) {
                 // Remove selection from previous row
                 if (selectedRow) {
                     selectedRow.classList.remove('selected');
                 }
+                
                 // Select current row
-                this.classList.add('selected');
-                selectedRow = this;
+                row.classList.add('selected');
+                selectedRow = row;
+                selectedClientId = row.dataset.clientId;
                 enableActionButtons(true);
                 updateActiveButtonState();
             }
         });
-    });
-    
+    }
+
     function enableActionButtons(enable) {
         const addBtn = document.getElementById('addClientBtn');
         const editBtn = document.getElementById('editClientBtn');

@@ -1,0 +1,216 @@
+{% load static %}
+<!-- Upload XLSX Confirmation Modal -->
+<div class="upload-modal-overlay" id="uploadModalOverlay">
+  <div class="upload-modal">
+    <div class="upload-modal-header">
+      <h3><i class="fa-solid fa-file-excel"></i> Upload Excel File</h3>
+      <button class="upload-modal-close" id="closeUploadModal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="upload-modal-body">
+      <div class="upload-status" id="uploadStatus">
+        <i class="fa-solid fa-check-circle success-icon"></i>
+        <span id="uploadStatusText">Fields matched successfully!</span>
+      </div>
+      
+      <div class="field-match-section">
+        <div class="match-group matched" id="matchedFieldsGroup">
+          <div class="match-title"><i class="fa-solid fa-check"></i> Matched Fields</div>
+          <div class="match-list" id="matchedFieldsList"></div>
+        </div>
+        
+        <div class="match-group missing" id="missingFieldsGroup" style="display: none;">
+          <div class="match-title"><i class="fa-solid fa-exclamation-triangle"></i> Missing Fields (will be empty)</div>
+          <div class="match-list" id="missingFieldsList"></div>
+        </div>
+        
+        <div class="match-group ignored" id="ignoredFieldsGroup" style="display: none;">
+          <div class="match-title"><i class="fa-solid fa-eye-slash"></i> Ignored Columns</div>
+          <div class="match-list" id="ignoredFieldsList"></div>
+        </div>
+      </div>
+      
+      <div class="data-rows-info">
+        <i class="fa-solid fa-table-list"></i>
+        <span id="dataRowsCount">0 data rows found</span>
+      </div>
+      
+      <!-- Photo ZIP Upload Section -->
+      <div class="photo-zip-section" id="photoZipSection">
+        <div class="zip-upload-header">
+          <i class="fa-solid fa-images"></i>
+          <span>Upload Photos (Optional)</span>
+        </div>
+        <div class="zip-upload-info">
+          <p>Upload a ZIP file containing photos. The filenames in ZIP should match the values in the PHOTO column of your Excel (without extension).</p>
+        </div>
+        <div class="zip-upload-input">
+          <input type="file" id="photoZipInput" accept=".zip" style="display: none;">
+          <button class="btn btn-outline" id="selectZipBtn">
+            <i class="fa-solid fa-file-zipper"></i> Select ZIP File
+          </button>
+          <span class="zip-file-name" id="zipFileName">No file selected</span>
+        </div>
+        <div class="zip-file-status" id="zipFileStatus" style="display: none;">
+          <i class="fa-solid fa-check-circle"></i>
+          <span id="zipFileCount">0 images found in ZIP</span>
+        </div>
+      </div>
+      
+      <!-- Upload Progress Section -->
+      <div class="upload-progress-section" id="uploadProgressSection" style="display: none;">
+        <div class="progress-header">
+          <span class="progress-title"><i class="fa-solid fa-cloud-arrow-up"></i> Uploading...</span>
+          <span class="progress-percentage" id="uploadPercentage">0%</span>
+        </div>
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="uploadProgressBar"></div>
+        </div>
+        <div class="progress-details">
+          <span class="progress-size" id="uploadProgressSize">0 KB / 0 KB</span>
+          <span class="progress-time" id="uploadTimeRemaining">Calculating...</span>
+        </div>
+      </div>
+    </div>
+    <div class="upload-modal-footer">
+      <button class="btn btn-secondary" id="cancelUploadModal">Cancel</button>
+      <button class="btn btn-primary" id="confirmUploadModal"><i class="fa-solid fa-upload"></i> Proceed with Upload</button>
+    </div>
+  </div>
+</div>
+
+<!-- Image Sort Modal -->
+<div class="upload-modal-overlay" id="imageSortModalOverlay">
+  <div class="upload-modal image-sort-modal">
+    <div class="upload-modal-header">
+      <h3><i class="fa-solid fa-image"></i> Image Sort</h3>
+      <button class="upload-modal-close" id="closeImageSortModal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="upload-modal-body">
+      <div class="image-sort-form">
+        <div class="form-group">
+          <label for="imageSortColumn"><i class="fa-solid fa-table-columns"></i> Select Image Column</label>
+          <select id="imageSortColumn" class="form-select">
+            <option value="">-- Select Column --</option>
+            {% for field in table.fields %}
+              {% if field.type == 'image' %}
+              <option value="{{ field.name }}">{{ field.name|upper }}</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="imageSortCondition"><i class="fa-solid fa-filter"></i> Select Condition</label>
+          <select id="imageSortCondition" class="form-select">
+            <option value="">-- Select Condition --</option>
+            <option value="complete">Complete (Image Uploaded)</option>
+            <option value="pending">Pending (Placeholder Created)</option>
+            <option value="incomplete">Incomplete (No Placeholder)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="upload-modal-footer">
+      <button class="btn btn-secondary" id="clearImageSort">Clear Filter</button>
+      <button class="btn btn-primary" id="applyImageSort"><i class="fa-solid fa-check"></i> Apply Sort</button>
+    </div>
+  </div>
+</div>
+
+<!-- Search All Modal -->
+<div class="upload-modal-overlay" id="searchAllModalOverlay">
+  <div class="upload-modal search-all-modal">
+    <div class="upload-modal-header">
+      <h3><i class="fa-solid fa-magnifying-glass"></i> Search All Lists</h3>
+      <button class="upload-modal-close" id="closeSearchAllModal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="upload-modal-body">
+      <div class="search-all-form">
+        <div class="search-input-wrapper">
+          <i class="fa-solid fa-search"></i>
+          <input type="text" id="searchAllInput" placeholder="Search by name, mobile, address..." autocomplete="off">
+          <button class="clear-search-btn" id="clearSearchInput" style="display: none;">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="search-info">
+          <span><i class="fa-solid fa-info-circle"></i> Searches across all lists: Pending, Verified, Pool, Approved, Download</span>
+        </div>
+      </div>
+      <div class="search-results-container" id="searchResultsContainer">
+        <div class="search-placeholder">
+          <i class="fa-solid fa-search"></i>
+          <p>Type to search across all lists</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Permanent Confirmation Modal -->
+<div class="upload-modal-overlay" id="deleteModalOverlay">
+  <div class="upload-modal delete-modal">
+    <div class="upload-modal-header delete-header">
+      <h3><i class="fa-solid fa-triangle-exclamation"></i> Permanent Delete Warning</h3>
+      <button class="upload-modal-close" id="closeDeleteModal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="upload-modal-body">
+      <div class="delete-warning-content">
+        <div class="delete-warning-icon">
+          <i class="fa-solid fa-trash"></i>
+        </div>
+        <div class="delete-warning-text">
+          <p class="delete-count"><strong id="deleteCountText">0 card(s)</strong> will be permanently deleted</p>
+          <div class="delete-warning-list">
+            <div class="warning-item"><i class="fa-solid fa-xmark"></i> This action <strong>cannot be undone</strong></div>
+            <div class="warning-item"><i class="fa-solid fa-xmark"></i> Data will be <strong>permanently removed</strong> from database</div>
+            <div class="warning-item"><i class="fa-solid fa-xmark"></i> <strong>No retrieve option</strong> available after deletion</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="upload-modal-footer delete-footer">
+      <button class="btn btn-secondary" id="cancelDeleteModal">Cancel</button>
+      <button class="btn btn-danger" id="confirmDeleteModal"><i class="fa-solid fa-trash"></i> Delete Permanently</button>
+    </div>
+  </div>
+</div>
+
+<!-- Document Format Selection Modal -->
+<div class="upload-modal-overlay" id="docFormatModalOverlay">
+  <div class="upload-modal doc-format-modal">
+    <div class="upload-modal-header">
+      <h3><i class="fa-solid fa-file-word"></i> Select Document Format</h3>
+      <button class="upload-modal-close" id="closeDocFormatModal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="upload-modal-body">
+      <div class="doc-format-options">
+        <p class="format-info"><i class="fa-solid fa-info-circle"></i> Choose the document format based on your Microsoft Word version:</p>
+        <div class="format-cards">
+          <div class="format-card" data-format="docx">
+            <div class="format-icon">
+              <i class="fa-solid fa-file-word"></i>
+            </div>
+            <div class="format-details">
+              <h4>.DOCX Format</h4>
+              <p>For Word 2007 and later</p>
+              <span class="format-badge recommended">Recommended</span>
+            </div>
+          </div>
+          <div class="format-card" data-format="doc">
+            <div class="format-icon">
+              <i class="fa-solid fa-file-word"></i>
+            </div>
+            <div class="format-details">
+              <h4>.DOC Format</h4>
+              <p>For Word 2003 and earlier</p>
+              <span class="format-badge legacy">Legacy</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="upload-modal-footer">
+      <button class="btn btn-secondary" id="cancelDocFormatModal">Cancel</button>
+    </div>
+  </div>
+</div>

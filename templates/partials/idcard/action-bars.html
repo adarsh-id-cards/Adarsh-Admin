@@ -1,0 +1,223 @@
+{% load static %}
+<!-- Hidden file input for XLSX upload -->
+<input type="file" id="xlsxFileInput" accept=".xlsx,.xls,.csv" style="display: none;">
+
+<!-- Action Bar - Pending List -->
+<div class="action-bar action-buttons-bar" id="pendingActionBar" {% if current_status and current_status != 'pending' %}style="display: none;"{% endif %}>
+    <div class="action-buttons-group">
+        <button class="btn action-btn btn-blue" id="uploadXlsxBtn" title="Upload Excel file">
+            <i class="fa-solid fa-upload"></i>
+            <span class="btn-text">Upload XLSX</span>
+        </button>
+        <button class="btn action-btn btn-green" id="addBtn" title="Add new card">
+            <i class="fa-solid fa-plus"></i>
+            <span class="btn-text">Add</span>
+        </button>
+        <button class="btn action-btn btn-green" id="editBtn" disabled title="Edit selected card">
+            <i class="fa-solid fa-pen-to-square"></i>
+            <span class="btn-text">Edit</span>
+        </button>
+        <button class="btn action-btn btn-green" id="viewBtn" disabled title="View selected card">
+            <i class="fa-solid fa-eye"></i>
+            <span class="btn-text">View</span>
+        </button>
+        <button class="btn action-btn btn-red" id="deleteBtn" disabled title="Move to pool">
+            <i class="fa-solid fa-trash"></i>
+            <span class="btn-text">Delete</span>
+        </button>
+        <button class="btn action-btn btn-green" id="verifyBtn" disabled title="Verify selected cards">
+            <i class="fa-solid fa-check-circle"></i>
+            <span class="btn-text">Verify Selected</span>
+        </button>
+        <div class="action-divider"></div>
+        <button class="btn action-btn btn-blue" id="downloadImgBtn" title="Download images as ZIP">
+            <i class="fa-solid fa-image"></i>
+            <span class="btn-text">Download Img</span>
+        </button>
+        <button class="btn action-btn btn-blue" id="downloadDocxBtn" title="Download as Word document">
+            <i class="fa-solid fa-file-word"></i>
+            <span class="btn-text">Download Docx</span>
+        </button>
+        <button class="btn action-btn btn-blue" id="downloadXlsxBtn" title="Download as Excel file">
+            <i class="fa-solid fa-file-excel"></i>
+            <span class="btn-text">Download XLSX</span>
+        </button>
+        <button class="btn action-btn btn-green" id="downloadPdfBtn" disabled title="Download as PDF">
+            <i class="fa-solid fa-file-pdf"></i>
+            <span class="btn-text">Download PDF</span>
+        </button>
+        <button class="btn action-btn btn-red" id="reuploadImageBtn" title="Reupload images from ZIP">
+            <i class="fa-solid fa-rotate"></i>
+            <span class="btn-text">Reupload Image</span>
+        </button>
+    </div>
+</div>
+
+<!-- Action Bar - Verified List -->
+<div class="action-bar action-buttons-bar" id="verifiedActionBar" {% if current_status != 'verified' %}style="display: none;"{% endif %}>
+    <div class="action-buttons-group">
+        <button class="btn action-btn btn-green" id="editBtnV" disabled title="Edit selected card">
+            <i class="fa-solid fa-pen-to-square"></i>
+            <span class="btn-text">Edit</span>
+        </button>
+        <button class="btn action-btn btn-green" id="viewBtnV" disabled title="View selected card">
+            <i class="fa-solid fa-eye"></i>
+            <span class="btn-text">View</span>
+        </button>
+        <button class="btn action-btn btn-red" id="deleteBtnV" disabled title="Move to pool">
+            <i class="fa-solid fa-trash"></i>
+            <span class="btn-text">Delete</span>
+        </button>
+        <button class="btn action-btn btn-red" id="unverifyBtn" disabled title="Move back to pending">
+            <i class="fa-solid fa-circle-xmark"></i>
+            <span class="btn-text">Unverified</span>
+        </button>
+        <button class="btn action-btn btn-green" id="approveBtn" disabled title="Approve selected cards">
+            <i class="fa-solid fa-circle-check"></i>
+            <span class="btn-text">Approve</span>
+        </button>
+        <div class="action-divider"></div>
+        <button class="btn action-btn btn-blue" id="downloadImgBtnV" title="Download images as ZIP">
+            <i class="fa-solid fa-image"></i>
+            <span class="btn-text">Download Img</span>
+        </button>
+        <button class="btn action-btn btn-blue" id="downloadDocxBtnV" title="Download as Word document">
+            <i class="fa-solid fa-file-word"></i>
+            <span class="btn-text">Download Docx</span>
+        </button>
+        <button class="btn action-btn btn-blue" id="downloadXlsxBtnV" title="Download as Excel file">
+            <i class="fa-solid fa-file-excel"></i>
+            <span class="btn-text">Download XLSX</span>
+        </button>
+        <button class="btn action-btn btn-green" id="downloadPdfBtnV" disabled title="Download as PDF">
+            <i class="fa-solid fa-file-pdf"></i>
+            <span class="btn-text">Download PDF</span>
+        </button>
+        <button class="btn action-btn btn-red" id="reuploadImageBtnV" title="Reupload images from ZIP">
+            <i class="fa-solid fa-rotate"></i>
+            <span class="btn-text">Reupload Image</span>
+        </button>
+    </div>
+</div>
+
+<!-- Action Bar - Pool List -->
+<div class="action-bar action-buttons-bar" id="poolActionBar" {% if current_status != 'pool' %}style="display: none;"{% endif %}>
+    <div class="action-buttons-group">
+        <button class="btn action-btn btn-green" id="viewBtnP" disabled title="View selected card">
+            <i class="fa-solid fa-eye"></i>
+            <span class="btn-text">View</span>
+        </button>
+        <button class="btn action-btn btn-blue" id="retrieveBtnP" disabled title="Retrieve to pending">
+            <i class="fa-solid fa-rotate-left"></i>
+            <span class="btn-text">Retrieve</span>
+        </button>
+        <div class="action-divider"></div>
+        <button class="btn action-btn btn-blue" id="downloadImgBtnP" title="Download images as ZIP">
+            <i class="fa-solid fa-image"></i>
+            <span class="btn-text">Download Img</span>
+        </button>
+        <button class="btn action-btn btn-blue" id="downloadDocxBtnP" title="Download as Word document">
+            <i class="fa-solid fa-file-word"></i>
+            <span class="btn-text">Download Docx</span>
+        </button>
+        <button class="btn action-btn btn-blue" id="downloadXlsxBtnP" title="Download as Excel file">
+            <i class="fa-solid fa-file-excel"></i>
+            <span class="btn-text">Download XLSX</span>
+        </button>
+        <button class="btn action-btn btn-green" id="downloadPdfBtnP" disabled title="Download as PDF">
+            <i class="fa-solid fa-file-pdf"></i>
+            <span class="btn-text">Download PDF</span>
+        </button>
+        <button class="btn action-btn btn-red" id="reuploadImageBtnP" title="Reupload images from ZIP">
+            <i class="fa-solid fa-rotate"></i>
+            <span class="btn-text">Reupload Image</span>
+        </button>
+        <div class="action-divider"></div>
+        <button class="btn action-btn btn-danger" id="deletePermanentBtnP" disabled title="Permanently delete - Cannot be undone!">
+            <i class="fa-solid fa-trash"></i>
+            <span class="btn-text">Delete Permanent</span>
+        </button>
+    </div>
+</div>
+
+<!-- Action Bar - Approved List -->
+<div class="action-bar action-buttons-bar" id="approvedActionBar" {% if current_status != 'approved' %}style="display: none;"{% endif %}>
+    <div class="action-buttons-group">
+        <button class="btn action-btn btn-green" id="editBtnA" disabled title="Edit selected card">
+            <i class="fa-solid fa-pen-to-square"></i>
+            <span class="btn-text">Edit</span>
+        </button>
+        <button class="btn action-btn btn-green" id="viewBtnA" disabled title="View selected card">
+            <i class="fa-solid fa-eye"></i>
+            <span class="btn-text">View</span>
+        </button>
+        <button class="btn action-btn btn-blue" id="retrieveBtnA" disabled title="Retrieve to pending">
+            <i class="fa-solid fa-rotate-left"></i>
+            <span class="btn-text">Retrieve</span>
+        </button>
+        <button class="btn action-btn btn-red" id="unapprovedBtn" disabled title="Move back to verified">
+            <i class="fa-solid fa-circle-xmark"></i>
+            <span class="btn-text">Unapproved</span>
+        </button>
+        <div class="action-divider"></div>
+        <button class="btn action-btn btn-blue" id="downloadImgBtnA" title="Download images as ZIP">
+            <i class="fa-solid fa-image"></i>
+            <span class="btn-text">Download Img</span>
+        </button>
+        <button class="btn action-btn btn-blue" id="downloadDocxBtnA" title="Download as Word document">
+            <i class="fa-solid fa-file-word"></i>
+            <span class="btn-text">Download Docx</span>
+        </button>
+        <button class="btn action-btn btn-blue" id="downloadXlsxBtnA" title="Download as Excel file">
+            <i class="fa-solid fa-file-excel"></i>
+            <span class="btn-text">Download XLSX</span>
+        </button>
+        <button class="btn action-btn btn-green" id="downloadPdfBtnA" disabled title="Download as PDF">
+            <i class="fa-solid fa-file-pdf"></i>
+            <span class="btn-text">Download PDF</span>
+        </button>
+        <button class="btn action-btn btn-red" id="reuploadImageBtnA" title="Reupload images from ZIP">
+            <i class="fa-solid fa-rotate"></i>
+            <span class="btn-text">Reupload Image</span>
+        </button>
+    </div>
+</div>
+
+<!-- Action Bar - Download List -->
+<div class="action-bar action-buttons-bar" id="downloadActionBar" {% if current_status != 'download' %}style="display: none;"{% endif %}>
+    <div class="action-buttons-group">
+        <button class="btn action-btn btn-green" id="editBtnD" disabled title="Edit selected card">
+            <i class="fa-solid fa-pen-to-square"></i>
+            <span class="btn-text">Edit</span>
+        </button>
+        <button class="btn action-btn btn-green" id="viewBtnD" disabled title="View selected card">
+            <i class="fa-solid fa-eye"></i>
+            <span class="btn-text">View</span>
+        </button>
+        <button class="btn action-btn btn-blue" id="retrieveBtnD" disabled title="Retrieve to pending">
+            <i class="fa-solid fa-rotate-left"></i>
+            <span class="btn-text">Retrieve</span>
+        </button>
+        <div class="action-divider"></div>
+        <button class="btn action-btn btn-blue" id="downloadImgBtnD" title="Download images as ZIP">
+            <i class="fa-solid fa-image"></i>
+            <span class="btn-text">Download Img</span>
+        </button>
+        <button class="btn action-btn btn-blue" id="downloadDocxBtnD" title="Download as Word document">
+            <i class="fa-solid fa-file-word"></i>
+            <span class="btn-text">Download Docx</span>
+        </button>
+        <button class="btn action-btn btn-blue" id="downloadXlsxBtnD" title="Download as Excel file">
+            <i class="fa-solid fa-file-excel"></i>
+            <span class="btn-text">Download XLSX</span>
+        </button>
+        <button class="btn action-btn btn-green" id="downloadPdfBtnD" disabled title="Download as PDF">
+            <i class="fa-solid fa-file-pdf"></i>
+            <span class="btn-text">Download PDF</span>
+        </button>
+        <button class="btn action-btn btn-red" id="reuploadImageBtnD" title="Reupload images from ZIP">
+            <i class="fa-solid fa-rotate"></i>
+            <span class="btn-text">Reupload Image</span>
+        </button>
+    </div>
+</div>

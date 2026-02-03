@@ -2,184 +2,50 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Active Clients - Adarsh ID Cards</title>
-  <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=12">
-  <link rel="stylesheet" href="{% static 'css/common.css' %}?v=12">
-  <link rel="stylesheet" href="{% static 'css/active-client.css' %}?v=12">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <title>Active Clients - Adarsh Admin</title>
+    {% include 'partials/common/head.html' %}
+    <link rel="stylesheet" href="{% static 'css/active-client.css' %}?v=38">
 </head>
 <body>
+    <!-- Sidebar -->
+    {% include 'partials/sidebar.html' %}
 
-  {% include 'partials/sidebar.html' %}
-
-  <!-- Main -->
-  <main class="main">
-
-    <!-- Top Navbar -->
-    <header class="topbar">
-      <div class="nav-left">
-        <button class="sidebar-toggle" id="sidebarToggle">
-          <i class="fa-solid fa-bars"></i>
-        </button>
-        <div class="breadcrumb">
-            <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
-            <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
-            <span class="breadcrumb-item active">Active Clients</span>
-        </div>
-      </div>
-    </header>
-
-    <div class="main-content">
-
-    <!-- Action Bar -->
-    <div class="action-bar">
-        
-        <!-- Left Section - Filter and Search -->
-        <div class="action-left">
-            <div class="filter-group">
-                <div class="custom-dropdown" id="filterDropdown">
-                    <button class="dropdown-toggle" id="dropdownToggle">
-                        <span id="selectedText">All</span>
-                        <i class="fa-solid fa-chevron-down"></i>
-                    </button>
-                    <div class="dropdown-options" id="dropdownOptions">
-                        <div class="dropdown-option selected" data-value="all">All</div>
-                        <div class="dropdown-option" data-value="name">Name</div>
-                        <div class="dropdown-option" data-value="email">Email</div>
-                        <div class="dropdown-option" data-value="phone">Phone</div>
-                    </div>
-                </div>
-            </div>
-            <div class="search-box">
-                <i class="fa-solid fa-magnifying-glass search-icon"></i>
-                <input type="text" id="searchInput" placeholder="Search All..." class="search-input">
-            </div>
-        </div>
-
-        <!-- Right Section - Action Buttons -->
-        <div class="action-right">
-            <div class="actions">
-                <div class="btn-group">
-                    <button class="btn btn-group-setting" id="groupSettingBtn" disabled><i class="fa-solid fa-gear"></i> Group Setting</button>
-                    <button class="btn btn-idcard-group" id="idCardBtn" disabled><i class="fa-solid fa-id-card"></i> ID Card Group</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-
-    <div class="table-container">
-    <table>
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Updates</th>
-            </tr>
-        </thead>
-
-        <tbody>
-            {% for client in clients %}
-            <tr data-client-id="{{ client.id }}" data-first-group-id="{% if client.id_card_groups.first %}{{ client.id_card_groups.first.id }}{% endif %}">
-                <td>{{ client.name }}</td>
-                <td>{{ client.user.email }}</td>
-                <td>{{ client.user.phone|default:"-" }}</td>
-                <td>
-                    <div class="update-badges">
-                        <span class="update-badge new-cards"><i class="fa-solid fa-id-card"></i> {{ client.id_card_groups.count }} groups</span>
-                    </div>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="4" style="text-align: center;">No active clients found</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-
-    <!-- Pagination Bar -->
-    <div class="pagination-bar">
-        <div class="pagination-left">
-            <span class="pagination-info">Showing <strong>1-{{ clients|length }}</strong> of <strong>{{ clients|length }}</strong> results</span>
-        </div>
-        <div class="pagination-center">
-            <button class="pagination-btn" id="firstPage"><i class="fa-solid fa-angles-left"></i></button>
-            <button class="pagination-btn" id="prevPage"><i class="fa-solid fa-chevron-left"></i></button>
-            <span class="page-numbers">
-                <button class="page-num active">1</button>
-            </span>
-            <button class="pagination-btn" id="nextPage"><i class="fa-solid fa-chevron-right"></i></button>
-            <button class="pagination-btn" id="lastPage"><i class="fa-solid fa-angles-right"></i></button>
-        </div>
-        <div class="pagination-right">
-            <label>Rows per page:</label>
-            <div class="custom-dropdown rows-dropdown" id="rowsDropdown">
-                <button class="dropdown-toggle" id="rowsToggle" type="button">
-                    <span id="rowsSelectedText">10</span>
-                    <i class="fa-solid fa-chevron-down"></i>
+    <!-- Main Content -->
+    <main class="main">
+        <!-- Topbar -->
+        <header class="topbar">
+            <div class="nav-left">
+                <button class="sidebar-toggle" id="sidebarToggle" title="Toggle Sidebar">
+                    <i class="fa-solid fa-bars"></i>
                 </button>
-                <div class="dropdown-options" id="rowsOptions">
-                    <div class="dropdown-option" data-value="5">5</div>
-                    <div class="dropdown-option selected" data-value="10">10</div>
-                    <div class="dropdown-option" data-value="25">25</div>
-                    <div class="dropdown-option" data-value="50">50</div>
-                    <div class="dropdown-option" data-value="100">100</div>
+                <div class="breadcrumb">
+                    <a href="{% url 'dashboard' %}" class="breadcrumb-item">
+                        <i class="fa-solid fa-house"></i> Home
+                    </a>
+                    <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
+                    <span class="breadcrumb-item active">Active Clients</span>
                 </div>
             </div>
+        </header>
+
+        <!-- Page Content -->
+        <div class="main-content">
+            <!-- Action Bar -->
+            {% include 'partials/active-client/action-bar.html' %}
+
+            <!-- Clients Table -->
+            {% include 'partials/active-client/table.html' %}
+
+            <!-- Pagination -->
+            {% include 'partials/common/pagination.html' %}
         </div>
-    </div>
+    </main>
 
-    </div>
+    <!-- Toast Notifications -->
+    {% include 'partials/common/toast.html' %}
 
-  </main>
-
-  <script src="{% static 'js/script.js' %}?v=12"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      const table = document.querySelector('table tbody');
-      const groupSettingBtn = document.getElementById('groupSettingBtn');
-      const idCardBtn = document.getElementById('idCardBtn');
-      let selectedClientId = null;
-      let selectedFirstGroupId = null;
-
-      // Row selection
-      table.addEventListener('click', function(e) {
-        const row = e.target.closest('tr');
-        if (row && row.dataset.clientId) {
-          // Remove previous selection
-          table.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
-          // Add selection to clicked row
-          row.classList.add('selected');
-          selectedClientId = row.dataset.clientId;
-          selectedFirstGroupId = row.dataset.firstGroupId || null;
-          // Enable buttons
-          groupSettingBtn.disabled = false;
-          idCardBtn.disabled = false;
-        }
-      });
-
-      // ID Card Group button - navigates to client's groups
-      idCardBtn.addEventListener('click', function() {
-        if (selectedClientId) {
-          window.location.href = `/client/${selectedClientId}/groups/`;
-        }
-      });
-
-      // Group Setting button - go to client's group settings
-      groupSettingBtn.addEventListener('click', function() {
-        if (selectedClientId) {
-          window.location.href = `/client/${selectedClientId}/settings/`;
-        }
-      });
-    });
-  </script>
+    <!-- Scripts -->
+    <script src="{% static 'js/script.js' %}?v=41"></script>
+    <script src="{% static 'js/active-client.js' %}?v=40"></script>
 </body>
 </html>
