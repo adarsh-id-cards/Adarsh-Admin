@@ -182,16 +182,16 @@ th:last-child, td:last-child {
   width: 120px;
 }
 
-/* Field Type Select - Styled native select */
+/* Field Type Select - Styled like filter button */
 .field-type-select {
   padding: 6px 28px 6px 10px;
-  border-radius: 6px;
-  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-md, 6px);
+  border: 1px solid var(--border-default, rgba(0, 0, 0, 0.15));
   font-size: 12px;
-  font-weight: 500;
-  background-color: #fff;
-  color: #2c3e50;
-  width: 100px;
+  font-weight: var(--font-weight-medium, 500);
+  background-color: var(--bg-white, #fff);
+  color: var(--text-primary, #2c3e50);
+  min-width: 120px;
   cursor: pointer !important;
   outline: none;
   transition: all 0.2s ease;
@@ -205,13 +205,13 @@ th:last-child, td:last-child {
 }
 
 .field-type-select:hover {
-  border-color: #3498db;
-  background-color: rgba(52, 152, 219, 0.05);
+  border-color: var(--primary, #3498db);
+  background-color: var(--bg-hover, rgba(52, 152, 219, 0.05));
 }
 
 .field-type-select:focus {
-  border-color: #3498db;
-  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+  border-color: var(--primary, #3498db);
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.15);
 }
 
 .field-required {
@@ -286,22 +286,95 @@ th:last-child, td:last-child {
   flex: 2;
 }
 
-/* Select dropdown in Add Field row */
-.add-field-row select.form-input,
-.add-field-row select.form-input:not(:disabled),
-.drawer-body select,
-.drawer-body select:not(:disabled) {
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-  cursor: pointer !important;
-  padding-right: 32px;
-  background-color: #fff !important;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%232c3e50' d='M2 4l4 4 4-4z'/%3E%3C/svg%3E") !important;
-  background-repeat: no-repeat !important;
-  background-position: right 10px center !important;
-  background-size: 12px !important;
-  pointer-events: auto !important;
+/* Select dropdown in Add Field row - Custom dropdown styled like filter button */
+.field-type-dropdown {
+  position: relative;
+  min-width: 140px;
+  flex: 0 0 auto;
+}
+
+.field-type-dropdown .dropdown-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: #fff;
+  border: 1px solid var(--border-default, #dee2e6);
+  border-radius: var(--radius-md, 8px);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary, #2c3e50);
+  cursor: pointer;
+  min-height: 36px;
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+.field-type-dropdown .dropdown-toggle:hover {
+  background-color: var(--bg-hover, #f8f9fa);
+  border-color: var(--primary, #3498db);
+}
+
+.field-type-dropdown .dropdown-toggle i {
+  font-size: 10px;
+  transition: transform 0.2s ease;
+}
+
+.field-type-dropdown.open .dropdown-toggle {
+  border-color: var(--primary, #3498db);
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.15);
+}
+
+.field-type-dropdown.open .dropdown-toggle i {
+  transform: rotate(180deg);
+}
+
+.field-type-dropdown .dropdown-options {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid var(--border-default, #dee2e6);
+  border-radius: var(--radius-md, 8px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  padding: 6px;
+  min-width: 140px;
+}
+
+.field-type-dropdown.open .dropdown-options {
+  display: block;
+}
+
+.field-type-dropdown .dropdown-option {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-primary, #2c3e50);
+  cursor: pointer;
+  border-radius: var(--radius-sm, 6px);
+  transition: all 0.15s ease;
+  margin: 2px 0;
+}
+
+.field-type-dropdown .dropdown-option:hover {
+  background: var(--bg-hover, #f0f4f8);
+  color: var(--primary, #3498db);
+}
+
+.field-type-dropdown .dropdown-option.selected {
+  background: rgba(52, 152, 219, 0.12);
+  color: var(--primary, #3498db);
+  font-weight: 500;
+}
+
+/* Text input in Add Field row */
+.add-field-row input[type="text"].form-input,
+#new-field-name {
+  flex: 1 1 auto;
+  min-width: 150px;
 }
 
 .add-field-row .btn {

@@ -163,8 +163,8 @@
     --z-sticky: 200;
     --z-modal-backdrop: 900;
     --z-modal: 1000;
-    --z-toast: 1100;
     --z-sidebar: 1000;
+    --z-toast: 9999;
     
     /* ===== SIZES ===== */
     --sidebar-width: 200px;

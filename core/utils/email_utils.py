@@ -196,11 +196,6 @@ This is an automated message. Please do not reply to this email.
     
     return html_content, plain_content
 
-© 2026 Adarsh Admin. All rights reserved.
-'''
-    
-    return html_content, plain_content
-
 
 def send_welcome_email(name, email, password, role, request=None):
     """

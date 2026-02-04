@@ -336,10 +336,23 @@ def idcard_actions(request, table_id):
     enriched_cards = []
     for idx, card in enumerate(id_cards):
         ordered_fields = []
+        field_data = card.field_data or {}
+        
+        # Create case-insensitive lookup for field_data
+        # This handles cases where table fields might have different case than stored data
+        field_data_normalized = {}
+        for key, value in field_data.items():
+            # Store with uppercase key for case-insensitive lookup
+            field_data_normalized[key.upper()] = value
+        
         for field in table.fields:
             field_name = field['name']
             field_type = field['type']
-            field_value = card.field_data.get(field_name, '')
+            # Try exact match first, then case-insensitive match
+            field_value = field_data.get(field_name, '')
+            if not field_value:
+                # Try case-insensitive lookup
+                field_value = field_data_normalized.get(field_name.upper(), '')
             ordered_fields.append({
                 'name': field_name,
                 'type': field_type,

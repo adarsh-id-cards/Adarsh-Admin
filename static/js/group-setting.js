@@ -66,6 +66,19 @@ document.addEventListener('DOMContentLoaded', function() {
         if (addFieldBtn) addFieldBtn.disabled = currentFields.length >= MAX_FIELDS;
     }
 
+    // Reset field type dropdown to default (Text)
+    function resetFieldTypeDropdown() {
+        const fieldTypeDropdown = document.getElementById('fieldTypeDropdown');
+        const fieldTypeToggle = document.getElementById('fieldTypeToggle');
+        if (fieldTypeDropdown) {
+            fieldTypeDropdown.querySelectorAll('.dropdown-option').forEach(o => o.classList.remove('selected'));
+            const textOption = fieldTypeDropdown.querySelector('.dropdown-option[data-value="text"]');
+            if (textOption) textOption.classList.add('selected');
+            if (fieldTypeToggle) fieldTypeToggle.querySelector('span').textContent = 'Text';
+            if (newFieldType) newFieldType.value = 'text';
+        }
+    }
+
     // ==================== ROW SELECTION ====================
     if (tablesBody) {
         tablesBody.addEventListener('click', function(e) {
@@ -171,6 +184,24 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ==================== DRAWER FUNCTIONS ====================
+    
+    // Field type options with display labels
+    const fieldTypeOptions = [
+        { value: 'text', label: 'Text' },
+        { value: 'email', label: 'Email' },
+        { value: 'photo', label: 'Photo' },
+        { value: 'mother_photo', label: 'Mother Photo' },
+        { value: 'father_photo', label: 'Father Photo' },
+        { value: 'barcode', label: 'Barcode' },
+        { value: 'qr_code', label: 'QR Code' },
+        { value: 'signature', label: 'Signature' }
+    ];
+    
+    function getFieldTypeLabel(value) {
+        const option = fieldTypeOptions.find(o => o.value === value);
+        return option ? option.label : value;
+    }
+    
     function renderFieldList() {
         if (!fieldList) return;
         fieldList.innerHTML = '';
@@ -181,9 +212,8 @@ document.addEventListener('DOMContentLoaded', function() {
             li.dataset.idx = idx;
             li.draggable = currentMode !== 'view';
             
-            const typeOptions = ['text', 'number', 'date', 'email', 'image', 'textarea'];
-            const typeOptionsHtml = typeOptions.map(t => 
-                `<option value="${t}" ${field.type === t ? 'selected' : ''}>${t.charAt(0).toUpperCase() + t.slice(1)}</option>`
+            const typeOptionsHtml = fieldTypeOptions.map(t => 
+                `<option value="${t.value}" ${field.type === t.value ? 'selected' : ''}>${t.label}</option>`
             ).join('');
             
             li.innerHTML = `
@@ -305,7 +335,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.body.style.overflow = '';
         currentFields = [];
         if (newFieldName) newFieldName.value = '';
-        if (newFieldType) newFieldType.value = 'text';
+        resetFieldTypeDropdown();
     }
 
     // ==================== API FUNCTIONS ====================
@@ -483,12 +513,50 @@ document.addEventListener('DOMContentLoaded', function() {
             currentFields.push({ name: name, type: type, order: currentFields.length });
             renderFieldList();
             newFieldName.value = '';
-            newFieldType.value = 'text';
+            resetFieldTypeDropdown();
             showToast('Field added!', 'success');
         });
     }
 
     if (newFieldName) newFieldName.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); addFieldBtn.click(); } });
+
+    // ==================== FIELD TYPE CUSTOM DROPDOWN ====================
+    const fieldTypeDropdown = document.getElementById('fieldTypeDropdown');
+    const fieldTypeToggle = document.getElementById('fieldTypeToggle');
+    
+    if (fieldTypeDropdown && fieldTypeToggle) {
+        // Toggle dropdown on button click
+        fieldTypeToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            fieldTypeDropdown.classList.toggle('open');
+        });
+        
+        // Handle option selection
+        fieldTypeDropdown.querySelectorAll('.dropdown-option').forEach(option => {
+            option.addEventListener('click', function(e) {
+                e.stopPropagation();
+                // Update selected state
+                fieldTypeDropdown.querySelectorAll('.dropdown-option').forEach(o => o.classList.remove('selected'));
+                this.classList.add('selected');
+                
+                // Update toggle button text
+                fieldTypeToggle.querySelector('span').textContent = this.textContent;
+                
+                // Update hidden input value
+                if (newFieldType) newFieldType.value = this.dataset.value;
+                
+                // Close dropdown
+                fieldTypeDropdown.classList.remove('open');
+            });
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!fieldTypeDropdown.contains(e.target)) {
+                fieldTypeDropdown.classList.remove('open');
+            }
+        });
+    }
 
     if (fieldList) {
         fieldList.addEventListener('click', (e) => {

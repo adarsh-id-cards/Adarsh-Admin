@@ -86,14 +86,23 @@
               <div class="add-field-form">
                 <div class="add-field-row">
                   <input type="text" id="new-field-name" class="form-input" placeholder="Field Name (e.g., Student Name)">
-                  <select id="new-field-type" class="form-input">
-                    <option value="text">Text</option>
-                    <option value="number">Number</option>
-                    <option value="date">Date</option>
-                    <option value="email">Email</option>
-                    <option value="image">Image</option>
-                    <option value="textarea">Textarea</option>
-                  </select>
+                  <div class="custom-dropdown field-type-dropdown" id="fieldTypeDropdown">
+                    <button type="button" class="dropdown-toggle" id="fieldTypeToggle">
+                      <span>Text</span>
+                      <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+                    <div class="dropdown-options">
+                      <div class="dropdown-option selected" data-value="text">Text</div>
+                      <div class="dropdown-option" data-value="email">Email</div>
+                      <div class="dropdown-option" data-value="photo">Photo</div>
+                      <div class="dropdown-option" data-value="mother_photo">Mother Photo</div>
+                      <div class="dropdown-option" data-value="father_photo">Father Photo</div>
+                      <div class="dropdown-option" data-value="barcode">Barcode</div>
+                      <div class="dropdown-option" data-value="qr_code">QR Code</div>
+                      <div class="dropdown-option" data-value="signature">Signature</div>
+                    </div>
+                  </div>
+                  <input type="hidden" id="new-field-type" value="text">
                   <button id="add-field-btn" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Add</button>
                 </div>
               </div>

@@ -231,8 +231,8 @@ document.addEventListener('DOMContentLoaded', function() {
             profilePathDisplay.classList.add('no-path');
         }
         
-        // Uncheck all permission toggles
-        document.querySelectorAll('.permission-toggle-item input').forEach(cb => cb.checked = false);
+        // Reset all permission checkboxes to checked (default state)
+        document.querySelectorAll('.permission-row input[type="checkbox"]').forEach(cb => cb.checked = true);
     }
     
     function populateForm(clientData) {
@@ -263,7 +263,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
-        // Populate permissions (convert underscore to hyphen for HTML id)
+        // Populate permissions (HTML IDs use underscores)
         const permissionFields = [
             'perm_staff_list', 'perm_staff_add', 'perm_staff_edit', 'perm_staff_delete', 'perm_staff_status',
             'perm_idcard_setting_list', 'perm_idcard_setting_add', 'perm_idcard_setting_edit', 
@@ -278,8 +278,7 @@ document.addEventListener('DOMContentLoaded', function() {
         ];
         
         permissionFields.forEach(field => {
-            const htmlId = field.replace(/_/g, '-');
-            const el = document.getElementById(htmlId);
+            const el = document.getElementById(field);
             if (el && clientData[field] !== undefined) {
                 el.checked = clientData[field];
             }
@@ -300,7 +299,7 @@ document.addEventListener('DOMContentLoaded', function() {
             formData.password = passwordInput.value;
         }
         
-        // Collect permissions
+        // Collect permissions (HTML IDs use underscores)
         const permissionFields = [
             'perm_staff_list', 'perm_staff_add', 'perm_staff_edit', 'perm_staff_delete', 'perm_staff_status',
             'perm_idcard_setting_list', 'perm_idcard_setting_add', 'perm_idcard_setting_edit', 
@@ -315,8 +314,7 @@ document.addEventListener('DOMContentLoaded', function() {
         ];
         
         permissionFields.forEach(field => {
-            const htmlId = field.replace(/_/g, '-');
-            const el = document.getElementById(htmlId);
+            const el = document.getElementById(field);
             if (el) {
                 formData[field] = el.checked;
             }

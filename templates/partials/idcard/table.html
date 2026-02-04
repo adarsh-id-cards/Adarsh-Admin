@@ -1,4 +1,5 @@
 {% load static %}
+{% load custom_filters %}
 <!-- ID Cards Table -->
 <div class="table-wrapper">
     <div class="table-container idcard-table">
@@ -10,7 +11,8 @@
                     </th>
                     <th class="sr-col">Sr No.</th>
                     {% for field in table.fields %}
-                    {% if field.type == 'image' or field.name|lower == 'photo' %}
+                    {% check_image_field field.type field.name as is_img %}
+                    {% if is_img %}
                     <th class="image-col" data-field-name="{{ field.name }}" data-field-type="image">{{ field.name }}</th>
                     {% else %}
                     <th class="dynamic-col" data-field-name="{{ field.name }}" data-field-type="{{ field.type }}">{{ field.name }}</th>
@@ -29,28 +31,24 @@
                     </td>
                     <td class="sr-no-cell">{{ card.sr_no }}</td>
                     {% for field in card.ordered_fields %}
-                        {% if field.type == 'image' or field.name|lower == 'photo' %}
-                        <td class="image-field image-cell" 
+                        {% check_image_field field.type field.name as is_img %}
+                        {% if is_img %}
+                        <td class="image-field image-cell {{ field.name|get_image_class }}" 
                             data-field="{{ field.name }}"
                             data-field-name="{{ field.name }}" 
                             data-field-type="image"
                             data-original-value="{{ field.value }}">
                             <div class="image-with-edit">
-                                {% if field.value and 'PENDING:' in field.value %}
-                                <!-- Image reference exists but waiting for upload via ZIP reupload -->
-                                <div class="no-image pending-image" title="Waiting for image: {{ field.value|slice:'8:' }}">
+                                {% if field.value and field.value != '' and not field.value|slice:":8" == "PENDING:" %}
+                                <!-- Image exists - show it -->
+                                <img src="/media/{{ field.value }}" alt="{{ field.name }}" class="table-image {{ field.name|get_image_class }}" loading="lazy">
+                                {% elif field.value|slice:":8" == "PENDING:" %}
+                                <!-- PENDING image - show waiting placeholder -->
+                                <div class="no-image pending-placeholder" title="Waiting for upload: {{ field.value|slice:'8:' }}">
                                     <i class="fa-solid fa-clock"></i>
-                                    <span class="pending-ref">{{ field.value|slice:'8:' }}</span>
-                                </div>
-                                {% elif field.value and field.value != 'NOT_FOUND' and field.value != '' %}
-                                <img src="/media/{{ field.value }}" alt="{{ field.name }}" class="table-image" loading="lazy">
-                                {% elif field.value == 'NOT_FOUND' %}
-                                <!-- Image name was given but not found in ZIP - grayscale placeholder -->
-                                <div class="no-image passport-placeholder not-found" title="Image not found">
-                                    <i class="fa-solid fa-user-xmark"></i>
                                 </div>
                                 {% else %}
-                                <!-- No image name given - colorful cartoon placeholder -->
+                                <!-- No image - show placeholder -->
                                 <div class="no-image colorful-placeholder" title="No image uploaded">
                                     <i class="fa-solid fa-user-astronaut"></i>
                                 </div>

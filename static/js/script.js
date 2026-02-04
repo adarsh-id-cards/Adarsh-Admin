@@ -218,7 +218,7 @@ function performSearch() {
 // ==========================================
 document.addEventListener('keydown', function(e) {
     // Only respond to 'X' key (not Ctrl+X, Alt+X etc.)
-    if (e.key.toLowerCase() !== 'x' || e.ctrlKey || e.altKey || e.metaKey) return;
+    if (!e.key || typeof e.key !== 'string' || e.key.toLowerCase() !== 'x' || e.ctrlKey || e.altKey || e.metaKey) return;
     
     // Don't trigger if typing in input/textarea
     const activeElement = document.activeElement;

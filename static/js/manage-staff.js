@@ -22,13 +22,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const table = document.getElementById('staff-table');
     const tbody = document.getElementById('staff-table-body');
     
-    // Profile and password elements (used in drawer)
+    // Profile elements (used in drawer)
     const profilePicInput = document.getElementById('profile-input');
     const profilePreview = document.getElementById('profile-preview');
     const profilePathDisplay = document.getElementById('staff-profile-path');
-    const togglePasswordBtn = document.getElementById('toggle-password');
-    const passwordInput = document.getElementById('staff-password');
-    const passwordRequired = document.getElementById('password-required');
     
     let selectedStaffId = null;
     let selectedRow = null;
@@ -164,8 +161,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         const submitBtnText = document.getElementById('submit-btn-text');
-        const passwordField = document.getElementById('staff-password');
-        const passwordWrapper = passwordField ? passwordField.closest('.form-group') : null;
         
         if (mode === 'add') {
             drawerTitle.textContent = 'Add New Staff';
@@ -173,24 +168,12 @@ document.addEventListener('DOMContentLoaded', function() {
             if (submitBtnText) submitBtnText.textContent = 'Add Staff';
             submitBtn.style.display = 'inline-flex';
             enableFormInputs(true);
-            // Password required on add
-            if (passwordField) {
-                passwordField.required = true;
-                passwordField.placeholder = 'Enter password';
-            }
-            if (passwordRequired) passwordRequired.style.display = '';
         } else if (mode === 'edit') {
             drawerTitle.textContent = 'Edit Staff';
             drawerIcon.className = 'fa-solid fa-pen-to-square';
             if (submitBtnText) submitBtnText.textContent = 'Save Changes';
             submitBtn.style.display = 'inline-flex';
             enableFormInputs(true);
-            // Password optional on edit
-            if (passwordField) {
-                passwordField.required = false;
-                passwordField.placeholder = 'Leave blank to keep current';
-            }
-            if (passwordRequired) passwordRequired.style.display = 'none';
             
             if (staffData) {
                 document.getElementById('staff-name').value = staffData.name || '';
@@ -223,8 +206,6 @@ document.addEventListener('DOMContentLoaded', function() {
             drawerIcon.className = 'fa-solid fa-eye';
             submitBtn.style.display = 'none';
             enableFormInputs(false);
-            // Hide password field in view mode
-            if (passwordWrapper) passwordWrapper.style.display = 'none';
             
             if (staffData) {
                 document.getElementById('staff-name').value = staffData.name || '';
@@ -252,11 +233,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (el) el.checked = staffData[apiField] === true;
                 });
             }
-        }
-        
-        // Show password field if not view mode
-        if (mode !== 'view' && passwordWrapper) {
-            passwordWrapper.style.display = '';
         }
         
         staffDrawer.classList.add('open');
@@ -446,8 +422,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 name: document.getElementById('staff-name').value,
                 email: document.getElementById('staff-email').value,
                 phone: document.getElementById('staff-phone').value,
-                address: document.getElementById('staff-address').value,
-                password: document.getElementById('staff-password').value,
+                address: document.getElementById('staff-address')?.value || '',
                 is_active: document.getElementById('staff-status').value === 'true',
             };
             
@@ -500,18 +475,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Close drawer on overlay click
     if (staffDrawerOverlay) {
         staffDrawerOverlay.addEventListener('click', closeDrawer);
-    }
-
-    // ==================== PASSWORD TOGGLE ====================
-    if (togglePasswordBtn && passwordInput) {
-        togglePasswordBtn.addEventListener('click', function() {
-            const type = passwordInput.type === 'password' ? 'text' : 'password';
-            passwordInput.type = type;
-            const icon = this.querySelector('i');
-            if (icon) {
-                icon.className = type === 'password' ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
-            }
-        });
     }
 
     // ==================== SELECT ALL CHECKBOX ====================

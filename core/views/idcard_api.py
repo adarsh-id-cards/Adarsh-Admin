@@ -459,14 +459,44 @@ def api_idcard_list(request, table_id):
         # Apply pagination
         cards = cards_query[offset:offset + limit]
         
+        # Image field detection patterns
+        IMAGE_FIELD_TYPES = ['photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image']
+        IMAGE_FIELD_NAME_PATTERNS = ['photo', 'sign', 'signature', 'barcode', 'qr']
+        
+        def is_image_field_by_name(field_name):
+            if not field_name:
+                return False
+            name_lower = field_name.lower()
+            return any(pattern in name_lower for pattern in IMAGE_FIELD_NAME_PATTERNS)
+        
+        def get_effective_field_type(field):
+            """Get field type - use 'image' if name suggests it's an image field"""
+            field_type = field.get('type', 'text')
+            field_name = field.get('name', '')
+            if field_type in IMAGE_FIELD_TYPES:
+                return field_type
+            if is_image_field_by_name(field_name):
+                return 'image'  # Override to image type
+            return field_type
+        
         card_list = []
         for idx, card in enumerate(cards):
             # Build ordered fields based on table structure
             ordered_fields = []
+            field_data = card.field_data or {}
+            
+            # Create case-insensitive lookup for field_data
+            field_data_normalized = {}
+            for key, value in field_data.items():
+                field_data_normalized[key.upper()] = value
+            
             for field in table.fields:
                 field_name = field['name']
-                field_type = field['type']
-                field_value = card.field_data.get(field_name, '')
+                field_type = get_effective_field_type(field)  # Use effective type
+                # Try exact match first, then case-insensitive match
+                field_value = field_data.get(field_name, '')
+                if not field_value:
+                    field_value = field_data_normalized.get(field_name.upper(), '')
                 ordered_fields.append({
                     'name': field_name,
                     'type': field_type,
@@ -569,10 +599,13 @@ def api_idcard_create(request, table_id):
             field_data = json.loads(field_data_str)
             field_data = uppercase_field_data(field_data)
             
+            # Image field types
+            IMAGE_FIELD_TYPES = ['photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image']
+            
             # Handle image fields from table configuration
             image_counter = 0
             for field in table.fields:
-                if field['type'] == 'image':
+                if field['type'] in IMAGE_FIELD_TYPES:
                     field_name = field['name']
                     file_key = f"image_{field_name}"
                     if file_key in request.FILES:
@@ -704,11 +737,27 @@ def api_idcard_update(request, card_id):
             existing_field_data = card.field_data or {}
             existing_field_data.update(new_field_data)
             
+            # Image field types
+            IMAGE_FIELD_TYPES = ['photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image']
+            
+            # Image field name patterns (for fields with type='text' but are actually images)
+            IMAGE_FIELD_NAME_PATTERNS = ['photo', 'sign', 'signature', 'barcode', 'qr']
+            
+            def is_image_field_by_name(field_name):
+                """Check if field name indicates an image field"""
+                if not field_name:
+                    return False
+                name_lower = field_name.lower()
+                return any(pattern in name_lower for pattern in IMAGE_FIELD_NAME_PATTERNS)
+            
             # Handle image fields from table configuration
             image_counter = 0
             for field in table.fields:
-                if field['type'] == 'image':
-                    field_name = field['name']
+                field_type = field.get('type', '')
+                field_name = field.get('name', '')
+                
+                # Check if it's an image field by type OR by name
+                if field_type in IMAGE_FIELD_TYPES or is_image_field_by_name(field_name):
                     file_key = f"image_{field_name}"
                     if file_key in request.FILES:
                         try:
@@ -758,7 +807,7 @@ def api_idcard_update(request, card_id):
             
             card.field_data = existing_field_data
             
-            # Handle main photo - save to field_data["Photo"] not card.photo
+            # Handle main photo - save to field_data["PHOTO"] (uppercase)
             if 'photo' in request.FILES:
                 try:
                     uploaded_file = request.FILES['photo']
@@ -767,8 +816,8 @@ def api_idcard_update(request, card_id):
                     # Get file extension from uploaded file
                     original_ext = os.path.splitext(uploaded_file.name)[1].lower() or '.jpg'
                     
-                    # Check if there's an existing Photo in field_data
-                    existing_photo_path = existing_field_data.get('Photo', '')
+                    # Check if there's an existing PHOTO in field_data (check both cases)
+                    existing_photo_path = existing_field_data.get('PHOTO', '') or existing_field_data.get('Photo', '')
                     
                     # Generate filename based on whether photo already exists
                     if existing_photo_path and existing_photo_path != 'NOT_FOUND' and existing_photo_path.strip():
@@ -795,7 +844,11 @@ def api_idcard_update(request, card_id):
                     )
                     
                     if success and saved_path:
-                        existing_field_data['Photo'] = saved_path
+                        # Save with UPPERCASE key to match table field names
+                        existing_field_data['PHOTO'] = saved_path
+                        # Remove old Photo key if it exists (lowercase P)
+                        if 'Photo' in existing_field_data and 'Photo' != 'PHOTO':
+                            del existing_field_data['Photo']
                         card.field_data = existing_field_data
                         print(f"Photo updated to: {saved_path}")
                     else:
@@ -1088,68 +1141,126 @@ def api_idcard_bulk_upload(request, table_id):
         file_name = uploaded_file.name.lower()
         file_size = uploaded_file.size
         
-        # Check if ZIP file with photos is also uploaded
-        photos_zip_file = request.FILES.get('photos_zip', None)
-        zip_photos = {}  # Dictionary to map filename (without extension) to image bytes - CASE SENSITIVE
+        # Image field types
+        IMAGE_FIELD_TYPES = ['photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image']
         
-        if photos_zip_file:
+        # Get image field names from table
+        image_field_names = [f['name'] for f in table.fields if f.get('type') in IMAGE_FIELD_TYPES]
+        
+        # Dictionary to store photos from each ZIP: { field_name: { filename: {bytes, ext} } }
+        zip_photos_by_field = {}
+        
+        # Check for multiple ZIP files - one per image field
+        # ZIP files are sent as photos_zip_FIELDNAME
+        zip_field_names_str = request.POST.get('zip_field_names', '[]')
+        try:
+            zip_field_names = json.loads(zip_field_names_str)
+        except:
+            zip_field_names = []
+        
+        print(f"DEBUG: zip_field_names = {zip_field_names}")
+        print(f"DEBUG: request.FILES keys = {list(request.FILES.keys())}")
+        
+        # Process each ZIP file for each image field
+        for field_name in zip_field_names:
+            zip_key = f'photos_zip_{field_name}'
+            if zip_key in request.FILES:
+                photos_zip_file = request.FILES[zip_key]
+                zip_photos_by_field[field_name] = {}
+                
+                try:
+                    zip_content = photos_zip_file.read()
+                    with zipfile.ZipFile(BytesIO(zip_content), 'r') as zf:
+                        for zip_info in zf.infolist():
+                            if zip_info.is_dir():
+                                continue
+                            
+                            file_in_zip = zip_info.filename
+                            base_name = os.path.basename(file_in_zip)
+                            name_without_ext = os.path.splitext(base_name)[0]
+                            ext = os.path.splitext(base_name)[1].lower()
+                            
+                            if ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']:
+                                try:
+                                    image_bytes = zf.read(zip_info.filename)
+                                    is_valid, error_msg = validate_image_bytes(image_bytes)
+                                    if is_valid:
+                                        # Store with UPPERCASE key for case-insensitive matching
+                                        zip_photos_by_field[field_name][name_without_ext.upper()] = {
+                                            'bytes': image_bytes,
+                                            'ext': ext
+                                        }
+                                except Exception as img_read_err:
+                                    continue
+                except Exception as zip_error:
+                    print(f"DEBUG: ZIP error for {field_name}: {zip_error}")
+        
+        print(f"DEBUG: zip_photos_by_field keys = {list(zip_photos_by_field.keys())}")
+        for k, v in zip_photos_by_field.items():
+            print(f"DEBUG: Field '{k}' has {len(v)} photos, first few keys: {list(v.keys())[:5]}")
+        
+        # Legacy: Also check for single photos_zip (backward compatibility)
+        if not zip_photos_by_field and 'photos_zip' in request.FILES:
+            photos_zip_file = request.FILES['photos_zip']
+            # Assign to first image field
+            first_image_field = image_field_names[0] if image_field_names else 'PHOTO'
+            zip_photos_by_field[first_image_field] = {}
+            
             try:
                 zip_content = photos_zip_file.read()
                 with zipfile.ZipFile(BytesIO(zip_content), 'r') as zf:
                     for zip_info in zf.infolist():
-                        # Skip directories
                         if zip_info.is_dir():
                             continue
                         
                         file_in_zip = zip_info.filename
-                        # Get filename without path and extension
                         base_name = os.path.basename(file_in_zip)
-                        # CASE SENSITIVE - keep original case, no extension
                         name_without_ext = os.path.splitext(base_name)[0]
                         ext = os.path.splitext(base_name)[1].lower()
                         
-                        # Only process image files
                         if ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']:
                             try:
                                 image_bytes = zf.read(zip_info.filename)
-                                
-                                # Validate image before storing
                                 is_valid, error_msg = validate_image_bytes(image_bytes)
                                 if is_valid:
-                                    zip_photos[name_without_ext] = {
+                                    # Store with UPPERCASE key for case-insensitive matching
+                                    zip_photos_by_field[first_image_field][name_without_ext.upper()] = {
                                         'bytes': image_bytes,
                                         'ext': ext
                                     }
-                                else:
-                                    print(f"Invalid image skipped in ZIP: {base_name} - {error_msg}")
                             except Exception as img_read_err:
-                                print(f"Error reading image from ZIP: {base_name} - {img_read_err}")
                                 continue
             except Exception as zip_error:
-                # Continue without photos - don't fail the entire upload
                 pass
         
         # Get client for image folder path
         client = table.group.client
         client_image_folder = get_client_image_folder(client)
         
+        # Image field types that should be excluded from text matching
+        IMAGE_FIELD_TYPES = ['photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image']
+        
+        # Image field name patterns (detect by name when type not set correctly)
+        IMAGE_FIELD_NAME_PATTERNS = ['photo', 'sign', 'signature', 'barcode', 'qr']
+        
+        def is_image_field_by_name(field_name):
+            """Check if field name suggests it's an image field"""
+            if not field_name:
+                return False
+            name_lower = field_name.lower()
+            return any(pattern in name_lower for pattern in IMAGE_FIELD_NAME_PATTERNS)
+        
+        def is_image_field(field):
+            """Check if field is an image field by type OR name"""
+            return field.get('type') in IMAGE_FIELD_TYPES or is_image_field_by_name(field.get('name', ''))
+        
         # Get all table fields (text fields for matching, image fields to include with empty values)
         all_table_fields = table.fields
-        table_fields = [f['name'] for f in all_table_fields if f.get('type') != 'image']
-        image_fields = [f['name'] for f in all_table_fields if f.get('type') == 'image']
+        table_fields = [f['name'] for f in all_table_fields if not is_image_field(f)]
+        image_fields = [f['name'] for f in all_table_fields if is_image_field(f)]
         
-        # Also check if there's a PHOTO field (even if not marked as image type)
-        # This allows matching ZIP photos to a PHOTO column
-        photo_field_name = None
-        for f in all_table_fields:
-            if f['name'].upper() == 'PHOTO':
-                photo_field_name = f['name']
-                if photo_field_name not in image_fields:
-                    image_fields.append(photo_field_name)
-                # Remove from table_fields if present (we'll handle it as image)
-                if photo_field_name in table_fields:
-                    table_fields.remove(photo_field_name)
-                break
+        print(f"DEBUG: table_fields = {table_fields}")
+        print(f"DEBUG: image_fields = {image_fields}")
         
         # Helper function to normalize field names for comparison
         def normalize_name(name):
@@ -1301,21 +1412,32 @@ def api_idcard_bulk_upload(request, table_id):
             
             for idx, header in enumerate(headers):
                 header_upper = header.upper() if header else ''
+                header_lower = header.lower() if header else ''
                 
-                # Check if this is a PHOTO column (generic image reference)
-                if header_upper == 'PHOTO':
-                    photo_column_idx = idx
-                    # Assign PHOTO column to first image field if not already assigned
-                    if image_fields and image_fields[0] not in image_ref_columns:
-                        image_ref_columns[image_fields[0]] = idx
-                    continue  # Skip text field matching for PHOTO column
-                
-                # Check if this column matches any image field name exactly
+                # Check if this header matches any image field by name or is an image column
                 is_image_ref = False
+                matched_img_field = None
+                
                 for img_field in image_fields:
-                    if header_upper == img_field.upper():
+                    img_field_upper = img_field.upper()
+                    img_field_lower = img_field.lower()
+                    
+                    # Exact match
+                    if header_upper == img_field_upper:
                         image_ref_columns[img_field] = idx
                         is_image_ref = True
+                        matched_img_field = img_field
+                        break
+                    
+                    # Fuzzy match for image fields (e.g., "F PHOTO" -> "F PHOTO" field)
+                    # Normalize both for comparison
+                    header_normalized = normalize_name(header)
+                    field_normalized = normalize_name(img_field)
+                    
+                    if header_normalized == field_normalized:
+                        image_ref_columns[img_field] = idx
+                        is_image_ref = True
+                        matched_img_field = img_field
                         break
                 
                 # Skip this column for text field matching if it's an image reference column
@@ -1327,6 +1449,9 @@ def api_idcard_bulk_upload(request, table_id):
                     header_to_field[idx] = match
                     available_fields.remove(match)  # Don't match same field twice
                     matched_field_names.append(match)
+            
+            print(f"DEBUG: image_ref_columns = {image_ref_columns}")
+            print(f"DEBUG: header_to_field = {header_to_field}")
             
             if not header_to_field:
                 return JsonResponse({
@@ -1394,9 +1519,8 @@ def api_idcard_bulk_upload(request, table_id):
                             col_idx = image_ref_columns[img_field]
                             if col_idx < len(row):
                                 cell_value = row[col_idx]
-                                if cell_value is not None:
+                                if cell_value is not None and str(cell_value).strip() and str(cell_value).strip().lower() != 'none':
                                     # Handle numeric values - convert float 1.0 to "1"
-                                    # CASE SENSITIVE - do NOT convert to uppercase
                                     if isinstance(cell_value, float) and cell_value == int(cell_value):
                                         photo_column_value = str(int(cell_value))
                                     elif isinstance(cell_value, int):
@@ -1425,16 +1549,26 @@ def api_idcard_bulk_upload(request, table_id):
                                         photo_column_value = str(cell_value).strip()
                         
                         # Try to match photo from ZIP - CASE SENSITIVE match
-                        if photo_column_value and zip_photos and photo_column_value in zip_photos:
+                        # Check if this specific field has ZIP photos
+                        field_zip_photos = zip_photos_by_field.get(img_field, {})
+                        
+                        # Normalize photo_column_value to uppercase for case-insensitive matching
+                        photo_key = photo_column_value.upper() if photo_column_value else None
+                        
+                        # Debug first few rows
+                        if row_num <= 5:
+                            print(f"DEBUG Row {row_num}: img_field='{img_field}', photo_key='{photo_key}', field_zip_photos_keys={list(field_zip_photos.keys())[:5] if field_zip_photos else 'EMPTY'}")
+                        
+                        if photo_key and field_zip_photos and photo_key in field_zip_photos:
                             try:
-                                photo_info = zip_photos[photo_column_value]
+                                photo_info = field_zip_photos[photo_key]
                                 
                                 # Generate new filename with 14-digit timestamp + batch counter
                                 cards_created += 1  # Increment before for 1-based counter
                                 original_ext = photo_info['ext']
                                 new_filename = generate_image_filename(cards_created, original_ext)
                                 
-                                # Use client's unique folder: id_card_images/{client_uuid}/
+                                # Use client's unique folder: adarshimg/{client_code}/
                                 file_path = f"{client_image_folder}/{new_filename}"
                                 
                                 # Save the image with error handling
@@ -1444,22 +1578,29 @@ def api_idcard_bulk_upload(request, table_id):
                                 )
                                 
                                 if success and saved_path:
+                                    # Store the relative path for media serving
                                     field_data[img_field] = saved_path
                                     photos_matched += 1
                                     total_photos_matched += 1
                                 else:
-                                    field_data[img_field] = 'NOT_FOUND'  # Save failed
+                                    # Save failed - show placeholder
+                                    field_data[img_field] = ''
                                 cards_created -= 1  # Revert since we incremented early
                             except Exception as photo_error:
                                 # Log but don't break the whole process
                                 print(f"Error saving photo (XLSX) for {photo_column_value}: {photo_error}")
-                                field_data[img_field] = f'PENDING:{photo_column_value}'  # Store reference for later
-                        elif photo_column_value:
-                            # Value given but image not found in ZIP - store reference for reupload matching
-                            field_data[img_field] = f'PENDING:{photo_column_value}'
+                                # Save as PENDING so it can be reuploaded later
+                                if photo_column_value:
+                                    field_data[img_field] = f'PENDING:{photo_column_value}'
+                                else:
+                                    field_data[img_field] = ''
                         else:
-                            # No value given at all - show colorful placeholder
-                            field_data[img_field] = ''
+                            # No image in ZIP but has reference value - save as PENDING for later reupload
+                            if photo_column_value:
+                                field_data[img_field] = f'PENDING:{photo_column_value}'
+                            else:
+                                # No reference value at all - empty field
+                                field_data[img_field] = ''
                     
                     # Create the card
                     IDCard.objects.create(
@@ -1559,17 +1700,23 @@ def api_idcard_bulk_upload(request, table_id):
                                         photo_column_value = str(cell_value).strip()
                                     break
                         
-                        # Try to match photo from ZIP - CASE SENSITIVE match
-                        if photo_column_value and zip_photos and photo_column_value in zip_photos:
+                        # Try to match photo from ZIP - CASE INSENSITIVE match
+                        # Check if this specific field has ZIP photos
+                        field_zip_photos = zip_photos_by_field.get(img_field, {})
+                        
+                        # Normalize photo_column_value to uppercase for case-insensitive matching
+                        photo_key = photo_column_value.upper() if photo_column_value else None
+                        
+                        if photo_key and field_zip_photos and photo_key in field_zip_photos:
                             try:
-                                photo_info = zip_photos[photo_column_value]
+                                photo_info = field_zip_photos[photo_key]
                                 
                                 # Generate new filename with 14-digit timestamp + batch counter
                                 cards_created += 1  # Increment before for 1-based counter
                                 original_ext = photo_info['ext']
                                 new_filename = generate_image_filename(cards_created, original_ext)
                                 
-                                # Use client's unique folder: id_card_images/{client_uuid}/
+                                # Use client's unique folder: adarshimg/{client_code}/
                                 file_path = f"{client_image_folder}/{new_filename}"
                                 
                                 # Save the image with error handling
@@ -1579,22 +1726,29 @@ def api_idcard_bulk_upload(request, table_id):
                                 )
                                 
                                 if success and saved_path:
+                                    # Store the relative path for media serving
                                     field_data[img_field] = saved_path
                                     photos_matched += 1
                                     total_photos_matched += 1
                                 else:
-                                    field_data[img_field] = f'PENDING:{photo_column_value}'  # Save failed, store reference
+                                    # Save failed - show placeholder
+                                    field_data[img_field] = ''
                                 cards_created -= 1  # Revert since we incremented early
                             except Exception as photo_error:
                                 # Log but don't break the whole process
                                 print(f"Error saving photo (CSV) for {photo_column_value}: {photo_error}")
-                                field_data[img_field] = f'PENDING:{photo_column_value}'  # Store reference for later
-                        elif photo_column_value:
-                            # Value given but image not found in ZIP - store reference for reupload matching
-                            field_data[img_field] = f'PENDING:{photo_column_value}'
+                                # Save as PENDING so it can be reuploaded later
+                                if photo_column_value:
+                                    field_data[img_field] = f'PENDING:{photo_column_value}'
+                                else:
+                                    field_data[img_field] = ''
                         else:
-                            # No value given at all - show colorful placeholder
-                            field_data[img_field] = ''
+                            # No image in ZIP but has reference value - save as PENDING for later reupload
+                            if photo_column_value:
+                                field_data[img_field] = f'PENDING:{photo_column_value}'
+                            else:
+                                # No reference value at all - empty field
+                                field_data[img_field] = ''
                     
                     # Create the card
                     IDCard.objects.create(
@@ -1642,13 +1796,13 @@ def api_idcard_bulk_upload(request, table_id):
 @require_http_methods(["POST"])
 @api_super_admin_required
 def api_idcard_download_images(request, table_id):
-    """API endpoint to download images as ZIP for selected cards"""
+    """API endpoint to download images as separate ZIP files for each image column"""
     try:
         import zipfile
         import os
+        import base64
         from io import BytesIO
         from datetime import datetime
-        from django.http import HttpResponse
         from django.core.files.storage import default_storage
         
         table = get_object_or_404(IDCardTable, id=table_id)
@@ -1666,25 +1820,42 @@ def api_idcard_download_images(request, table_id):
         # Generate timestamp for filenames (format: YYYYMMDD_HHMMSS)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         
-        # Get image field names from table config
-        image_fields = [f['name'] for f in table.fields if f.get('type') == 'image']
+        # Image field types
+        IMAGE_FIELD_TYPES = ['photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image']
         
-        # Also check for PHOTO field
+        # Image field name patterns (for fields saved as 'text' type but are actually images)
+        IMAGE_FIELD_NAME_PATTERNS = ['photo', 'sign', 'signature', 'barcode', 'qr']
+        
+        def is_image_field_by_name(field_name):
+            """Check if a field is an image field by its name pattern"""
+            name_lower = field_name.lower()
+            return any(pattern in name_lower for pattern in IMAGE_FIELD_NAME_PATTERNS)
+        
+        # Get image field names from table config (both by type and by name)
+        image_fields = []
         for f in table.fields:
-            if f['name'].upper() == 'PHOTO' and f['name'] not in image_fields:
-                image_fields.append(f['name'])
+            field_name = f['name']
+            field_type = f.get('type', 'text')
+            
+            # Add if type is image type OR if name contains image patterns
+            if field_type in IMAGE_FIELD_TYPES or is_image_field_by_name(field_name):
+                if field_name not in image_fields:
+                    image_fields.append(field_name)
         
-        # Create ZIP file in memory
-        zip_buffer = BytesIO()
-        images_added = 0
-        images_skipped = 0
+        if not image_fields:
+            return JsonResponse({'success': False, 'message': 'No image fields found in this table!'}, status=400)
         
-        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
-            for card in cards:
-                field_data = card.field_data or {}
-                
-                # Check all image fields
-                for img_field in image_fields:
+        # Create separate ZIPs for each image field
+        zip_files = []
+        total_images = 0
+        
+        for img_field in image_fields:
+            zip_buffer = BytesIO()
+            images_in_field = 0
+            
+            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+                for card in cards:
+                    field_data = card.field_data or {}
                     img_path = field_data.get(img_field, '')
                     
                     if img_path and img_path != 'NOT_FOUND' and img_path.strip():
@@ -1696,37 +1867,64 @@ def api_idcard_download_images(request, table_id):
                                     
                                     # Validate image before adding to ZIP
                                     if img_data and len(img_data) >= 100:
-                                        # Use the stored filename (already renamed with timestamp format)
+                                        # Use the stored filename
                                         download_filename = os.path.basename(img_path)
                                         
                                         # Add to ZIP with the filename
                                         zf.writestr(download_filename, img_data)
-                                        images_added += 1
-                                    else:
-                                        images_skipped += 1
-                                        print(f"Skipping empty/small image: {img_path}")
-                            else:
-                                images_skipped += 1
+                                        images_in_field += 1
                         except Exception as e:
-                            # Skip this image if error but continue with others
-                            images_skipped += 1
                             print(f"Error downloading image {img_path}: {e}")
                             continue
+            
+            # Only add ZIP if it has images
+            if images_in_field > 0:
+                zip_buffer.seek(0)
+                zip_data = zip_buffer.getvalue()
+                
+                # Create readable field name for filename
+                def get_readable_field_name(field_name):
+                    """Convert field name to readable format for filename"""
+                    name_upper = field_name.upper().strip()
+                    # Expand short prefixes to full names
+                    if name_upper == 'F PHOTO':
+                        return 'FATHER_PHOTO'
+                    elif name_upper == 'M PHOTO':
+                        return 'MOTHER_PHOTO'
+                    elif name_upper == 'SIGN':
+                        return 'SIGNATURE'
+                    else:
+                        # Replace spaces with underscores
+                        return name_upper.replace(' ', '_')
+                
+                # Clean the table name (remove special chars, keep alphanumeric and spaces)
+                import re
+                clean_table_name = re.sub(r'[^\w\s-]', '', table.name).strip().replace(' ', '_')
+                clean_field_name = get_readable_field_name(img_field)
+                
+                # Create ZIP filename: TableName_FieldName_Timestamp.zip
+                zip_filename = f"{clean_table_name}_{clean_field_name}_{timestamp}.zip"
+                
+                # Encode ZIP as base64 for JSON response
+                zip_base64 = base64.b64encode(zip_data).decode('utf-8')
+                
+                zip_files.append({
+                    'field_name': img_field,
+                    'filename': zip_filename,
+                    'data': zip_base64,
+                    'image_count': images_in_field
+                })
+                total_images += images_in_field
         
-        if images_added == 0:
+        if not zip_files:
             return JsonResponse({'success': False, 'message': 'No images found for selected cards!'}, status=400)
         
-        # Create response with ZIP file
-        zip_buffer.seek(0)
-        
-        # Create ZIP filename with table name and timestamp
-        zip_filename = f"{table.name}_{timestamp}_images.zip"
-        
-        response = HttpResponse(zip_buffer.getvalue(), content_type='application/zip')
-        response['Content-Disposition'] = f'attachment; filename="{zip_filename}"'
-        response['Content-Length'] = len(zip_buffer.getvalue())
-        
-        return response
+        return JsonResponse({
+            'success': True,
+            'zip_files': zip_files,
+            'total_images': total_images,
+            'total_zips': len(zip_files)
+        })
         
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON data!'}, status=400)
@@ -1740,9 +1938,8 @@ def api_idcard_download_images(request, table_id):
 def api_idcard_reupload_images(request, table_id):
     """
     API endpoint to reupload images from a ZIP file.
-    Matches ZIP filenames (without extension) to the current stored filename on each IDCard.
-    On match, saves new image with versioned filename (adds _XXXXXX suffix) in client's UUID folder.
-    Uses CASE SENSITIVE matching.
+    Matches ZIP filenames to the current stored filename for each image field.
+    Supports multiple image columns (PHOTO, F PHOTO, M PHOTO, SIGN, etc.)
     """
     try:
         import zipfile
@@ -1773,7 +1970,6 @@ def api_idcard_reupload_images(request, table_id):
         else:
             cards = IDCard.objects.filter(table=table).order_by('id')
         
-        # Get all cards - match by current stored filename
         cards_to_process = list(cards)
         
         if not cards_to_process:
@@ -1782,18 +1978,31 @@ def api_idcard_reupload_images(request, table_id):
                 'message': 'No cards found to process!'
             }, status=400)
         
-        # Get image field names from table config
-        image_fields = [f['name'] for f in table.fields if f.get('type') == 'image']
+        # Image field types and name patterns
+        IMAGE_FIELD_TYPES = ['photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image']
+        IMAGE_FIELD_NAME_PATTERNS = ['photo', 'sign', 'signature', 'barcode', 'qr']
+        
+        def is_image_field_by_name(field_name):
+            if not field_name:
+                return False
+            name_lower = field_name.lower()
+            return any(pattern in name_lower for pattern in IMAGE_FIELD_NAME_PATTERNS)
+        
+        # Get all image field names from table config (by type OR by name)
+        image_fields = []
         for f in table.fields:
-            if f['name'].upper() == 'PHOTO' and f['name'] not in image_fields:
-                image_fields.append(f['name'])
+            field_name = f['name']
+            field_type = f.get('type', 'text')
+            if field_type in IMAGE_FIELD_TYPES or is_image_field_by_name(field_name):
+                if field_name not in image_fields:
+                    image_fields.append(field_name)
         
         if not image_fields:
             return JsonResponse({'success': False, 'message': 'No image fields configured in this table!'}, status=400)
         
-        # Read ZIP file and extract image data - CASE SENSITIVE keys
+        # Read ZIP file and extract image data
         zip_file = request.FILES['zip_file']
-        zip_photos = {}  # Map: filename_without_ext (CASE SENSITIVE) -> {bytes, ext, original_name}
+        zip_photos = {}  # Map: filename_without_ext -> {bytes, ext, original_name}
         invalid_images = 0
         
         try:
@@ -1805,7 +2014,7 @@ def api_idcard_reupload_images(request, table_id):
                     
                     file_in_zip = zip_info.filename
                     base_name = os.path.basename(file_in_zip)
-                    name_without_ext = os.path.splitext(base_name)[0]  # CASE SENSITIVE - no .upper()
+                    name_without_ext = os.path.splitext(base_name)[0]
                     ext = os.path.splitext(base_name)[1].lower()
                     
                     # Only process image files
@@ -1832,132 +2041,102 @@ def api_idcard_reupload_images(request, table_id):
             return JsonResponse({'success': False, 'message': f'Error reading ZIP file: {str(zip_error)}'}, status=400)
         
         if not zip_photos:
-            return JsonResponse({'success': False, 'message': 'No images found in the ZIP file!'}, status=400)
+            return JsonResponse({'success': False, 'message': 'No valid images found in the ZIP file!'}, status=400)
         
-        # Process cards and match images using multiple matching strategies
-        # Strategy 1: Match by original PHOTO column value (e.g., "1", "john", "student_001")
-        # Strategy 2: Match by current stored filename (e.g., "20260203145230_001")
+        # Process cards and match images
         images_matched = 0
         images_not_matched = 0
         cards_updated = 0
-        batch_counter = 0  # Counter for this reupload batch
+        batch_counter = 0
         
         for card in cards_to_process:
             field_data = card.field_data or {}
             card_updated = False
             
-            # Collect all possible matching keys for this card
-            matching_keys = []
-            existing_image_path = None
-            pending_reference = None  # Store the PENDING: reference if found
-            
+            # Process each image field separately
             for img_field in image_fields:
                 current_value = field_data.get(img_field, '')
                 
-                # Check for PENDING: prefix (image reference waiting for upload)
-                if current_value and current_value.startswith('PENDING:'):
-                    pending_reference = current_value[8:]  # Extract the reference after "PENDING:"
+                # Skip empty fields
+                if not current_value or current_value.strip() == '':
+                    continue
+                
+                # Build matching keys for this specific field
+                matching_keys = []
+                existing_image_path = None
+                
+                # Check for PENDING: prefix
+                if current_value.startswith('PENDING:'):
+                    pending_ref = current_value[8:]
                     existing_image_path = 'PENDING'
-                    # Add the pending reference as a matching key
-                    if pending_reference:
-                        # Remove extension if present for matching
-                        ref_no_ext = os.path.splitext(pending_reference)[0] if '.' in pending_reference else pending_reference
-                        if ref_no_ext and ref_no_ext not in matching_keys:
-                            matching_keys.append(ref_no_ext)
-                        # Also add with extension
-                        if pending_reference and pending_reference not in matching_keys:
-                            matching_keys.append(pending_reference)
-                elif current_value and current_value not in ['NOT_FOUND', '']:
-                    existing_image_path = current_value
-                    # Strategy 2: Add current stored filename (without extension)
-                    stored_filename = os.path.splitext(os.path.basename(current_value))[0]
-                    if stored_filename and stored_filename not in matching_keys:
-                        matching_keys.append(stored_filename)
+                    ref_no_ext = os.path.splitext(pending_ref)[0] if '.' in pending_ref else pending_ref
+                    if ref_no_ext:
+                        matching_keys.append(ref_no_ext)
+                    if pending_ref:
+                        matching_keys.append(pending_ref)
                 elif current_value == 'NOT_FOUND':
-                    # Legacy: Card has a PHOTO reference but image wasn't found during upload
                     existing_image_path = 'NOT_FOUND'
-            
-            # Strategy 3: Try matching by any text field that looks like a photo reference
-            # (useful when PHOTO column had values like "1", "2", "john", etc.)
-            for field in table.fields:
-                if field['name'].upper() == 'PHOTO' or field.get('type') == 'image':
-                    photo_ref = field_data.get(field['name'], '')
-                    # Check for PENDING: prefix
-                    if photo_ref and photo_ref.startswith('PENDING:'):
-                        ref_value = photo_ref[8:]
-                        ref_no_ext = os.path.splitext(ref_value)[0] if '.' in ref_value else ref_value
-                        if ref_no_ext and ref_no_ext not in matching_keys:
-                            matching_keys.append(ref_no_ext)
-                    elif photo_ref and photo_ref != 'NOT_FOUND':
-                        if '/' in photo_ref:
-                            # It's a path - extract filename without extension
-                            ref_name = os.path.splitext(os.path.basename(photo_ref))[0]
-                        else:
-                            # It's a direct reference (like "1" or "john")
-                            ref_name = os.path.splitext(photo_ref)[0] if '.' in photo_ref else photo_ref
-                        if ref_name and ref_name not in matching_keys:
-                            matching_keys.append(ref_name)
-            
-            # Strategy 4: Match by card ID as fallback
-            card_id_str = str(card.id)
-            if card_id_str not in matching_keys:
-                matching_keys.append(card_id_str)
-            
-            # Try to find a match in the ZIP photos using any of the matching keys
-            matched_photo_info = None
-            matched_key = None
-            for key in matching_keys:
-                if key in zip_photos:
-                    matched_photo_info = zip_photos[key]
-                    matched_key = key
-                    break
-            
-            if matched_photo_info:
-                try:
-                    photo_info = matched_photo_info
-                    batch_counter += 1
-                    
-                    # Generate filename based on whether there's an existing valid image
-                    # PENDING and NOT_FOUND mean no actual image file exists yet
-                    if existing_image_path and existing_image_path not in ['NOT_FOUND', 'PENDING', '']:
-                        # UPDATE: Keep original 13-digit timestamp, add new 6-digit HHMMSS (20 digits total)
-                        new_filename = generate_updated_image_filename(existing_image_path, photo_info['ext'])
+                elif '/' in current_value:
+                    # It's a path - extract filename without extension
+                    existing_image_path = current_value
+                    stored_filename = os.path.splitext(os.path.basename(current_value))[0]
+                    if stored_filename:
+                        matching_keys.append(stored_filename)
+                else:
+                    # Direct reference (like "1" or "john")
+                    ref_name = os.path.splitext(current_value)[0] if '.' in current_value else current_value
+                    if ref_name:
+                        matching_keys.append(ref_name)
+                
+                # Try to find a match in the ZIP photos
+                matched_photo_info = None
+                for key in matching_keys:
+                    if key in zip_photos:
+                        matched_photo_info = zip_photos[key]
+                        break
+                
+                if matched_photo_info:
+                    try:
+                        batch_counter += 1
+                        photo_info = matched_photo_info
                         
-                        # Delete old image file before saving new one
-                        try:
-                            if default_storage.exists(existing_image_path):
-                                default_storage.delete(existing_image_path)
-                                print(f"Deleted old image during reupload: {existing_image_path}")
-                        except Exception as del_err:
-                            print(f"Warning: Could not delete old image {existing_image_path}: {del_err}")
-                    else:
-                        # FIRST UPLOAD (was PENDING/NOT_FOUND/empty): Generate fresh 13-digit filename
-                        new_filename = generate_image_filename(batch_counter, photo_info['ext'])
-                    
-                    # Save to client's UUID folder
-                    file_path = f"{client_image_folder}/{new_filename}"
-                    
-                    saved_path, renamed, success = safe_save_image(
-                        default_storage, file_path, ContentFile(photo_info['bytes']),
-                        fallback_name=f"reupload_fallback_{int(time.time())}{photo_info['ext']}"
-                    )
-                    
-                    if success and saved_path:
-                        # Update field_data with new path for ALL image fields
-                        for img_field in image_fields:
-                            # Update all image fields (whether empty, NOT_FOUND, or has existing image)
+                        # Generate filename
+                        if existing_image_path and existing_image_path not in ['NOT_FOUND', 'PENDING', '']:
+                            # UPDATE: Keep original timestamp, add new suffix
+                            new_filename = generate_updated_image_filename(existing_image_path, photo_info['ext'])
+                            
+                            # Delete old image file
+                            try:
+                                if default_storage.exists(existing_image_path):
+                                    default_storage.delete(existing_image_path)
+                                    print(f"Deleted old image during reupload: {existing_image_path}")
+                            except Exception as del_err:
+                                print(f"Warning: Could not delete old image {existing_image_path}: {del_err}")
+                        else:
+                            # FIRST UPLOAD: Generate fresh filename
+                            new_filename = generate_image_filename(batch_counter, photo_info['ext'])
+                        
+                        # Save to client's UUID folder
+                        file_path = f"{client_image_folder}/{new_filename}"
+                        
+                        saved_path, renamed, success = safe_save_image(
+                            default_storage, file_path, ContentFile(photo_info['bytes']),
+                            fallback_name=f"reupload_{int(time.time())}_{batch_counter}{photo_info['ext']}"
+                        )
+                        
+                        if success and saved_path:
+                            # Update ONLY this specific field
                             field_data[img_field] = saved_path
                             card_updated = True
-                        
-                        images_matched += 1
-                    else:
-                        print(f"Warning: Could not save reuploaded image for card {card.id}")
-                except Exception as save_error:
-                    # Log but don't break the whole process
-                    print(f"Error saving reuploaded image for card {card.id}: {save_error}")
-                    continue
-            else:
-                images_not_matched += 1
+                            images_matched += 1
+                        else:
+                            print(f"Warning: Could not save reuploaded image for card {card.id}, field {img_field}")
+                    except Exception as save_error:
+                        print(f"Error saving reuploaded image for card {card.id}, field {img_field}: {save_error}")
+                        continue
+                else:
+                    if matching_keys:  # Only count as not matched if there was something to match
+                        images_not_matched += 1
             
             if card_updated:
                 card.field_data = field_data
@@ -1968,7 +2147,7 @@ def api_idcard_reupload_images(request, table_id):
             invalid_msg = f" ({invalid_images} invalid images skipped)" if invalid_images > 0 else ""
             return JsonResponse({
                 'success': False, 
-                'message': f'No matching images found! ZIP contains {len(zip_photos)} valid images{invalid_msg} but none matched the stored photo references (case-sensitive).'
+                'message': f'No matching images found! ZIP contains {len(zip_photos)} valid images{invalid_msg} but none matched the stored filenames.'
             }, status=400)
         
         invalid_msg = f" ({invalid_images} invalid images skipped)" if invalid_images > 0 else ""
@@ -2025,11 +2204,14 @@ def api_idcard_download_docx(request, table_id):
         # Each field has: name, type, is_image flag
         text_fields = []
         image_fields = []
+        # Image field types
+        IMAGE_FIELD_TYPES = ['photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image']
+        
         for f in table_fields:
             field_name = f['name']
             field_type = f.get('type', 'text')
             # Check if it's an image field
-            is_image = (field_type == 'image' or field_name.upper() in ['PHOTO', 'SIGNATURE', 'IMAGE', 'PIC', 'PICTURE', 'SIGN'])
+            is_image = (field_type in IMAGE_FIELD_TYPES or field_name.upper() in ['PHOTO', 'SIGNATURE', 'IMAGE', 'PIC', 'PICTURE', 'SIGN'])
             field_info = {
                 'name': field_name,
                 'type': field_type,
@@ -2610,14 +2792,17 @@ def api_idcard_download_xlsx(request, table_id):
         # Get table fields
         table_fields = table.fields or []
         
+        # Image field types
+        IMAGE_FIELD_TYPES = ['photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image']
+        
         # Separate text fields (exclude image fields for Excel)
         text_fields = []
         for f in table_fields:
             field_name = f['name'].upper()
             # Skip image fields
-            if field_name in ['PHOTO', 'SIGNATURE', 'IMAGE', 'PIC', 'PICTURE', 'SIGN']:
+            if field_name in ['PHOTO', 'SIGNATURE', 'IMAGE', 'PIC', 'PICTURE', 'SIGN', 'MOTHER PHOTO', 'FATHER PHOTO', 'M PHOTO', 'F PHOTO', 'BARCODE', 'QR CODE', 'QR']:
                 continue
-            if f.get('type', 'text') == 'image':
+            if f.get('type', 'text') in IMAGE_FIELD_TYPES:
                 continue
             text_fields.append(f)
         

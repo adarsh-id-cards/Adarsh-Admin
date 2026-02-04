@@ -59,23 +59,14 @@ Contains: Side drawer for adding/editing staff with form fields and permissions
                     <div class="form-group">
                         <label for="staff-phone">Phone <span class="required">*</span></label>
                         <input type="tel" id="staff-phone" name="phone" placeholder="Enter phone number" required>
+                        <small class="field-hint" style="color: #6b7280; font-size: 11px;">This will be used as password</small>
                     </div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="staff-address">Address <span class="required">*</span></label>
-                    <textarea id="staff-address" name="address" rows="2" placeholder="Enter address" required></textarea>
                 </div>
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="staff-password">Password <span class="required" id="password-required">*</span></label>
-                        <div class="password-input-wrapper">
-                            <input type="password" id="staff-password" name="password" placeholder="Enter password">
-                            <button type="button" class="password-toggle" id="toggle-password">
-                                <i class="fa-solid fa-eye"></i>
-                            </button>
-                        </div>
+                        <label for="staff-address">Address</label>
+                        <textarea id="staff-address" name="address" rows="2" placeholder="Enter address (optional)"></textarea>
                     </div>
                     <div class="form-group">
                         <label for="staff-status">Status</label>

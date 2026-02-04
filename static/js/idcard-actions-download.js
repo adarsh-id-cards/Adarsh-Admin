@@ -2,7 +2,7 @@
 // Contains: Download images, DOCX, XLSX, reupload images
 
 // ==========================================
-// DOWNLOAD IMAGES
+// DOWNLOAD IMAGES (Separate ZIP per image column)
 // ==========================================
 
 function downloadImages(cardIds) {
@@ -23,53 +23,79 @@ function downloadImages(cardIds) {
     xhr.open('POST', `/api/table/${tableId}/cards/download-images/`, true);
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.setRequestHeader('X-CSRFToken', typeof getCSRFToken === 'function' ? getCSRFToken() : '');
-    xhr.responseType = 'blob';
-    
-    xhr.onprogress = function(event) {
-        if (event.lengthComputable) {
-            const percentComplete = Math.round((event.loaded / event.total) * 100);
-            if (typeof showProgressToast === 'function') showProgressToast(`Downloading... ${percentComplete}%`, percentComplete);
-        } else {
-            if (typeof showProgressToast === 'function') showProgressToast('Downloading...', -1);
-        }
-    };
     
     xhr.onload = function() {
         if (xhr.status === 200) {
-            const blob = xhr.response;
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            
-            const now = new Date();
-            const timestamp = now.getFullYear().toString() + 
-                             (now.getMonth() + 1).toString().padStart(2, '0') + 
-                             now.getDate().toString().padStart(2, '0') + '_' +
-                             now.getHours().toString().padStart(2, '0') + 
-                             now.getMinutes().toString().padStart(2, '0') + 
-                             now.getSeconds().toString().padStart(2, '0');
-            a.download = `images_${timestamp}.zip`;
-            
-            document.body.appendChild(a);
-            a.click();
-            
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-            
-            if (typeof showDownloadComplete === 'function') showDownloadComplete('Images downloaded successfully!');
+            try {
+                const response = JSON.parse(xhr.responseText);
+                
+                if (response.success && response.zip_files && response.zip_files.length > 0) {
+                    // Download each ZIP file with a small delay between each
+                    let downloadIndex = 0;
+                    const totalZips = response.zip_files.length;
+                    
+                    function downloadNextZip() {
+                        if (downloadIndex >= totalZips) {
+                            if (typeof showDownloadComplete === 'function') {
+                                showDownloadComplete(`Downloaded ${totalZips} ZIP file(s) with ${response.total_images} images!`);
+                            }
+                            return;
+                        }
+                        
+                        const zipInfo = response.zip_files[downloadIndex];
+                        
+                        // Convert base64 to blob
+                        const binaryString = atob(zipInfo.data);
+                        const bytes = new Uint8Array(binaryString.length);
+                        for (let i = 0; i < binaryString.length; i++) {
+                            bytes[i] = binaryString.charCodeAt(i);
+                        }
+                        const blob = new Blob([bytes], { type: 'application/zip' });
+                        
+                        // Create download link
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.style.display = 'none';
+                        a.href = url;
+                        a.download = zipInfo.filename;
+                        
+                        document.body.appendChild(a);
+                        a.click();
+                        
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+                        
+                        downloadIndex++;
+                        
+                        // Update progress
+                        if (typeof showProgressToast === 'function') {
+                            showProgressToast(`Downloading ${downloadIndex}/${totalZips} ZIPs...`, Math.round((downloadIndex / totalZips) * 100));
+                        }
+                        
+                        // Download next ZIP after a small delay (to allow browser to process)
+                        setTimeout(downloadNextZip, 300);
+                    }
+                    
+                    // Start downloading
+                    downloadNextZip();
+                    
+                } else {
+                    if (typeof hideProgressToast === 'function') hideProgressToast();
+                    if (typeof showToast === 'function') showToast(response.message || 'No images found!', false);
+                }
+            } catch(e) {
+                if (typeof hideProgressToast === 'function') hideProgressToast();
+                if (typeof showToast === 'function') showToast('Failed to process download response', false);
+                console.error('Download error:', e);
+            }
         } else {
             if (typeof hideProgressToast === 'function') hideProgressToast();
-            const reader = new FileReader();
-            reader.onload = function() {
-                try {
-                    const error = JSON.parse(reader.result);
-                    if (typeof showToast === 'function') showToast(error.message || 'Failed to download images', false);
-                } catch(e) {
-                    if (typeof showToast === 'function') showToast('Failed to download images', false);
-                }
-            };
-            reader.readAsText(xhr.response);
+            try {
+                const error = JSON.parse(xhr.responseText);
+                if (typeof showToast === 'function') showToast(error.message || 'Failed to download images', false);
+            } catch(e) {
+                if (typeof showToast === 'function') showToast('Failed to download images', false);
+            }
         }
     };
     

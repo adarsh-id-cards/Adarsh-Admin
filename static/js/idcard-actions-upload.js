@@ -2,12 +2,49 @@
 // Contains: XLSX upload, ZIP upload functionality
 
 // ==========================================
+// CONSTANTS
+// ==========================================
+
+// Image field types that should be excluded from Excel upload validation
+// This is the primary declaration - use var for global scope
+var IMAGE_FIELD_TYPES = ['photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image'];
+
+// Image field name patterns (for detecting by name when type might not be set correctly)
+var IMAGE_FIELD_NAME_PATTERNS = ['photo', 'f photo', 'father photo', 'm photo', 'mother photo', 'sign', 'signature', 'barcode', 'qr', 'qr_code', 'image'];
+
+// Helper function to check if a field type is an image type
+function isImageFieldType(fieldType) {
+    if (!fieldType) return false;
+    return IMAGE_FIELD_TYPES.includes(fieldType.toLowerCase());
+}
+
+// Helper function to check if a field name suggests it's an image field
+function isImageFieldByName(fieldName) {
+    if (!fieldName) return false;
+    const normalizedName = fieldName.toLowerCase().trim();
+    return IMAGE_FIELD_NAME_PATTERNS.some(pattern => 
+        normalizedName === pattern || 
+        normalizedName.includes('photo') || 
+        normalizedName.includes('sign') ||
+        normalizedName.includes('barcode') ||
+        normalizedName.includes('qr')
+    );
+}
+
+// Combined check - by type OR by name
+function isImageField(field) {
+    if (!field) return false;
+    return isImageFieldType(field.type) || isImageFieldByName(field.name);
+}
+
+// ==========================================
 // UPLOAD STATE
 // ==========================================
 
 let pendingUploadFile = null;
-let pendingZipFile = null;
-let zipFileNames = [];
+// Changed from single pendingZipFile to multiple
+let pendingZipFiles = {}; // { fieldName: File }
+let zipFileNamesMap = {}; // { fieldName: [{ nameWithoutExt, originalName }] }
 
 // ==========================================
 // HELPER FUNCTIONS
@@ -77,9 +114,88 @@ function findBestMatch(uploadedHeader, tableFields) {
 // UPLOAD MODAL FUNCTIONS
 // ==========================================
 
-function openUploadModal(matchedFields, missingFields, ignoredFields, dataRowCount, isError = false) {
+// Reset upload modal to file selection stage
+function resetUploadModal() {
+    const fileSelectStage = document.getElementById('fileSelectStage');
+    const validationStage = document.getElementById('validationStage');
+    const confirmUploadModal = document.getElementById('confirmUploadModal');
+    const xlsxFileInput = document.getElementById('xlsxFileInput');
+    const selectedFileName = document.getElementById('selectedFileName');
+    const selectXlsxFileBtn = document.getElementById('selectXlsxFileBtn');
+    const uploadProgressSection = document.getElementById('uploadProgressSection');
+    
+    // Reset stages
+    if (fileSelectStage) fileSelectStage.style.display = '';
+    if (validationStage) validationStage.style.display = 'none';
+    if (confirmUploadModal) confirmUploadModal.style.display = 'none';
+    if (uploadProgressSection) uploadProgressSection.style.display = 'none';
+    
+    // Reset file selection
+    if (xlsxFileInput) xlsxFileInput.value = '';
+    if (selectedFileName) selectedFileName.style.display = 'none';
+    if (selectXlsxFileBtn) {
+        selectXlsxFileBtn.innerHTML = '<i class="fa-solid fa-folder-open"></i> Browse Files';
+        selectXlsxFileBtn.style.display = '';
+    }
+    
+    // Reset state
+    pendingUploadFile = null;
+    pendingZipFiles = {};
+    zipFileNamesMap = {};
+    
+    // Reset ZIP inputs
+    document.querySelectorAll('.zip-file-name').forEach(el => {
+        el.textContent = 'No file selected';
+        el.classList.remove('selected');
+    });
+    document.querySelectorAll('.zip-file-status').forEach(el => {
+        el.style.display = 'none';
+    });
+    document.querySelectorAll('.photo-zip-input').forEach(el => {
+        el.value = '';
+    });
+}
+
+// Reset file selection UI
+function resetFileSelection() {
+    const selectXlsxFileBtn = document.getElementById('selectXlsxFileBtn');
+    const selectedFileName = document.getElementById('selectedFileName');
+    
+    if (selectXlsxFileBtn) {
+        selectXlsxFileBtn.innerHTML = '<i class="fa-solid fa-folder-open"></i> Browse Files';
+        selectXlsxFileBtn.style.display = '';
+    }
+    if (selectedFileName) selectedFileName.style.display = 'none';
+}
+
+// Show validation results (Stage 2)
+function showValidationResults(matchedFields, missingFields, ignoredFields, dataRowCount, isError = false) {
+    const fileSelectStage = document.getElementById('fileSelectStage');
+    const validationStage = document.getElementById('validationStage');
+    const confirmUploadModal = document.getElementById('confirmUploadModal');
+    const selectXlsxFileBtn = document.getElementById('selectXlsxFileBtn');
+    
+    // Update button back to normal
+    if (selectXlsxFileBtn) {
+        selectXlsxFileBtn.innerHTML = '<i class="fa-solid fa-folder-open"></i> Browse Files';
+    }
+    
+    // Switch to validation stage
+    if (fileSelectStage) fileSelectStage.style.display = 'none';
+    if (validationStage) validationStage.style.display = '';
+    
+    // Populate validation results
+    populateValidationResults(matchedFields, missingFields, ignoredFields, dataRowCount, isError);
+    
+    // Show/hide confirm button
+    if (confirmUploadModal) {
+        confirmUploadModal.style.display = isError ? 'none' : '';
+    }
+}
+
+// Populate validation results in the modal
+function populateValidationResults(matchedFields, missingFields, ignoredFields, dataRowCount, isError = false) {
     const uploadStatus = document.getElementById('uploadStatus');
-    const uploadStatusText = document.getElementById('uploadStatusText');
     const matchedFieldsGroup = document.getElementById('matchedFieldsGroup');
     const matchedFieldsList = document.getElementById('matchedFieldsList');
     const missingFieldsGroup = document.getElementById('missingFieldsGroup');
@@ -88,19 +204,17 @@ function openUploadModal(matchedFields, missingFields, ignoredFields, dataRowCou
     const ignoredFieldsList = document.getElementById('ignoredFieldsList');
     const dataRowsCount = document.getElementById('dataRowsCount');
     const modalHeader = document.querySelector('.upload-modal-header');
-    const confirmUploadModal = document.getElementById('confirmUploadModal');
-    const uploadModalOverlay = document.getElementById('uploadModalOverlay');
+    const zipInputsContainer = document.getElementById('zipInputsContainer');
+    const photoZipSection = document.getElementById('photoZipSection');
     
     if (isError) {
         uploadStatus.className = 'upload-status error';
         uploadStatus.innerHTML = '<i class="fa-solid fa-times-circle error-icon"></i><span id="uploadStatusText">No matching fields found!</span>';
         if (modalHeader) modalHeader.classList.add('error');
-        if (confirmUploadModal) confirmUploadModal.style.display = 'none';
     } else {
         uploadStatus.className = 'upload-status';
         uploadStatus.innerHTML = '<i class="fa-solid fa-check-circle success-icon"></i><span id="uploadStatusText">Fields matched successfully!</span>';
         if (modalHeader) modalHeader.classList.remove('error');
-        if (confirmUploadModal) confirmUploadModal.style.display = '';
     }
     
     matchedFieldsList.innerHTML = '';
@@ -148,32 +262,92 @@ function openUploadModal(matchedFields, missingFields, ignoredFields, dataRowCou
     
     dataRowsCount.textContent = `${dataRowCount} data row${dataRowCount !== 1 ? 's' : ''} found`;
     
-    if (uploadModalOverlay) {
-        uploadModalOverlay.classList.add('active');
-        document.body.style.overflow = 'hidden'; // Lock body scroll
+    // Dynamically generate ZIP upload inputs for image fields
+    if (zipInputsContainer) {
+        zipInputsContainer.innerHTML = '';
+        
+        // Get image fields from TABLE_FIELDS (check by type OR name)
+        const tableFields = typeof TABLE_FIELDS !== 'undefined' ? TABLE_FIELDS : [];
+        const imageFields = tableFields.filter(f => isImageField(f));
+        
+        if (imageFields.length > 0) {
+            if (photoZipSection) photoZipSection.style.display = '';
+            
+            imageFields.forEach(field => {
+                const fieldName = field.name;
+                const row = document.createElement('div');
+                row.className = 'zip-upload-row';
+                row.setAttribute('data-field-name', fieldName);
+                
+                row.innerHTML = `
+                    <label class="zip-field-label">${fieldName.toUpperCase()}</label>
+                    <div class="zip-upload-input">
+                        <input type="file" class="photo-zip-input" data-field="${fieldName}" accept=".zip" style="display: none;">
+                        <button type="button" class="btn btn-outline select-zip-btn" data-field="${fieldName}">
+                            <i class="fa-solid fa-file-zipper"></i> Select ZIP
+                        </button>
+                        <span class="zip-file-name" data-field="${fieldName}">No file selected</span>
+                    </div>
+                    <div class="zip-file-status" data-field="${fieldName}" style="display: none;">
+                        <i class="fa-solid fa-check-circle"></i>
+                        <span class="zip-file-count">0 images</span>
+                    </div>
+                `;
+                
+                zipInputsContainer.appendChild(row);
+            });
+            
+            // Re-attach event listeners for dynamically created ZIP buttons
+            initZipButtonListeners();
+        } else {
+            if (photoZipSection) photoZipSection.style.display = 'none';
+        }
     }
+}
+
+// Legacy function for backward compatibility - now just calls showValidationResults
+function openUploadModal(matchedFields, missingFields, ignoredFields, dataRowCount, isError = false) {
+    const uploadModalOverlay = document.getElementById('uploadModalOverlay');
+    const fileSelectStage = document.getElementById('fileSelectStage');
+    const validationStage = document.getElementById('validationStage');
+    
+    // Hide file selection stage, show validation stage
+    if (fileSelectStage) fileSelectStage.style.display = 'none';
+    if (validationStage) validationStage.style.display = '';
+    
+    // Populate validation results
+    populateValidationResults(matchedFields, missingFields, ignoredFields, dataRowCount, isError);
+    
+    // Show confirm button if not an error
+    const confirmUploadModal = document.getElementById('confirmUploadModal');
+    if (confirmUploadModal) {
+        confirmUploadModal.style.display = isError ? 'none' : '';
+    }
+    
+    // Open modal if not already open
+    if (uploadModalOverlay && !uploadModalOverlay.classList.contains('active')) {
+        uploadModalOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+// Initialize ZIP button listeners (called after dynamic creation)
+// Note: This is a no-op since initZipUpload uses event delegation on the container
+function initZipButtonListeners() {
+    // Event delegation is already set up in initZipUpload()
+    // No additional setup needed for dynamically created elements
 }
 
 function closeUploadModalFn() {
     const uploadModalOverlay = document.getElementById('uploadModalOverlay');
-    const zipFileName = document.getElementById('zipFileName');
-    const zipFileStatus = document.getElementById('zipFileStatus');
-    const photoZipInput = document.getElementById('photoZipInput');
     
     if (uploadModalOverlay) {
         uploadModalOverlay.classList.remove('active');
         document.body.style.overflow = ''; // Restore body scroll
     }
-    pendingUploadFile = null;
-    pendingZipFile = null;
-    zipFileNames = [];
     
-    if (zipFileName) zipFileName.textContent = 'No file selected';
-    if (zipFileStatus) {
-        zipFileStatus.textContent = '';
-        zipFileStatus.style.display = 'none';
-    }
-    if (photoZipInput) photoZipInput.value = '';
+    // Reset the modal to file selection stage
+    resetUploadModal();
 }
 
 // Expose globally
@@ -190,6 +364,12 @@ function initXlsxUpload() {
     const closeUploadModal = document.getElementById('closeUploadModal');
     const cancelUploadModal = document.getElementById('cancelUploadModal');
     const confirmUploadModal = document.getElementById('confirmUploadModal');
+    const selectXlsxFileBtn = document.getElementById('selectXlsxFileBtn');
+    const selectedFileName = document.getElementById('selectedFileName');
+    const selectedFileNameText = document.getElementById('selectedFileNameText');
+    const clearSelectedFile = document.getElementById('clearSelectedFile');
+    const fileSelectStage = document.getElementById('fileSelectStage');
+    const validationStage = document.getElementById('validationStage');
     
     // Modal close handlers
     if (closeUploadModal) closeUploadModal.addEventListener('click', closeUploadModalFn);
@@ -200,11 +380,42 @@ function initXlsxUpload() {
         });
     }
     
-    if (uploadXlsxBtn && xlsxFileInput) {
+    // Upload XLSX button opens the modal first (Stage 1)
+    if (uploadXlsxBtn) {
         uploadXlsxBtn.addEventListener('click', function() {
+            // Reset to file selection stage
+            resetUploadModal();
+            // Open the modal
+            if (uploadModalOverlay) {
+                uploadModalOverlay.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+        });
+    }
+    
+    // Browse Files button inside modal
+    if (selectXlsxFileBtn && xlsxFileInput) {
+        selectXlsxFileBtn.addEventListener('click', function() {
             xlsxFileInput.click();
         });
-        
+    }
+    
+    // Clear selected file
+    if (clearSelectedFile) {
+        clearSelectedFile.addEventListener('click', function() {
+            if (xlsxFileInput) xlsxFileInput.value = '';
+            if (selectedFileName) selectedFileName.style.display = 'none';
+            if (selectXlsxFileBtn) selectXlsxFileBtn.style.display = '';
+            pendingUploadFile = null;
+            // Go back to file selection stage
+            if (fileSelectStage) fileSelectStage.style.display = '';
+            if (validationStage) validationStage.style.display = 'none';
+            if (confirmUploadModal) confirmUploadModal.style.display = 'none';
+        });
+    }
+    
+    // File input change handler - validates and shows Stage 2
+    if (xlsxFileInput) {
         xlsxFileInput.addEventListener('change', async function() {
             const file = this.files[0];
             if (!file) return;
@@ -219,20 +430,22 @@ function initXlsxUpload() {
                 return;
             }
             
-            const originalText = uploadXlsxBtn.innerHTML;
-            uploadXlsxBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Validating...';
-            uploadXlsxBtn.disabled = true;
+            // Show selected file name
+            if (selectedFileName && selectedFileNameText) {
+                selectedFileNameText.textContent = file.name;
+                selectedFileName.style.display = 'flex';
+            }
+            if (selectXlsxFileBtn) selectXlsxFileBtn.textContent = 'Validating...';
             
             try {
                 const tableFieldNames = (typeof TABLE_FIELDS !== 'undefined' ? TABLE_FIELDS : [])
-                    .filter(f => f.type !== 'image')
+                    .filter(f => !isImageField(f))
                     .map(f => f.name);
                 
                 if (tableFieldNames.length === 0) {
                     if (typeof showToast === 'function') showToast('No fields defined in table!', false);
                     this.value = '';
-                    uploadXlsxBtn.innerHTML = originalText;
-                    uploadXlsxBtn.disabled = false;
+                    resetFileSelection();
                     return;
                 }
                 
@@ -244,8 +457,7 @@ function initXlsxUpload() {
                 if (jsonData.length === 0) {
                     if (typeof showToast === 'function') showToast('The uploaded file is empty!', false);
                     this.value = '';
-                    uploadXlsxBtn.innerHTML = originalText;
-                    uploadXlsxBtn.disabled = false;
+                    resetFileSelection();
                     return;
                 }
                 
@@ -254,8 +466,7 @@ function initXlsxUpload() {
                 if (uploadedHeaders.length === 0) {
                     if (typeof showToast === 'function') showToast('No headers found in the uploaded file!', false);
                     this.value = '';
-                    uploadXlsxBtn.innerHTML = originalText;
-                    uploadXlsxBtn.disabled = false;
+                    resetFileSelection();
                     return;
                 }
                 
@@ -280,26 +491,20 @@ function initXlsxUpload() {
                 const missingTableFields = tableFieldNames.filter(f => !usedTableFields.has(f));
                 const dataRowCount = jsonData.length - 1;
                 
-                uploadXlsxBtn.innerHTML = originalText;
-                uploadXlsxBtn.disabled = false;
-                
                 if (matchedFields.length === 0) {
-                    openUploadModal(matchedFields, tableFieldNames, unmatchedUploadedFields, dataRowCount, true);
+                    showValidationResults(matchedFields, tableFieldNames, unmatchedUploadedFields, dataRowCount, true);
                     this.value = '';
                     return;
                 }
                 
                 pendingUploadFile = file;
-                openUploadModal(matchedFields, missingTableFields, unmatchedUploadedFields, dataRowCount, false);
+                showValidationResults(matchedFields, missingTableFields, unmatchedUploadedFields, dataRowCount, false);
                 
             } catch (error) {
                 console.error('Validation error:', error);
                 if (typeof showToast === 'function') showToast('Failed to read file: ' + error.message, false);
-                uploadXlsxBtn.innerHTML = originalText;
-                uploadXlsxBtn.disabled = false;
+                resetFileSelection();
             }
-            
-            this.value = '';
         });
     }
     
@@ -329,9 +534,15 @@ function initXlsxUpload() {
             const formData = new FormData();
             formData.append('file', pendingUploadFile);
             
-            if (pendingZipFile) {
-                formData.append('photos_zip', pendingZipFile);
-            }
+            // Append multiple ZIP files with their field names
+            Object.keys(pendingZipFiles).forEach(fieldName => {
+                if (pendingZipFiles[fieldName]) {
+                    formData.append(`photos_zip_${fieldName}`, pendingZipFiles[fieldName]);
+                }
+            });
+            
+            // Also send the field names that have ZIP files
+            formData.append('zip_field_names', JSON.stringify(Object.keys(pendingZipFiles)));
             
             const xhr = new XMLHttpRequest();
             const startTime = Date.now();
@@ -420,76 +631,93 @@ function initXlsxUpload() {
 // ==========================================
 
 function initZipUpload() {
-    const photoZipInput = document.getElementById('photoZipInput');
-    const selectZipBtn = document.getElementById('selectZipBtn');
-    const zipFileName = document.getElementById('zipFileName');
-    const zipFileStatus = document.getElementById('zipFileStatus');
-    const zipFileCount = document.getElementById('zipFileCount');
+    // Initialize multiple ZIP upload inputs
+    const zipInputsContainer = document.getElementById('zipInputsContainer');
+    if (!zipInputsContainer) return;
     
-    if (selectZipBtn && photoZipInput) {
-        selectZipBtn.addEventListener('click', function() {
-            photoZipInput.click();
-        });
+    // Event delegation for select buttons
+    zipInputsContainer.addEventListener('click', function(e) {
+        const btn = e.target.closest('.select-zip-btn');
+        if (btn) {
+            const fieldName = btn.dataset.field;
+            const fileInput = zipInputsContainer.querySelector(`.photo-zip-input[data-field="${fieldName}"]`);
+            if (fileInput) {
+                fileInput.click();
+            }
+        }
+    });
+    
+    // Event delegation for file inputs
+    zipInputsContainer.addEventListener('change', async function(e) {
+        if (!e.target.classList.contains('photo-zip-input')) return;
         
-        photoZipInput.addEventListener('change', async function() {
-            const file = this.files[0];
-            if (!file) {
-                if (zipFileName) zipFileName.textContent = 'No file selected';
-                if (zipFileName) zipFileName.classList.remove('selected');
-                if (zipFileStatus) zipFileStatus.style.display = 'none';
-                pendingZipFile = null;
-                zipFileNames = [];
-                return;
-            }
-            
-            if (!file.name.toLowerCase().endsWith('.zip')) {
-                if (typeof showToast === 'function') showToast('Please select a ZIP file', 'error');
-                this.value = '';
-                return;
-            }
-            
-            pendingZipFile = file;
+        const fileInput = e.target;
+        const fieldName = fileInput.dataset.field;
+        const file = fileInput.files[0];
+        
+        const row = zipInputsContainer.querySelector(`.zip-upload-row[data-field-name="${fieldName}"]`);
+        const zipFileName = row.querySelector(`.zip-file-name[data-field="${fieldName}"]`);
+        const zipFileStatus = row.querySelector(`.zip-file-status[data-field="${fieldName}"]`);
+        const zipFileCount = zipFileStatus ? zipFileStatus.querySelector('.zip-file-count') : null;
+        
+        if (!file) {
             if (zipFileName) {
-                zipFileName.textContent = file.name;
-                zipFileName.classList.add('selected');
+                zipFileName.textContent = 'No file selected';
+                zipFileName.classList.remove('selected');
             }
+            if (zipFileStatus) zipFileStatus.style.display = 'none';
+            delete pendingZipFiles[fieldName];
+            delete zipFileNamesMap[fieldName];
+            return;
+        }
+        
+        if (!file.name.toLowerCase().endsWith('.zip')) {
+            if (typeof showToast === 'function') showToast('Please select a ZIP file', 'error');
+            fileInput.value = '';
+            return;
+        }
+        
+        pendingZipFiles[fieldName] = file;
+        if (zipFileName) {
+            zipFileName.textContent = file.name;
+            zipFileName.classList.add('selected');
+        }
+        
+        try {
+            const zip = await JSZip.loadAsync(file);
+            const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
+            let imageCount = 0;
+            zipFileNamesMap[fieldName] = [];
             
-            try {
-                const zip = await JSZip.loadAsync(file);
-                const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
-                let imageCount = 0;
-                zipFileNames = [];
-                
-                zip.forEach((relativePath, zipEntry) => {
-                    if (!zipEntry.dir) {
-                        const ext = relativePath.toLowerCase().substring(relativePath.lastIndexOf('.'));
-                        if (imageExtensions.includes(ext)) {
-                            imageCount++;
-                            const baseName = relativePath.split('/').pop();
-                            const nameWithoutExt = baseName.substring(0, baseName.lastIndexOf('.'));
-                            zipFileNames.push({
-                                fullPath: relativePath,
-                                nameWithoutExt: nameWithoutExt.toUpperCase(),
-                                originalName: baseName
-                            });
-                        }
+            zip.forEach((relativePath, zipEntry) => {
+                if (!zipEntry.dir) {
+                    const ext = relativePath.toLowerCase().substring(relativePath.lastIndexOf('.'));
+                    if (imageExtensions.includes(ext)) {
+                        imageCount++;
+                        const baseName = relativePath.split('/').pop();
+                        const nameWithoutExt = baseName.substring(0, baseName.lastIndexOf('.'));
+                        zipFileNamesMap[fieldName].push({
+                            fullPath: relativePath,
+                            nameWithoutExt: nameWithoutExt,
+                            originalName: baseName
+                        });
                     }
-                });
-                
-                if (imageCount > 0) {
-                    if (zipFileStatus) zipFileStatus.style.display = 'flex';
-                    if (zipFileCount) zipFileCount.textContent = `${imageCount} image${imageCount > 1 ? 's' : ''} found in ZIP`;
-                } else {
-                    if (zipFileStatus) zipFileStatus.style.display = 'none';
-                    if (typeof showToast === 'function') showToast('No images found in the ZIP file', 'error');
                 }
-            } catch (error) {
-                console.error('Error reading ZIP:', error);
+            });
+            
+            if (imageCount > 0) {
+                if (zipFileStatus) zipFileStatus.style.display = 'flex';
+                if (zipFileCount) zipFileCount.textContent = `${imageCount} image${imageCount > 1 ? 's' : ''}`;
+            } else {
                 if (zipFileStatus) zipFileStatus.style.display = 'none';
-                if (typeof showToast === 'function') showToast('Error reading ZIP file', 'error');
+                if (typeof showToast === 'function') showToast(`No images found in ZIP for ${fieldName}`, 'error');
             }
-        });
-    }
+        } catch (error) {
+            console.error('Error reading ZIP:', error);
+            if (zipFileStatus) zipFileStatus.style.display = 'none';
+            if (typeof showToast === 'function') showToast('Error reading ZIP file', 'error');
+        }
+    });
 }
 
 // ==========================================

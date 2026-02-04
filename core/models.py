@@ -334,15 +334,20 @@ class IDCardTable(models.Model):
     """
     FIELD_TYPE_CHOICES = [
         ('text', 'Text'),
-        ('number', 'Number'),
-        ('date', 'Date'),
         ('email', 'Email'),
-        ('image', 'Image'),
-        ('textarea', 'Textarea'),
+        ('photo', 'Photo'),
+        ('mother_photo', 'Mother Photo'),
+        ('father_photo', 'Father Photo'),
+        ('barcode', 'Barcode'),
+        ('qr_code', 'QR Code'),
+        ('signature', 'Signature'),
     ]
     
+    # Image field types for validation
+    IMAGE_FIELD_TYPES = ['photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature']
+    
     group = models.ForeignKey(IDCardGroup, on_delete=models.CASCADE, related_name='tables')
-    name = models.CharField(max_length=200)
+    name = models.CharField(max_length=255)
     fields = models.JSONField(default=list, help_text='List of field configurations: [{name, type, order}]')
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -353,7 +358,11 @@ class IDCardTable(models.Model):
     
     def has_image_fields(self):
         """Check if this table has any image fields"""
-        return any(f.get('type') == 'image' or f.get('name', '').upper() == 'PHOTO' for f in self.fields)
+        return any(f.get('type') in self.IMAGE_FIELD_TYPES for f in self.fields)
+    
+    def get_image_fields(self):
+        """Get list of image field names"""
+        return [f.get('name') for f in self.fields if f.get('type') in self.IMAGE_FIELD_TYPES]
     
     def delete_all_card_images(self):
         """Delete all images associated with cards in this table"""

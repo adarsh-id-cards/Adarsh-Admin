@@ -553,6 +553,43 @@ function createRowFromCard(card, index) {
     tr.setAttribute('data-card-id', card.id);
     tr.setAttribute('data-sr-no', card.sr_no);
     
+    // Image field types
+    // Use global IMAGE_FIELD_TYPES
+    const localImageFieldTypes = (typeof IMAGE_FIELD_TYPES !== 'undefined') 
+        ? IMAGE_FIELD_TYPES 
+        : ['photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image'];
+    
+    // Image field name patterns (for detecting by name when type might not be set correctly)
+    const imageFieldNamePatterns = ['photo', 'f photo', 'father photo', 'm photo', 'mother photo', 'sign', 'signature', 'barcode', 'qr', 'qr_code', 'image'];
+    
+    function isImageFieldType(fieldType) {
+        if (!fieldType) return false;
+        return localImageFieldTypes.includes(fieldType.toLowerCase());
+    }
+    
+    function isImageFieldByName(fieldName) {
+        if (!fieldName) return false;
+        const normalizedName = fieldName.toLowerCase().trim();
+        return normalizedName.includes('photo') || 
+               normalizedName.includes('sign') ||
+               normalizedName.includes('barcode') ||
+               normalizedName.includes('qr');
+    }
+    
+    function isImageField(fieldType, fieldName) {
+        return isImageFieldType(fieldType) || isImageFieldByName(fieldName);
+    }
+    
+    // Get CSS class based on field name for different image types
+    function getImageTypeClass(fieldName) {
+        if (!fieldName) return 'photo-type';
+        const nameLower = fieldName.toLowerCase();
+        if (nameLower.includes('sign')) return 'signature-type';
+        if (nameLower.includes('qr')) return 'qr-type';
+        if (nameLower.includes('barcode')) return 'barcode-type';
+        return 'photo-type';
+    }
+    
     let html = `<td><input type="checkbox" class="rowCheckbox"></td>`;
     html += `<td class="sr-no-cell">${card.sr_no}</td>`;
     
@@ -562,34 +599,32 @@ function createRowFromCard(card, index) {
             const fieldType = field.type;
             const fieldValue = field.value || '';
             
-            if (fieldType === 'image' || fieldName.toLowerCase() === 'photo') {
+            if (isImageField(fieldType, fieldName)) {
                 let imageHtml = '';
-                // Check if it's a PENDING reference (waiting for image)
+                const imageTypeClass = getImageTypeClass(fieldName);
+                
+                // Check if it's a PENDING reference
                 const isPending = fieldValue && fieldValue.startsWith('PENDING:');
                 const pendingRef = isPending ? fieldValue.substring(8) : null;
                 
-                // Create full path with /media/ prefix (only for actual paths)
-                const fullImagePath = fieldValue && !isPending && fieldValue !== 'NOT_FOUND' 
+                // Create full path with /media/ prefix (only for actual paths, not PENDING)
+                const fullImagePath = fieldValue && fieldValue !== '' && !isPending
                     ? (fieldValue.startsWith('/media/') || fieldValue.startsWith('http') ? fieldValue : `/media/${fieldValue}`)
-                    : fieldValue;
+                    : '';
                 
-                if (fieldValue && !isPending && fieldValue !== 'NOT_FOUND') {
+                if (isPending) {
+                    // PENDING - show waiting placeholder with clock icon
+                    imageHtml = `<div class="no-image pending-placeholder" title="Waiting for upload: ${pendingRef}"><i class="fa-solid fa-clock"></i></div>`;
+                } else if (fieldValue && fieldValue !== '') {
                     // Valid image path - show the image
                     const cacheBuster = `?t=${Date.now()}`;
-                    imageHtml = `<img src="/media/${fieldValue}${cacheBuster}" alt="${fieldName}" class="table-image">`;
-                } else if (isPending || fieldValue === 'NOT_FOUND') {
-                    // PENDING or NOT_FOUND - Colorful placeholder (image expected but missing)
-                    const refDisplay = pendingRef ? `<span class="pending-ref" title="${pendingRef}">${pendingRef}</span>` : '';
-                    imageHtml = `<div class="no-image colorful-placeholder pending-image">
-                        <i class="fa-solid fa-image"></i>
-                        ${refDisplay}
-                    </div>`;
+                    imageHtml = `<img src="/media/${fieldValue}${cacheBuster}" alt="${fieldName}" class="table-image ${imageTypeClass}" loading="lazy">`;
                 } else {
-                    // Empty/null - Gray placeholder (no image column value given)
-                    imageHtml = `<div class="no-image passport-placeholder no-image-given"><i class="fa-solid fa-user"></i></div>`;
+                    // Empty/null - Colorful placeholder (no image)
+                    imageHtml = `<div class="no-image colorful-placeholder"><i class="fa-solid fa-user-astronaut"></i></div>`;
                 }
                 
-                html += `<td class="image-field image-cell" 
+                html += `<td class="image-field image-cell ${imageTypeClass}" 
                     data-field-name="${fieldName}" 
                     data-field-type="image"
                     data-original-value="${fullImagePath}">

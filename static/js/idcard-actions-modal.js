@@ -2,6 +2,18 @@
 // Contains: Side modal (add/edit/view), delete modal
 
 // ==========================================
+// IMAGE FIELD TYPES
+// ==========================================
+// Use existing IMAGE_FIELD_TYPES from upload module or define if not exists
+if (typeof IMAGE_FIELD_TYPES === 'undefined') {
+    var IMAGE_FIELD_TYPES = ['photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image'];
+}
+
+function isImageFieldType(fieldType) {
+    return IMAGE_FIELD_TYPES.includes(fieldType);
+}
+
+// ==========================================
 // SIDE MODAL STATE
 // ==========================================
 
@@ -19,6 +31,10 @@ function openSideModal(mode, cardData = null) {
     const saveSideModalBtn = document.getElementById('saveSideModal');
     const formPhotoPreview = document.getElementById('formPhotoPreview');
     const photoUploadLabel = document.getElementById('photoUploadLabel');
+    
+    if (!sideModalOverlay) {
+        return;
+    }
     
     currentModalMode = mode;
     currentEditCardId = cardData?.id || null;
@@ -41,14 +57,14 @@ function openSideModal(mode, cardData = null) {
         photoPathDisplay.textContent = 'No image';
     }
     
-    // Reset all image field previews
-    document.querySelectorAll('.image-preview-small').forEach(preview => {
-        preview.classList.remove('no-path', 'path-not-found', 'has-image');
+    // Reset all image field previews (both old and new selectors)
+    document.querySelectorAll('.image-preview-small, .image-preview-box').forEach(preview => {
+        preview.classList.remove('no-path', 'path-not-found', 'has-image', 'pending-image');
         preview.classList.add('no-path');
         preview.innerHTML = '<i class="fa-solid fa-image"></i>';
     });
-    document.querySelectorAll('.image-path-display').forEach(pathDisplay => {
-        pathDisplay.classList.remove('not-found');
+    document.querySelectorAll('.image-path-display, .image-path-text').forEach(pathDisplay => {
+        pathDisplay.classList.remove('not-found', 'pending');
         pathDisplay.classList.add('no-path');
         pathDisplay.textContent = 'No image';
     });
@@ -94,10 +110,16 @@ function openSideModal(mode, cardData = null) {
         });
     }
     
-    // Hide/show photo upload label
+    // Hide/show photo upload label (main photo)
     if (photoUploadLabel) {
         photoUploadLabel.style.display = mode === 'view' ? 'none' : '';
     }
+    
+    // Hide/show all other image upload buttons in view mode
+    const allImageUploadBtns = document.querySelectorAll('.image-field-card .image-upload-btn, .image-field-card .image-field-controls');
+    allImageUploadBtns.forEach(btn => {
+        btn.style.display = mode === 'view' ? 'none' : '';
+    });
     
     // Populate form fields
     if ((mode === 'edit' || mode === 'view') && cardData) {
@@ -121,6 +143,19 @@ function closeSideModal() {
     currentEditCardId = null;
 }
 
+// Helper function to extract short path (last folder + filename)
+function getShortPath(fullPath) {
+    if (!fullPath) return '';
+    // Remove leading /media/ if present
+    let path = fullPath.replace(/^\/media\//, '');
+    // Split by / and get last 2 parts (folder + filename)
+    const parts = path.split('/');
+    if (parts.length >= 2) {
+        return parts.slice(-2).join('/');
+    }
+    return parts[parts.length - 1] || path;
+}
+
 function populateFormFields(cardData) {
     const formPhotoPreview = document.getElementById('formPhotoPreview');
     const photoPathDisplay = document.getElementById('photoPathDisplay');
@@ -128,10 +163,10 @@ function populateFormFields(cardData) {
     
     // Reset photo preview classes
     if (formPhotoPreview) {
-        formPhotoPreview.classList.remove('no-path', 'path-not-found', 'has-image');
+        formPhotoPreview.classList.remove('no-path', 'path-not-found', 'has-image', 'pending-image');
     }
     if (photoPathDisplay) {
-        photoPathDisplay.classList.remove('no-path', 'not-found');
+        photoPathDisplay.classList.remove('no-path', 'not-found', 'pending');
     }
     
     // Populate main photo - check case-insensitively for PHOTO field
@@ -170,16 +205,13 @@ function populateFormFields(cardData) {
             formPhotoPreview.innerHTML = `<img src="${imgSrc}${cacheBuster}" alt="Photo">`;
         }
         if (photoPathDisplay) {
-            const fullPhotoPath = photoPath.startsWith('/media/') || photoPath.startsWith('http') 
-                ? photoPath 
-                : `/media/${photoPath}`;
-            photoPathDisplay.textContent = fullPhotoPath;
+            photoPathDisplay.textContent = getShortPath(imgSrc);
         }
     } else if (isPending) {
         // PENDING - Colorful placeholder (image reference exists but waiting for upload)
         if (formPhotoPreview) {
             formPhotoPreview.classList.add('pending-image');
-            formPhotoPreview.innerHTML = `<i class="fa-solid fa-image"></i>`;
+            formPhotoPreview.innerHTML = `<i class="fa-solid fa-clock"></i>`;
         }
         if (photoPathDisplay) {
             photoPathDisplay.classList.add('pending');
@@ -252,14 +284,15 @@ function populateFormFields(cardData) {
     // Populate form fields from field_data
     if (cardData.field_data) {
         
-        // Get ALL inputs in the form container (form-control and image-input)
-        const formContainer = document.getElementById('formFieldsContainer');
-        if (!formContainer) {
-            console.error('formFieldsContainer not found!');
+        // Get ALL inputs in the form (including image section and text fields section)
+        const cardForm = document.getElementById('cardForm');
+        if (!cardForm) {
+            console.error('cardForm not found!');
             return;
         }
         
-        const allInputs = formContainer.querySelectorAll('input, textarea, select');
+        // Get inputs from both modal-images-section AND formFieldsContainer
+        const allInputs = cardForm.querySelectorAll('input, textarea, select');
         
         allInputs.forEach(input => {
             const fieldName = input.getAttribute('data-field-name') || input.getAttribute('name');
@@ -275,21 +308,27 @@ function populateFormFields(cardData) {
             }
             
             // Handle image/file inputs
-            if (input.type === 'file' || fieldType === 'image') {
+            if (input.type === 'file' || isImageFieldType(fieldType)) {
                 const previewId = input.getAttribute('data-preview-id');
                 let previewContainer = previewId ? document.getElementById(previewId) : null;
                 if (!previewContainer) {
-                    previewContainer = input.closest('.image-field-row')?.querySelector('.image-preview-small');
+                    // Try new structure (.image-field-card) then old structure (.image-field-row)
+                    previewContainer = input.closest('.image-field-card')?.querySelector('.image-preview-box') ||
+                                       input.closest('.image-field-row')?.querySelector('.image-preview-small');
                 }
                 
                 const pathDisplayId = previewId ? previewId.replace('preview_', 'path_') : null;
-                const pathDisplay = pathDisplayId ? document.getElementById(pathDisplayId) : null;
+                let pathDisplay = pathDisplayId ? document.getElementById(pathDisplayId) : null;
+                if (!pathDisplay) {
+                    // Try new structure - look for .image-path-display
+                    pathDisplay = input.closest('.image-field-card')?.querySelector('.image-path-display');
+                }
                 
                 if (previewContainer) {
-                    previewContainer.classList.remove('no-path', 'path-not-found', 'has-image');
+                    previewContainer.classList.remove('no-path', 'path-not-found', 'has-image', 'pending-image');
                 }
                 if (pathDisplay) {
-                    pathDisplay.classList.remove('no-path', 'not-found');
+                    pathDisplay.classList.remove('no-path', 'not-found', 'pending');
                 }
                 
                 const imgPath = findFieldValue(fieldName);
@@ -309,13 +348,13 @@ function populateFormFields(cardData) {
                         previewContainer.innerHTML = `<img src="${imgSrc}${cacheBuster}" alt="${fieldName}">`;
                     }
                     if (pathDisplay) {
-                        pathDisplay.textContent = imgSrc;
+                        pathDisplay.textContent = getShortPath(imgSrc);
                     }
                 } else if (isPendingImg) {
                     // PENDING - waiting for image upload
                     if (previewContainer) {
                         previewContainer.classList.add('pending-image');
-                        previewContainer.innerHTML = `<i class="fa-solid fa-image"></i>`;
+                        previewContainer.innerHTML = `<i class="fa-solid fa-clock"></i>`;
                     }
                     if (pathDisplay) {
                         pathDisplay.classList.add('pending');
@@ -371,14 +410,27 @@ function populateFormFields(cardData) {
 function getFormData() {
     const fieldData = {};
     const imageFiles = {};
-    const inputs = document.querySelectorAll('#formFieldsContainer .form-control, #formFieldsContainer .image-input');
+    
+    // Get all inputs from the entire cardForm (including modal-images-section AND formFieldsContainer)
+    const cardForm = document.getElementById('cardForm');
+    if (!cardForm) {
+        console.error('cardForm not found!');
+        return { fieldData, imageFiles };
+    }
+    
+    const inputs = cardForm.querySelectorAll('.form-control, .image-input');
     
     
     inputs.forEach(input => {
         const fieldName = input.getAttribute('data-field-name');
         const fieldType = input.getAttribute('data-field-type');
         if (fieldName) {
-            if (fieldType === 'image') {
+            // Skip PHOTO - handled separately by getMainPhotoFile
+            if (fieldName.toUpperCase() === 'PHOTO') {
+                return;
+            }
+            
+            if (isImageFieldType(fieldType) || input.type === 'file') {
                 if (input.files && input.files[0]) {
                     imageFiles[fieldName] = input.files[0];
                 }
@@ -496,7 +548,8 @@ function updateExistingCard(cardId, fieldData, imageFiles, mainPhoto) {
         if (data.success) {
             if (typeof showToast === 'function') showToast('Card updated successfully!');
             closeSideModal();
-            location.reload();
+            // Force reload without cache
+            window.location.href = window.location.href.split('?')[0] + '?status=' + (typeof CURRENT_STATUS !== 'undefined' ? CURRENT_STATUS : 'pending') + '&t=' + Date.now();
         } else {
             if (typeof showToast === 'function') showToast(data.message || 'Error updating card', false);
         }
@@ -526,8 +579,20 @@ function initDeleteModal() {
     const cancelDeleteModal = document.getElementById('cancelDeleteModal');
     const confirmDeleteModal = document.getElementById('confirmDeleteModal');
     
-    if (closeDeleteModal) closeDeleteModal.addEventListener('click', closeDeleteModalFn);
-    if (cancelDeleteModal) cancelDeleteModal.addEventListener('click', closeDeleteModalFn);
+    if (closeDeleteModal) {
+        closeDeleteModal.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            closeDeleteModalFn();
+        });
+    }
+    if (cancelDeleteModal) {
+        cancelDeleteModal.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            closeDeleteModalFn();
+        });
+    }
     
     if (deleteModalOverlay) {
         deleteModalOverlay.addEventListener('click', function(e) {
@@ -542,7 +607,10 @@ function initDeleteModal() {
     });
     
     if (confirmDeleteModal) {
-        confirmDeleteModal.addEventListener('click', function() {
+        confirmDeleteModal.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
             const cardIds = window.pendingDeleteCardIds;
             const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
             
@@ -591,14 +659,26 @@ function initDeleteModal() {
 // ==========================================
 
 function initModalModule() {
-    const sideModalOverlay = document.getElementById('sideModalOverlay');
-    const formPhotoInput = document.getElementById('formPhotoInput');
-    const formPhotoPreview = document.getElementById('formPhotoPreview');
-    const saveSideModalBtn = document.getElementById('saveSideModal');
-    
-    // Close side modal handlers
-    document.getElementById('closeSideModal')?.addEventListener('click', closeSideModal);
-    document.getElementById('cancelSideModal')?.addEventListener('click', closeSideModal);
+    try {
+        const sideModalOverlay = document.getElementById('sideModalOverlay');
+        const formPhotoInput = document.getElementById('formPhotoInput');
+        const formPhotoPreview = document.getElementById('formPhotoPreview');
+        const saveSideModalBtn = document.getElementById('saveSideModal');
+        
+        // Close side modal handlers
+        const closeSideModalBtn = document.getElementById('closeSideModal');
+        const cancelSideModalBtn = document.getElementById('cancelSideModal');
+        
+        if (closeSideModalBtn) {
+            closeSideModalBtn.addEventListener('click', function() {
+                closeSideModal();
+            });
+        }
+        if (cancelSideModalBtn) {
+            cancelSideModalBtn.addEventListener('click', function() {
+                closeSideModal();
+            });
+        }
     
     if (sideModalOverlay) {
         sideModalOverlay.addEventListener('click', function(e) {
@@ -645,30 +725,39 @@ function initModalModule() {
     });
     
     // Add button
-    document.getElementById('addBtn')?.addEventListener('click', function() {
-        openSideModal('add');
-    });
+    const addBtn = document.getElementById('addBtn');
+    if (addBtn) {
+        addBtn.addEventListener('click', function() {
+            openSideModal('add');
+        });
+    }
     
     // Edit buttons
     const editBtnIds = ['editBtn', 'editBtnV', 'editBtnA', 'editBtnD'];
     editBtnIds.forEach(btnId => {
-        document.getElementById(btnId)?.addEventListener('click', function() {
-            const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
-            if (selectedIds.length === 1) {
-                fetchCardAndOpenModal('edit', selectedIds[0]);
-            }
-        });
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            btn.addEventListener('click', function() {
+                const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
+                if (selectedIds.length === 1) {
+                    fetchCardAndOpenModal('edit', selectedIds[0]);
+                }
+            });
+        }
     });
     
     // View buttons
     const viewBtnIds = ['viewBtn', 'viewBtnV', 'viewBtnP', 'viewBtnA', 'viewBtnD'];
     viewBtnIds.forEach(btnId => {
-        document.getElementById(btnId)?.addEventListener('click', function() {
-            const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
-            if (selectedIds.length === 1) {
-                fetchCardAndOpenModal('view', selectedIds[0]);
-            }
-        });
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            btn.addEventListener('click', function() {
+                const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
+                if (selectedIds.length === 1) {
+                    fetchCardAndOpenModal('view', selectedIds[0]);
+                }
+            });
+        }
     });
     
     // Edit photo buttons in table rows - use event delegation for dynamic rows
@@ -733,6 +822,10 @@ function initModalModule() {
             if (typeof bulkDelete === 'function') bulkDelete(selectedIds);
         }
     });
+    
+    } catch (error) {
+        console.error('initModalModule: Error during initialization:', error);
+    }
 }
 
 function directPermanentDelete(cardIds) {
@@ -773,5 +866,3 @@ window.IDCardApp.closeSideModal = closeSideModal;
 window.IDCardApp.fetchCardAndOpenModal = fetchCardAndOpenModal;
 window.openSideModal = openSideModal;
 window.closeSideModal = closeSideModal;
-
-console.log('IDCard Actions Modal module loaded');
