@@ -2,7 +2,21 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    # Dashboard
+    # ==================== AUTHENTICATION ====================
+    path('login/', views.login_view, name='login'),
+    path('logout/', views.logout_view, name='logout'),
+    path('api/auth/check-email/', views.api_check_email, name='api_check_email'),
+    path('api/auth/login/', views.api_login, name='api_login'),
+    path('api/auth/forgot-password/', views.api_forgot_password, name='api_forgot_password'),
+    path('api/auth/verify-otp/', views.api_verify_otp, name='api_verify_otp'),
+    path('api/auth/reset-password/', views.api_reset_password, name='api_reset_password'),
+    
+    # Role-specific Dashboards
+    path('admin-staff-dashboard/', views.admin_staff_dashboard, name='admin_staff_dashboard'),
+    path('client-dashboard/', views.client_dashboard, name='client_dashboard'),
+    path('client-staff-dashboard/', views.client_staff_dashboard, name='client_staff_dashboard'),
+    
+    # Dashboard (Super Admin)
     path('', views.dashboard, name='dashboard'),
     
     # Global Search API

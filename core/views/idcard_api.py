@@ -12,6 +12,7 @@ import time
 import os
 from datetime import datetime
 from ..models import IDCardGroup, IDCard, IDCardTable
+from .base import api_super_admin_required
 
 
 def generate_image_filename(batch_counter, original_ext='.jpg'):
@@ -220,6 +221,7 @@ def validate_image_bytes(image_bytes):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@api_super_admin_required
 def api_idcard_table_create(request, group_id):
     """API endpoint to create a new ID Card Table"""
     try:
@@ -278,6 +280,7 @@ def api_idcard_table_create(request, group_id):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@api_super_admin_required
 def api_idcard_table_get(request, table_id):
     """API endpoint to get a single ID Card Table"""
     try:
@@ -300,6 +303,7 @@ def api_idcard_table_get(request, table_id):
 
 @csrf_exempt
 @require_http_methods(["POST", "PUT"])
+@api_super_admin_required
 def api_idcard_table_update(request, table_id):
     """API endpoint to update an ID Card Table"""
     try:
@@ -355,6 +359,7 @@ def api_idcard_table_update(request, table_id):
 
 @csrf_exempt
 @require_http_methods(["DELETE", "POST"])
+@api_super_admin_required
 def api_idcard_table_delete(request, table_id):
     """API endpoint to delete an ID Card Table"""
     try:
@@ -372,6 +377,7 @@ def api_idcard_table_delete(request, table_id):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@api_super_admin_required
 def api_idcard_table_toggle_status(request, table_id):
     """API endpoint to toggle ID Card Table active/inactive status"""
     try:
@@ -400,6 +406,7 @@ def api_idcard_table_toggle_status(request, table_id):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@api_super_admin_required
 def api_idcard_table_list(request, group_id):
     """API endpoint to list all ID Card Tables for a group"""
     try:
@@ -430,6 +437,7 @@ def api_idcard_table_list(request, group_id):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@api_super_admin_required
 def api_idcard_list(request, table_id):
     """API endpoint to list ID Cards for a table with pagination support for lazy loading"""
     try:
@@ -508,6 +516,7 @@ def api_idcard_list(request, table_id):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@api_super_admin_required
 def api_idcard_all_ids(request, table_id):
     """API endpoint to get all card IDs for a table (for Select All functionality)"""
     try:
@@ -533,6 +542,7 @@ def api_idcard_all_ids(request, table_id):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@api_super_admin_required
 def api_idcard_create(request, table_id):
     """API endpoint to create a new ID Card with file upload support"""
     try:
@@ -636,6 +646,7 @@ def api_idcard_create(request, table_id):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@api_super_admin_required
 def api_idcard_get(request, card_id):
     """API endpoint to get a single ID Card"""
     try:
@@ -661,6 +672,7 @@ def api_idcard_get(request, card_id):
 
 @csrf_exempt
 @require_http_methods(["POST", "PUT"])
+@api_super_admin_required
 def api_idcard_update(request, card_id):
     """API endpoint to update an ID Card with file upload support"""
     try:
@@ -826,6 +838,7 @@ def api_idcard_update(request, card_id):
 
 @csrf_exempt
 @require_http_methods(["DELETE", "POST"])
+@api_super_admin_required
 def api_idcard_delete(request, card_id):
     """API endpoint to delete an ID Card"""
     try:
@@ -842,6 +855,7 @@ def api_idcard_delete(request, card_id):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@api_super_admin_required
 def api_idcard_update_field(request, card_id):
     """API endpoint to update a single field on an ID Card (for inline editing)"""
     try:
@@ -880,6 +894,7 @@ def api_idcard_update_field(request, card_id):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@api_super_admin_required
 def api_idcard_change_status(request, card_id):
     """API endpoint to change an ID Card's status"""
     try:
@@ -907,6 +922,7 @@ def api_idcard_change_status(request, card_id):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@api_super_admin_required
 def api_idcard_bulk_status(request, table_id):
     """API endpoint to change status of multiple ID Cards"""
     try:
@@ -934,6 +950,7 @@ def api_idcard_bulk_status(request, table_id):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@api_super_admin_required
 def api_idcard_bulk_delete(request, table_id):
     """API endpoint to delete multiple ID Cards"""
     try:
@@ -961,6 +978,7 @@ def api_idcard_bulk_delete(request, table_id):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@api_super_admin_required
 def api_idcard_search(request, table_id):
     """API endpoint to search ID Cards across all statuses"""
     try:
@@ -1023,6 +1041,7 @@ def api_idcard_search(request, table_id):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@api_super_admin_required
 def api_table_status_counts(request, table_id):
     """API endpoint to get status counts for a table"""
     try:
@@ -1048,6 +1067,7 @@ def api_table_status_counts(request, table_id):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@api_super_admin_required
 def api_idcard_bulk_upload(request, table_id):
     """API endpoint to bulk upload ID Cards from XLSX/CSV file with fuzzy matching and optional ZIP photo upload"""
     try:
@@ -1620,6 +1640,7 @@ def api_idcard_bulk_upload(request, table_id):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@api_super_admin_required
 def api_idcard_download_images(request, table_id):
     """API endpoint to download images as ZIP for selected cards"""
     try:
@@ -1715,6 +1736,7 @@ def api_idcard_download_images(request, table_id):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@api_super_admin_required
 def api_idcard_reupload_images(request, table_id):
     """
     API endpoint to reupload images from a ZIP file.

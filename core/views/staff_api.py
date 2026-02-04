@@ -8,6 +8,8 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 import json
 from ..models import Staff, User
+from .base import api_super_admin_required
+from ..utils import generate_secure_password, send_welcome_email
 
 
 def parse_bool(value):
@@ -21,6 +23,7 @@ def parse_bool(value):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@api_super_admin_required
 def api_staff_create(request):
     """API endpoint to create a new admin staff"""
     try:
@@ -46,12 +49,8 @@ def api_staff_create(request):
         name = data.get('name', '')
         name_parts = name.split() if name else []
         
-        # Get password from form or use default
-        password = data.get('password', '')
-        if isinstance(password, str):
-            password = password.strip() or 'staff123'
-        else:
-            password = 'staff123'
+        # Generate secure password
+        password = generate_secure_password(12)
         
         # Get status from form
         is_active = parse_bool(data.get('is_active', True))
@@ -94,9 +93,22 @@ def api_staff_create(request):
             perm_idcard_setting_status=parse_bool(data.get('perm_idcard_setting_status', False)),
         )
         
+        # Send welcome email with credentials
+        email_sent = False
+        email_message = ''
+        if email:
+            email_sent, email_message = send_welcome_email(
+                name=name or user.get_full_name() or 'User',
+                email=email,
+                password=password,
+                role='admin_staff',
+                request=request
+            )
+        
         return JsonResponse({
             'success': True,
-            'message': 'Staff created successfully!',
+            'message': 'Staff created successfully!' + (' Welcome email sent.' if email_sent else ' (Email not sent: ' + email_message + ')'),
+            'email_sent': email_sent,
             'staff': {
                 'id': staff.id,
                 'name': user.get_full_name(),
@@ -112,6 +124,7 @@ def api_staff_create(request):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@api_super_admin_required
 def api_staff_get(request, staff_id):
     """API endpoint to get a staff's details"""
     try:
@@ -151,6 +164,7 @@ def api_staff_get(request, staff_id):
 
 @csrf_exempt
 @require_http_methods(["PUT", "POST"])
+@api_super_admin_required
 def api_staff_update(request, staff_id):
     """API endpoint to update a staff"""
     try:
@@ -229,6 +243,7 @@ def api_staff_update(request, staff_id):
 
 @csrf_exempt
 @require_http_methods(["DELETE", "POST"])
+@api_super_admin_required
 def api_staff_delete(request, staff_id):
     """API endpoint to delete a staff"""
     try:
@@ -251,6 +266,7 @@ def api_staff_delete(request, staff_id):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@api_super_admin_required
 def api_staff_toggle_status(request, staff_id):
     """API endpoint to toggle staff active/inactive status"""
     try:

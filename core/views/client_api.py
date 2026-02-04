@@ -8,6 +8,8 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 import json
 from ..models import Client, Staff, User
+from .base import api_super_admin_required
+from ..utils import generate_secure_password, send_welcome_email
 
 
 def parse_bool(value):
@@ -21,6 +23,7 @@ def parse_bool(value):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@api_super_admin_required
 def api_client_create(request):
     """API endpoint to create a new client"""
     try:
@@ -46,6 +49,9 @@ def api_client_create(request):
         name = data.get('name', '')
         name_parts = name.split() if name else []
         
+        # Generate secure password
+        password = generate_secure_password(12)
+        
         user = User.objects.create_user(
             username=username,
             email=email,
@@ -54,7 +60,7 @@ def api_client_create(request):
             phone=data.get('phone', ''),
             role='client',
         )
-        user.set_password('client123')  # Default password
+        user.set_password(password)
         user.save()
         
         # Create the client profile
@@ -107,9 +113,22 @@ def api_client_create(request):
             client.photo = photo
             client.save()
         
+        # Send welcome email with credentials
+        email_sent = False
+        email_message = ''
+        if email:
+            email_sent, email_message = send_welcome_email(
+                name=name or 'Client',
+                email=email,
+                password=password,
+                role='client',
+                request=request
+            )
+        
         return JsonResponse({
             'success': True,
-            'message': 'Client created successfully!',
+            'message': 'Client created successfully!' + (' Welcome email sent.' if email_sent else ' (Email not sent: ' + email_message + ')'),
+            'email_sent': email_sent,
             'client': {
                 'id': client.id,
                 'name': client.name,
@@ -125,6 +144,7 @@ def api_client_create(request):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@api_super_admin_required
 def api_client_get(request, client_id):
     """API endpoint to get a client's details"""
     try:
@@ -186,6 +206,7 @@ def api_client_get(request, client_id):
 
 @csrf_exempt
 @require_http_methods(["PUT", "POST"])
+@api_super_admin_required
 def api_client_update(request, client_id):
     """API endpoint to update a client"""
     try:
@@ -273,6 +294,7 @@ def api_client_update(request, client_id):
 
 @csrf_exempt
 @require_http_methods(["DELETE", "POST"])
+@api_super_admin_required
 def api_client_delete(request, client_id):
     """API endpoint to delete a client"""
     try:
@@ -295,6 +317,7 @@ def api_client_delete(request, client_id):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@api_super_admin_required
 def api_client_toggle_status(request, client_id):
     """API endpoint to toggle client active/inactive status"""
     try:
@@ -323,6 +346,7 @@ def api_client_toggle_status(request, client_id):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@api_super_admin_required
 def api_client_staff(request, client_id):
     """API endpoint to get all staff members for a specific client"""
     try:

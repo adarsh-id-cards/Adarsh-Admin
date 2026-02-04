@@ -3,6 +3,9 @@
 
 from .base import (
     get_user_role,
+    super_admin_required,
+    api_login_required,
+    api_super_admin_required,
     dashboard,
     api_global_search,
     api_recent_client_updates,
@@ -14,6 +17,19 @@ from .base import (
     group_settings,
     manage_website,
     settings,
+)
+
+from .auth import (
+    login_view,
+    logout_view,
+    api_check_email,
+    api_login,
+    api_forgot_password,
+    api_verify_otp,
+    api_reset_password,
+    admin_staff_dashboard,
+    client_dashboard,
+    client_staff_dashboard,
 )
 
 from .client_api import (

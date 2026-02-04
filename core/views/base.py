@@ -2,27 +2,80 @@
 Base views - Helper functions and Page views
 Contains: Dashboard, Staff Management, Client Management pages, etc.
 """
-from django.shortcuts import render, get_object_or_404
+from functools import wraps
+from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
 from ..models import Client, Staff, IDCardGroup, IDCard, IDCardTable, WebsiteSettings
 
 
 def get_user_role(user):
     """Helper function to get user role display name"""
-    if user.is_authenticated:
-        return user.get_role_display()
-    return "Guest"
+    return user.get_role_display()
+
+
+def super_admin_required(view_func):
+    """Decorator to ensure only super_admin can access the view"""
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect('login')
+        if request.user.role != 'super_admin':
+            # Redirect to appropriate dashboard
+            if request.user.role == 'admin_staff':
+                return redirect('admin_staff_dashboard')
+            elif request.user.role == 'client':
+                return redirect('client_dashboard')
+            elif request.user.role == 'client_staff':
+                return redirect('client_staff_dashboard')
+            return redirect('login')
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
+def api_login_required(view_func):
+    """Decorator to ensure API endpoints require authentication"""
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return JsonResponse({
+                'success': False,
+                'message': 'Authentication required',
+                'redirect': '/login/'
+            }, status=401)
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
+def api_super_admin_required(view_func):
+    """Decorator to ensure API endpoints require super_admin role"""
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return JsonResponse({
+                'success': False,
+                'message': 'Authentication required',
+                'redirect': '/login/'
+            }, status=401)
+        if request.user.role != 'super_admin':
+            return JsonResponse({
+                'success': False,
+                'message': 'Access denied. Super Admin privileges required.'
+            }, status=403)
+        return view_func(request, *args, **kwargs)
+    return wrapper
 
 
 # Dashboard
+@super_admin_required
 def dashboard(request):
-    """Main dashboard view"""
+    """Main dashboard view - Super Admin only"""
     context = {
         'active_page': 'dashboard',
-        'user_role': get_user_role(request.user) if request.user.is_authenticated else 'Guest',
+        'user_role': get_user_role(request.user),
         'total_clients': Client.objects.count(),
         'total_staff': Staff.objects.count(),
         'total_id_cards': IDCard.objects.count(),
@@ -34,6 +87,7 @@ def dashboard(request):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@api_super_admin_required
 def api_recent_client_updates(request):
     """API endpoint to get recent clients with their ID card status counts"""
     try:
@@ -81,6 +135,7 @@ def api_recent_client_updates(request):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@api_super_admin_required
 def api_global_search(request):
     """API endpoint for global search across all ID cards within clients"""
     try:
@@ -178,42 +233,46 @@ def api_global_search(request):
 
 
 # Staff Management
+@super_admin_required
 def manage_staff(request):
     """View to manage admin staff"""
     staff_list = Staff.objects.filter(staff_type='admin_staff').select_related('user')
     context = {
         'active_page': 'manage_staff',
-        'user_role': get_user_role(request.user) if request.user.is_authenticated else 'Guest',
+        'user_role': get_user_role(request.user),
         'staff_list': staff_list,
     }
     return render(request, 'manage-staff.html', context)
 
 
 # Client Management
+@super_admin_required
 def manage_clients(request):
     """View to manage all clients"""
     clients = Client.objects.all().select_related('user')
     context = {
         'active_page': 'manage_clients',
-        'user_role': get_user_role(request.user) if request.user.is_authenticated else 'Guest',
+        'user_role': get_user_role(request.user),
         'clients': clients,
     }
     return render(request, 'manage-client.html', context)
 
 
 # Active Clients (ID Card Management)
+@super_admin_required
 def active_clients(request):
     """View active clients for ID card management"""
     clients = Client.objects.filter(status='active').select_related('user')
     context = {
         'active_page': 'active_clients',
-        'user_role': get_user_role(request.user) if request.user.is_authenticated else 'Guest',
+        'user_role': get_user_role(request.user),
         'clients': clients,
     }
     return render(request, 'active-client.html', context)
 
 
 # ID Card Group
+@super_admin_required
 def idcard_group(request, client_id):
     """View ID card groups/tables for a specific client with status counts"""
     client = get_object_or_404(Client, id=client_id)
@@ -231,7 +290,7 @@ def idcard_group(request, client_id):
     
     context = {
         'active_page': 'active_clients',
-        'user_role': get_user_role(request.user) if request.user.is_authenticated else 'Guest',
+        'user_role': get_user_role(request.user),
         'client': client,
         'tables': tables,
     }
@@ -239,6 +298,7 @@ def idcard_group(request, client_id):
 
 
 # ID Card Actions
+@super_admin_required
 def idcard_actions(request, table_id):
     """View and manage ID cards in a table, optionally filtered by status"""
     table = get_object_or_404(IDCardTable, id=table_id)
@@ -297,7 +357,7 @@ def idcard_actions(request, table_id):
     
     context = {
         'active_page': 'active_clients',
-        'user_role': get_user_role(request.user) if request.user.is_authenticated else 'Guest',
+        'user_role': get_user_role(request.user),
         'table': table,
         'group': table.group,
         'client': table.group.client,
@@ -312,6 +372,7 @@ def idcard_actions(request, table_id):
 
 
 # Group Settings
+@super_admin_required
 def group_settings(request, client_id):
     """Settings for a specific client - manage their groups and tables"""
     client = get_object_or_404(Client, id=client_id)
@@ -328,7 +389,7 @@ def group_settings(request, client_id):
     )
     context = {
         'active_page': 'active_clients',
-        'user_role': get_user_role(request.user) if request.user.is_authenticated else 'Guest',
+        'user_role': get_user_role(request.user),
         'client': client,
         'group': group,
         'tables': tables,
@@ -337,22 +398,24 @@ def group_settings(request, client_id):
 
 
 # Website Management
+@super_admin_required
 def manage_website(request):
     """Manage website/CMS settings"""
     website_settings, created = WebsiteSettings.objects.get_or_create(id=1)
     context = {
         'active_page': 'manage_website',
-        'user_role': get_user_role(request.user) if request.user.is_authenticated else 'Guest',
+        'user_role': get_user_role(request.user),
         'website_settings': website_settings,
     }
     return render(request, 'manage-website.html', context)
 
 
 # System Settings
+@super_admin_required
 def settings(request):
     """System settings view"""
     context = {
         'active_page': 'settings',
-        'user_role': get_user_role(request.user) if request.user.is_authenticated else 'Guest',
+        'user_role': get_user_role(request.user),
     }
     return render(request, 'settings.html', context)
