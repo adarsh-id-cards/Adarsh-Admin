@@ -9,7 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 from ..models import Staff, User
 from .base import api_super_admin_required
-from ..utils import generate_secure_password, send_welcome_email
+from ..utils import send_welcome_email
 
 
 def parse_bool(value):
@@ -35,8 +35,19 @@ def api_staff_create(request):
             data = json.loads(request.body)
             profile_image = None
         
+        # Get and validate email
+        email = data.get('email', '').strip().lower()
+        if not email:
+            return JsonResponse({'success': False, 'message': 'Email is required'})
+        
+        # Check for duplicate email
+        if User.objects.filter(email__iexact=email).exists():
+            return JsonResponse({
+                'success': False, 
+                'message': 'A user with this email already exists'
+            })
+        
         # Create the user first
-        email = data.get('email', '')
         username = email.split('@')[0].lower().replace('.', '_') if email else 'staff'
         # Make username unique
         base_username = username
@@ -49,8 +60,12 @@ def api_staff_create(request):
         name = data.get('name', '')
         name_parts = name.split() if name else []
         
-        # Generate secure password
-        password = generate_secure_password(12)
+        # Get phone number and use it as password
+        phone = data.get('phone', '').strip()
+        # Clean phone number - remove spaces, dashes, etc.
+        phone_clean = ''.join(filter(str.isdigit, phone))
+        # Use phone number as password (or fallback to default if no phone)
+        password = phone_clean if phone_clean else '123456'
         
         # Get status from form
         is_active = parse_bool(data.get('is_active', True))

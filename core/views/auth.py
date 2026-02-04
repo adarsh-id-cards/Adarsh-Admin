@@ -316,7 +316,7 @@ def admin_staff_dashboard(request):
         'user_role': request.user.get_role_display(),
         'user_name': request.user.get_full_name() or request.user.username,
     }
-    return render(request, 'dashboards/admin-staff-dashboard.html', context)
+    return render(request, 'dashboards/role-dashboard.html', context)
 
 
 @login_required
@@ -330,7 +330,7 @@ def client_dashboard(request):
         'user_role': request.user.get_role_display(),
         'user_name': request.user.get_full_name() or request.user.username,
     }
-    return render(request, 'dashboards/client-dashboard.html', context)
+    return render(request, 'dashboards/role-dashboard.html', context)
 
 
 @login_required
@@ -344,4 +344,4 @@ def client_staff_dashboard(request):
         'user_role': request.user.get_role_display(),
         'user_name': request.user.get_full_name() or request.user.username,
     }
-    return render(request, 'dashboards/client-staff-dashboard.html', context)
+    return render(request, 'dashboards/role-dashboard.html', context)

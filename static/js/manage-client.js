@@ -389,21 +389,37 @@ document.addEventListener('DOMContentLoaded', function() {
         clientForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             
+            // Prevent double submission
+            const submitBtn = clientForm.querySelector('button[type="submit"]');
+            if (submitBtn.disabled) return;
+            submitBtn.disabled = true;
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+            
             const formData = getFormData();
             let result;
             
-            if (currentMode === 'edit' && selectedClientId) {
-                result = await updateClient(selectedClientId, formData);
-            } else if (currentMode === 'add') {
-                result = await createClient(formData);
-            }
-            
-            if (result && result.success) {
-                showToast(result.message, 'success');
-                closeDrawer();
-                setTimeout(() => location.reload(), 500);
-            } else {
-                showToast(result?.message || 'Operation failed', 'error');
+            try {
+                if (currentMode === 'edit' && selectedClientId) {
+                    result = await updateClient(selectedClientId, formData);
+                } else if (currentMode === 'add') {
+                    result = await createClient(formData);
+                }
+                
+                if (result && result.success) {
+                    showToast(result.message, 'success');
+                    closeDrawer();
+                    setTimeout(() => location.reload(), 500);
+                } else {
+                    showToast(result?.message || 'Operation failed', 'error');
+                    // Re-enable button on error
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }
+            } catch (error) {
+                showToast('An error occurred', 'error');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
             }
         });
     }

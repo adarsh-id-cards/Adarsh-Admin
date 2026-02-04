@@ -410,10 +410,10 @@ def manage_website(request):
     return render(request, 'manage-website.html', context)
 
 
-# System Settings
-@super_admin_required
+# System Settings - Available to all logged in users
+@login_required
 def settings(request):
-    """System settings view"""
+    """User settings/profile view - accessible by all user types"""
     context = {
         'active_page': 'settings',
         'user_role': get_user_role(request.user),

@@ -219,6 +219,15 @@ body {
   text-align: center;
 }
 
+.sidebar-actions a.logout-link {
+  color: rgba(252, 129, 129, 0.8);
+}
+
+.sidebar-actions a.logout-link:hover {
+  background: rgba(252, 129, 129, 0.15);
+  color: #fca5a5;
+}
+
 /* Collapsed state for sidebar actions */
 .sidebar.collapsed .sidebar-actions {
   padding: 0;

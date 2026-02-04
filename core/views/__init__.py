@@ -74,3 +74,11 @@ from .idcard_api import (
     api_idcard_download_docx,
     api_idcard_download_xlsx,
 )
+
+from .settings_api import (
+    api_get_profile,
+    api_update_profile,
+    api_change_password,
+    api_upload_profile_image,
+    api_remove_profile_image,
+)

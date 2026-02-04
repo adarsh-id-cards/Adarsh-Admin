@@ -74,7 +74,7 @@ def get_welcome_email_template(name, email, password, role, login_url):
                             
                             <p style="color: #555; font-size: 15px; margin: 0 0 25px; line-height: 1.6;">
                                 Your account has been created as <strong style="color: #764ba2;">{role_display}</strong>. 
-                                Below are your login credentials. Please keep them secure and change your password after first login.
+                                Below are your login credentials. Please keep them secure.
                             </p>
                             
                             <!-- Credentials Box -->
@@ -95,9 +95,12 @@ def get_welcome_email_template(name, email, password, role, login_url):
                                     <tr>
                                         <td style="padding: 10px 0; border-top: 1px dashed #ddd;">
                                             <span style="color: #666; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Password</span>
-                                            <div style="color: #333; font-size: 18px; font-weight: 600; margin-top: 5px; font-family: 'Courier New', monospace; background: #fff; padding: 10px 15px; border-radius: 8px; border: 1px solid #e0e5ff;">
-                                                {password}
+                                            <div style="color: #333; font-size: 16px; font-weight: 600; margin-top: 5px; font-family: 'Courier New', monospace; background: #fff; padding: 10px 15px; border-radius: 8px; border: 1px solid #e0e5ff;">
+                                                📱 Your Mobile Number
                                             </div>
+                                            <p style="color: #888; font-size: 13px; margin: 8px 0 0; font-style: italic;">
+                                                (Use your 10-digit mobile number as password)
+                                            </p>
                                         </td>
                                     </tr>
                                     <tr>
@@ -120,10 +123,23 @@ def get_welcome_email_template(name, email, password, role, login_url):
                                 </a>
                             </div>
                             
+                            <!-- How to Reset Password -->
+                            <div style="background: #f0fff4; border-radius: 10px; padding: 20px; margin-top: 25px; border-left: 4px solid #48bb78;">
+                                <h4 style="color: #276749; margin: 0 0 15px; font-size: 15px; font-weight: 600;">
+                                    🔄 How to Reset Your Password
+                                </h4>
+                                <ol style="color: #2f855a; font-size: 14px; margin: 0; padding-left: 20px; line-height: 1.8;">
+                                    <li>Go to the login page and click on <strong>"Forgot Password?"</strong></li>
+                                    <li>Enter your email address and submit</li>
+                                    <li>You will receive an OTP on your email</li>
+                                    <li>Enter the OTP and set your new password</li>
+                                </ol>
+                            </div>
+                            
                             <!-- Security Notice -->
-                            <div style="background: #fff8e6; border-radius: 10px; padding: 15px 20px; margin-top: 25px; border-left: 4px solid #f5a623;">
+                            <div style="background: #fff8e6; border-radius: 10px; padding: 15px 20px; margin-top: 20px; border-left: 4px solid #f5a623;">
                                 <p style="color: #856404; font-size: 14px; margin: 0; line-height: 1.5;">
-                                    <strong>⚠️ Security Tip:</strong> Please change your password after your first login. Never share your credentials with anyone.
+                                    <strong>⚠️ Security Tip:</strong> We recommend changing your password after first login for better security. Never share your credentials with anyone.
                                 </p>
                             </div>
                         </td>
@@ -160,14 +176,25 @@ Your account has been created as {role_display}.
 Your Login Credentials:
 ------------------------
 Email: {email}
-Password: {password}
+Password: Your Mobile Number (10-digit)
 Role: {role_display}
 
 Login URL: {login_url}
 
-Security Tip: Please change your password after your first login. Never share your credentials with anyone.
+How to Reset Your Password:
+1. Go to the login page and click on "Forgot Password?"
+2. Enter your email address and submit
+3. You will receive an OTP on your email
+4. Enter the OTP and set your new password
+
+Security Tip: We recommend changing your password after first login for better security. Never share your credentials with anyone.
 
 This is an automated message. Please do not reply to this email.
+
+© 2026 Adarsh Admin. All rights reserved.
+'''
+    
+    return html_content, plain_content
 
 © 2026 Adarsh Admin. All rights reserved.
 '''

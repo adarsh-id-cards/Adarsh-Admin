@@ -1,26 +1,61 @@
-// Settings Page JavaScript
+// Settings Page JavaScript - With API Integration
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Load profile data on page load
+    loadProfile();
     
     // ===== Avatar Upload =====
     const avatarUpload = document.getElementById('avatarUpload');
     const profileAvatar = document.getElementById('profileAvatar');
-    const sidebarAvatar = document.querySelector('.sidebar-avatar');
-    const topbarAvatar = document.querySelector('.topbar-avatar');
 
     if (avatarUpload) {
-        avatarUpload.addEventListener('change', function(e) {
+        avatarUpload.addEventListener('change', async function(e) {
             const file = e.target.files[0];
             if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const imageUrl = e.target.result;
-                    profileAvatar.src = imageUrl;
-                    if (sidebarAvatar) sidebarAvatar.src = imageUrl;
-                    if (topbarAvatar) topbarAvatar.src = imageUrl;
-                    showToast('Profile picture updated!', 'success');
-                };
-                reader.readAsDataURL(file);
+                // Validate file type
+                const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+                if (!allowedTypes.includes(file.type)) {
+                    showToast('Invalid file type. Please use JPEG, PNG, GIF, or WebP.', 'error');
+                    return;
+                }
+                
+                // Validate file size (5MB max)
+                if (file.size > 5 * 1024 * 1024) {
+                    showToast('File size too large. Maximum 5MB allowed.', 'error');
+                    return;
+                }
+                
+                // Upload to server
+                const formData = new FormData();
+                formData.append('profile_image', file);
+                
+                try {
+                    const response = await fetch('/api/profile/upload-image/', {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-CSRFToken': getCSRFToken()
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        // Update avatar displays
+                        if (profileAvatar) profileAvatar.src = data.image_url;
+                        
+                        // Update sidebar avatar if exists
+                        const sidebarAvatar = document.querySelector('.sidebar-user img, .user-avatar img');
+                        if (sidebarAvatar) sidebarAvatar.src = data.image_url;
+                        
+                        showToast('Profile picture updated!', 'success');
+                    } else {
+                        showToast(data.message || 'Failed to upload image', 'error');
+                    }
+                } catch (error) {
+                    console.error('Upload error:', error);
+                    showToast('Failed to upload image', 'error');
+                }
             }
         });
     }
@@ -46,44 +81,60 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // ===== Password Validation =====
-    const newPasswordInput = document.getElementById('newPassword');
-    
-    if (newPasswordInput) {
-        newPasswordInput.addEventListener('input', function() {
-            const password = this.value;
-            
-            // Check requirements
-            updateRequirement('reqLength', password.length >= 8);
-            updateRequirement('reqUpper', /[A-Z]/.test(password));
-            updateRequirement('reqLower', /[a-z]/.test(password));
-            updateRequirement('reqNumber', /[0-9]/.test(password));
-            updateRequirement('reqSpecial', /[!@#$%^&*(),.?":{}|<>]/.test(password));
-        });
-    }
-
-    function updateRequirement(id, isValid) {
-        const element = document.getElementById(id);
-        if (element) {
-            if (isValid) {
-                element.classList.add('valid');
-                element.querySelector('i').classList.remove('fa-circle');
-                element.querySelector('i').classList.add('fa-check-circle');
-            } else {
-                element.classList.remove('valid');
-                element.querySelector('i').classList.remove('fa-check-circle');
-                element.querySelector('i').classList.add('fa-circle');
-            }
-        }
-    }
-
     // ===== Profile Form Submit =====
     const profileForm = document.getElementById('profileForm');
     
     if (profileForm) {
-        profileForm.addEventListener('submit', function(e) {
+        profileForm.addEventListener('submit', async function(e) {
             e.preventDefault();
-            showToast('Profile information updated successfully!', 'success');
+            
+            const formData = {
+                first_name: document.getElementById('firstName')?.value || '',
+                last_name: document.getElementById('lastName')?.value || '',
+                username: document.getElementById('username')?.value || '',
+                email: document.getElementById('email')?.value || '',
+                phone: document.getElementById('phone')?.value || ''
+            };
+            
+            try {
+                const response = await fetch('/api/profile/update/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken()
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast('Profile information updated successfully!', 'success');
+                    
+                    // Update displayed name
+                    const profileName = document.querySelector('.profile-name');
+                    if (profileName) {
+                        profileName.textContent = data.profile.full_name;
+                    }
+                    
+                    // Update sidebar user name if exists
+                    const sidebarUserName = document.querySelector('.user-name');
+                    if (sidebarUserName) {
+                        sidebarUserName.textContent = data.profile.full_name;
+                    }
+                    
+                    // Update email display
+                    const profileEmail = document.querySelector('.profile-email');
+                    if (profileEmail) {
+                        profileEmail.innerHTML = `<i class="fa-solid fa-envelope"></i> ${data.profile.email}`;
+                    }
+                } else {
+                    showToast(data.message || 'Failed to update profile', 'error');
+                }
+            } catch (error) {
+                console.error('Update error:', error);
+                showToast('Failed to update profile', 'error');
+            }
         });
     }
 
@@ -91,7 +142,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const passwordForm = document.getElementById('passwordForm');
     
     if (passwordForm) {
-        passwordForm.addEventListener('submit', function(e) {
+        passwordForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const currentPassword = document.getElementById('currentPassword').value;
@@ -108,75 +159,37 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            if (newPassword.length < 8) {
-                showToast('Password must be at least 8 characters', 'error');
+            if (newPassword.length < 6) {
+                showToast('Password must be at least 6 characters', 'error');
                 return;
             }
             
-            // Simulate password change
-            showToast('Password updated successfully!', 'success');
-            passwordForm.reset();
-            
-            // Reset requirement indicators
-            document.querySelectorAll('.password-requirements li').forEach(li => {
-                li.classList.remove('valid');
-                li.querySelector('i').classList.remove('fa-check-circle');
-                li.querySelector('i').classList.add('fa-circle');
-            });
-        });
-    }
-
-    // ===== Modal Functions =====
-    const modal = document.getElementById('confirmModal');
-    const modalIcon = document.getElementById('modalIcon');
-    const modalTitle = document.getElementById('modalTitle');
-    const modalMessage = document.getElementById('modalMessage');
-    const modalConfirm = document.getElementById('modalConfirm');
-    const modalCancel = document.getElementById('modalCancel');
-    
-    let currentAction = null;
-
-    function showModal(title, message, action, isDanger = true) {
-        modalTitle.textContent = title;
-        modalMessage.textContent = message;
-        currentAction = action;
-        
-        if (isDanger) {
-            modalIcon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
-            modalIcon.classList.remove('success');
-            modalConfirm.style.background = '#dc3545';
-        } else {
-            modalIcon.innerHTML = '<i class="fa-solid fa-question-circle"></i>';
-            modalIcon.classList.add('success');
-            modalConfirm.style.background = '#16a34a';
-        }
-        
-        modal.classList.add('active');
-    }
-
-    function hideModal() {
-        modal.classList.remove('active');
-        currentAction = null;
-    }
-
-    if (modalCancel) {
-        modalCancel.addEventListener('click', hideModal);
-    }
-
-    if (modal) {
-        modal.addEventListener('click', function(e) {
-            if (e.target === modal) {
-                hideModal();
+            try {
+                const response = await fetch('/api/profile/change-password/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken()
+                    },
+                    body: JSON.stringify({
+                        current_password: currentPassword,
+                        new_password: newPassword,
+                        confirm_password: confirmPassword
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast('Password updated successfully!', 'success');
+                    passwordForm.reset();
+                } else {
+                    showToast(data.message || 'Failed to change password', 'error');
+                }
+            } catch (error) {
+                console.error('Password change error:', error);
+                showToast('Failed to change password', 'error');
             }
-        });
-    }
-
-    if (modalConfirm) {
-        modalConfirm.addEventListener('click', function() {
-            if (currentAction) {
-                currentAction();
-            }
-            hideModal();
         });
     }
 
@@ -185,120 +198,81 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (logoutBtn) {
         logoutBtn.addEventListener('click', function() {
-            showModal(
-                'Logout',
-                'Are you sure you want to logout from your account?',
-                function() {
-                    showToast('Logging out...', 'success');
-                    setTimeout(() => {
-                        // Redirect to login page
-                        // window.location.href = 'login.html';
-                    }, 1500);
-                }
-            );
+            if (confirm('Are you sure you want to logout?')) {
+                window.location.href = '/logout/';
+            }
         });
     }
 
-    // ===== Revoke Session =====
-    const revokeButtons = document.querySelectorAll('.btn-revoke');
-    
-    revokeButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const sessionItem = this.closest('.session-item');
-            const deviceName = sessionItem.querySelector('h4').textContent.split(' -')[0];
+    // ===== Load Profile Data =====
+    async function loadProfile() {
+        try {
+            const response = await fetch('/api/profile/');
+            const data = await response.json();
             
-            showModal(
-                'Revoke Session',
-                `Are you sure you want to logout from "${deviceName}"?`,
-                function() {
-                    sessionItem.style.animation = 'fadeOut 0.3s ease forwards';
-                    setTimeout(() => {
-                        sessionItem.remove();
-                        showToast('Session revoked successfully!', 'success');
-                    }, 300);
-                }
-            );
-        });
-    });
-
-    // ===== Revoke All Sessions =====
-    const revokeAllBtn = document.getElementById('revokeAllBtn');
-    
-    if (revokeAllBtn) {
-        revokeAllBtn.addEventListener('click', function() {
-            showModal(
-                'Logout from All Devices',
-                'This will logout all sessions except your current one. Continue?',
-                function() {
-                    const sessionItems = document.querySelectorAll('.session-item:not(.current)');
-                    sessionItems.forEach((item, index) => {
-                        setTimeout(() => {
-                            item.style.animation = 'fadeOut 0.3s ease forwards';
-                            setTimeout(() => item.remove(), 300);
-                        }, index * 100);
-                    });
-                    showToast('All other sessions have been revoked!', 'success');
-                }
-            );
-        });
-    }
-
-    // ===== Reset Settings =====
-    const resetSettingsBtn = document.getElementById('resetSettingsBtn');
-    
-    if (resetSettingsBtn) {
-        resetSettingsBtn.addEventListener('click', function() {
-            showModal(
-                'Reset All Settings',
-                'This will reset all your preferences to default values. This action cannot be undone.',
-                function() {
-                    // Reset toggles
-                    document.getElementById('twoFactorToggle').checked = false;
-                    document.getElementById('loginNotifyToggle').checked = true;
-                    document.getElementById('sessionTimeout').value = '30';
+            if (data.success) {
+                const profile = data.profile;
+                
+                // Update form fields
+                const firstNameInput = document.getElementById('firstName');
+                const lastNameInput = document.getElementById('lastName');
+                const usernameInput = document.getElementById('username');
+                const emailInput = document.getElementById('email');
+                const phoneInput = document.getElementById('phone');
+                
+                if (firstNameInput) firstNameInput.value = profile.first_name || '';
+                if (lastNameInput) lastNameInput.value = profile.last_name || '';
+                if (usernameInput) usernameInput.value = profile.username || '';
+                if (emailInput) emailInput.value = profile.email || '';
+                if (phoneInput) phoneInput.value = profile.phone || '';
+                
+                // Update profile card
+                const profileName = document.querySelector('.profile-name');
+                const profileRole = document.querySelector('.profile-role');
+                const profileEmail = document.querySelector('.profile-email');
+                const memberSinceEl = document.querySelector('.stat-value.member-since');
+                
+                if (profileName) profileName.textContent = profile.full_name;
+                if (profileRole) profileRole.textContent = profile.role_display;
+                if (profileEmail) profileEmail.innerHTML = `<i class="fa-solid fa-envelope"></i> ${profile.email}`;
+                if (memberSinceEl) memberSinceEl.textContent = profile.member_since;
+                
+                // Update avatar if exists
+                if (profile.profile_image) {
+                    const profileAvatar = document.getElementById('profileAvatar');
+                    if (profileAvatar) profileAvatar.src = profile.profile_image;
                     
-                    showToast('All settings have been reset to default!', 'success');
+                    const sidebarAvatar = document.querySelector('.sidebar-user img, .user-avatar img');
+                    if (sidebarAvatar) sidebarAvatar.src = profile.profile_image;
                 }
-            );
-        });
-    }
-
-    // ===== Delete Account =====
-    const deleteAccountBtn = document.getElementById('deleteAccountBtn');
-    
-    if (deleteAccountBtn) {
-        deleteAccountBtn.addEventListener('click', function() {
-            showModal(
-                'Delete Account',
-                'This action is permanent and cannot be undone. All your data will be lost.',
-                function() {
-                    showToast('Account deletion initiated...', 'error');
-                    // In real app, redirect to confirmation page or make API call
-                }
-            );
-        });
-    }
-
-    // ===== Toast Notification =====
-    // Using shared showToast from utils.js
-
-    // ===== Add CSS Animation =====
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes fadeOut {
-            from {
-                opacity: 1;
-                transform: translateX(0);
             }
-            to {
-                opacity: 0;
-                transform: translateX(20px);
-            }
+        } catch (error) {
+            console.error('Failed to load profile:', error);
         }
-    `;
-    document.head.appendChild(style);
+    }
 
-    // ===== Security Toggle Changes =====
+    // ===== Helper: Get CSRF Token =====
+    function getCSRFToken() {
+        // Try from cookie
+        const cookieValue = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('csrftoken='))
+            ?.split('=')[1];
+        
+        if (cookieValue) return cookieValue;
+        
+        // Try from meta tag
+        const metaToken = document.querySelector('meta[name="csrf-token"]');
+        if (metaToken) return metaToken.getAttribute('content');
+        
+        // Try from hidden input
+        const inputToken = document.querySelector('input[name="csrfmiddlewaretoken"]');
+        if (inputToken) return inputToken.value;
+        
+        return '';
+    }
+
+    // ===== Security Toggle Changes (if present) =====
     const twoFactorToggle = document.getElementById('twoFactorToggle');
     const loginNotifyToggle = document.getElementById('loginNotifyToggle');
     const sessionTimeout = document.getElementById('sessionTimeout');
@@ -341,5 +315,4 @@ document.addEventListener('DOMContentLoaded', function() {
             showToast(message, 'success');
         });
     }
-
 });

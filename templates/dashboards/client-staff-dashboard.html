@@ -7,16 +7,18 @@
     <title>Dashboard - {{ user_role }}</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/variables.css' %}">
     <style>
         :root {
-            --primary: #3b82f6;
-            --primary-dark: #2563eb;
-            --bg-dark: #0f172a;
-            --bg-card: #1e293b;
-            --text-primary: #f8fafc;
-            --text-secondary: #94a3b8;
-            --text-muted: #64748b;
-            --border-color: #334155;
+            --dash-primary: #4299e1;
+            --dash-primary-dark: #3182ce;
+            --dash-secondary: #667eea;
+            --dash-bg: linear-gradient(135deg, #1a1c2e 0%, #1a2a3d 50%, #1a1c2e 100%);
+            --dash-card-bg: rgba(30, 32, 48, 0.95);
+            --dash-text-primary: #f8fafc;
+            --dash-text-secondary: #a0aec0;
+            --dash-text-muted: #718096;
+            --dash-border: rgba(66, 153, 225, 0.2);
         }
         
         * {
@@ -27,58 +29,60 @@
         
         body {
             font-family: 'Inter', sans-serif;
-            background: var(--bg-dark);
+            background: var(--dash-bg);
             min-height: 100vh;
-            color: var(--text-primary);
+            color: var(--dash-text-primary);
         }
         
         .topbar {
-            background: var(--bg-card);
-            padding: 16px 24px;
+            background: var(--dash-card-bg);
+            padding: 18px 28px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border-bottom: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--dash-border);
+            backdrop-filter: blur(20px);
         }
         
         .topbar-left {
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 20px;
         }
         
         .user-info {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 14px;
         }
         
         .user-avatar {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            border-radius: 10px;
+            width: 46px;
+            height: 46px;
+            background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
+            font-size: 20px;
+            box-shadow: 0 4px 15px rgba(66, 153, 225, 0.35);
         }
         
         .user-details h3 {
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 600;
-            color: var(--text-primary);
+            color: var(--dash-text-primary);
         }
         
         .user-details p {
-            font-size: 12px;
-            color: var(--text-muted);
+            font-size: 13px;
+            color: var(--dash-text-muted);
         }
         
         .topbar-right {
             display: flex;
             align-items: center;
-            gap: 24px;
+            gap: 28px;
         }
         
         .datetime {
@@ -86,34 +90,35 @@
         }
         
         .datetime .time {
-            font-size: 20px;
+            font-size: 22px;
             font-weight: 600;
-            color: var(--text-primary);
+            color: var(--dash-text-primary);
         }
         
         .datetime .date {
-            font-size: 12px;
-            color: var(--text-muted);
+            font-size: 13px;
+            color: var(--dash-text-muted);
         }
         
         .btn-logout {
-            padding: 10px 20px;
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 12px 24px;
+            background: rgba(252, 129, 129, 0.12);
+            border: 1px solid rgba(252, 129, 129, 0.35);
             color: #fca5a5;
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
             font-size: 14px;
             font-weight: 500;
             display: flex;
             align-items: center;
-            gap: 8px;
-            transition: all 0.2s ease;
+            gap: 10px;
+            transition: all 0.25s ease;
             text-decoration: none;
         }
         
         .btn-logout:hover {
-            background: rgba(239, 68, 68, 0.2);
+            background: rgba(252, 129, 129, 0.2);
+            transform: translateY(-2px);
         }
         
         .main-content {
@@ -121,64 +126,67 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: calc(100vh - 80px);
-            padding: 40px;
+            min-height: calc(100vh - 90px);
+            padding: 48px;
         }
         
         .welcome-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 60px 80px;
+            background: var(--dash-card-bg);
+            border: 1px solid var(--dash-border);
+            border-radius: 20px;
+            padding: 64px 88px;
             text-align: center;
-            max-width: 600px;
+            max-width: 650px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 25px 60px -12px rgba(66, 153, 225, 0.15);
         }
         
         .welcome-icon {
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            border-radius: 20px;
+            width: 88px;
+            height: 88px;
+            background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+            border-radius: 22px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 36px;
-            margin: 0 auto 24px;
+            font-size: 40px;
+            margin: 0 auto 28px;
+            box-shadow: 0 8px 24px rgba(66, 153, 225, 0.35);
         }
         
         .welcome-card h1 {
-            font-size: 28px;
+            font-size: 30px;
             font-weight: 600;
-            margin-bottom: 12px;
+            margin-bottom: 14px;
         }
         
         .welcome-card p {
-            font-size: 16px;
-            color: var(--text-secondary);
-            margin-bottom: 32px;
+            font-size: 17px;
+            color: var(--dash-text-secondary);
+            margin-bottom: 36px;
         }
         
         .role-badge {
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            padding: 10px 20px;
-            background: rgba(59, 130, 246, 0.1);
-            border: 1px solid rgba(59, 130, 246, 0.3);
+            gap: 10px;
+            padding: 12px 24px;
+            background: rgba(66, 153, 225, 0.15);
+            border: 1px solid rgba(66, 153, 225, 0.35);
             border-radius: 50px;
-            color: #93c5fd;
-            font-size: 14px;
+            color: #90cdf4;
+            font-size: 15px;
             font-weight: 500;
         }
         
         .coming-soon {
-            margin-top: 40px;
-            padding: 20px;
-            background: rgba(245, 158, 11, 0.1);
-            border: 1px solid rgba(245, 158, 11, 0.3);
-            border-radius: 12px;
-            color: #fbbf24;
-            font-size: 14px;
+            margin-top: 44px;
+            padding: 22px;
+            background: rgba(246, 173, 85, 0.12);
+            border: 1px solid rgba(246, 173, 85, 0.35);
+            border-radius: 14px;
+            color: #f6ad55;
+            font-size: 15px;
         }
     </style>
 </head>

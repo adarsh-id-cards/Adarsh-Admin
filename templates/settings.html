@@ -16,7 +16,7 @@
 </head>
 <body>
 
-  {% include 'partials/sidebar.html' %}
+  {% include 'partials/unified-sidebar.html' %}
 
   <!-- Main -->
   <main class="main">
@@ -28,7 +28,15 @@
           <i class="fa-solid fa-bars"></i>
         </button>
         <div class="breadcrumb">
+            {% if user.role == 'super_admin' %}
             <a href="{% url 'dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+            {% elif user.role == 'admin_staff' %}
+            <a href="{% url 'admin_staff_dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+            {% elif user.role == 'client' %}
+            <a href="{% url 'client_dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+            {% elif user.role == 'client_staff' %}
+            <a href="{% url 'client_staff_dashboard' %}" class="breadcrumb-item"><i class="fa-solid fa-house"></i> Home</a>
+            {% endif %}
             <i class="fa-solid fa-chevron-right breadcrumb-sep"></i>
             <span class="breadcrumb-item active">Settings</span>
         </div>
@@ -43,7 +51,11 @@
         <div class="profile-card">
           <div class="profile-avatar-section">
             <div class="profile-avatar-wrapper">
-              <img src="https://i.pravatar.cc/120?img=32" alt="Admin" class="profile-avatar" id="profileAvatar"/>
+              {% if user.profile_image %}
+              <img src="{{ user.profile_image.url }}" alt="Profile" class="profile-avatar" id="profileAvatar"/>
+              {% else %}
+              <img src="https://i.pravatar.cc/120?img=32" alt="Profile" class="profile-avatar" id="profileAvatar"/>
+              {% endif %}
               <label class="avatar-edit-btn" for="avatarUpload">
                 <i class="fa-solid fa-camera"></i>
               </label>
@@ -57,11 +69,7 @@
           </div>
           <div class="profile-stats">
             <div class="profile-stat">
-              <span class="stat-value">156</span>
-              <span class="stat-label">Total Logins</span>
-            </div>
-            <div class="profile-stat">
-              <span class="stat-value">2 years</span>
+              <span class="stat-value member-since">-</span>
               <span class="stat-label">Member Since</span>
             </div>
           </div>
@@ -92,22 +100,31 @@
             <form id="profileForm">
               <div class="form-row">
                 <div class="form-group">
-                  <label>Full Name</label>
-                  <input type="text" value="{{ user.get_full_name|default:'Super Admin' }}" placeholder="Enter full name"/>
+                  <label>First Name</label>
+                  <input type="text" id="firstName" placeholder="Enter first name"/>
                 </div>
                 <div class="form-group">
-                  <label>Username</label>
-                  <input type="text" value="{{ user.username|default:'super_admin' }}" placeholder="Enter username"/>
+                  <label>Last Name</label>
+                  <input type="text" id="lastName" placeholder="Enter last name"/>
                 </div>
               </div>
               <div class="form-row">
                 <div class="form-group">
-                  <label>Email Address</label>
-                  <input type="email" value="{{ user.email|default:'admin@adarsh.com' }}" placeholder="Enter email"/>
+                  <label>Username</label>
+                  <input type="text" id="username" placeholder="Enter username"/>
                 </div>
                 <div class="form-group">
+                  <label>Email Address</label>
+                  <input type="email" id="email" placeholder="Enter email"/>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
                   <label>Phone Number</label>
-                  <input type="tel" value="{{ user.phone|default:'+91 9876543210' }}" placeholder="Enter phone number"/>
+                  <input type="tel" id="phone" placeholder="Enter phone number"/>
+                </div>
+                <div class="form-group">
+                  <!-- Empty for layout -->
                 </div>
               </div>
               <div class="form-actions">

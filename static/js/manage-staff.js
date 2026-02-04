@@ -435,6 +435,13 @@ document.addEventListener('DOMContentLoaded', function() {
         staffForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            // Prevent double submission
+            const submitBtn = staffForm.querySelector('button[type="submit"]');
+            if (submitBtn.disabled) return;
+            submitBtn.disabled = true;
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+            
             const formData = {
                 name: document.getElementById('staff-name').value,
                 email: document.getElementById('staff-email').value,
@@ -453,19 +460,28 @@ document.addEventListener('DOMContentLoaded', function() {
             
             let result;
             
-            if (currentMode === 'edit' && selectedStaffId) {
-                result = await updateStaff(selectedStaffId, formData, selectedProfileFile);
-            } else {
-                result = await createStaff(formData, selectedProfileFile);
-            }
-            
-            if (result.success) {
-                showToast(result.message, 'success');
-                selectedProfileFile = null; // Reset after successful upload
-                closeDrawer();
-                setTimeout(() => location.reload(), 500);
-            } else {
-                showToast(result.message || 'Operation failed', 'error');
+            try {
+                if (currentMode === 'edit' && selectedStaffId) {
+                    result = await updateStaff(selectedStaffId, formData, selectedProfileFile);
+                } else {
+                    result = await createStaff(formData, selectedProfileFile);
+                }
+                
+                if (result.success) {
+                    showToast(result.message, 'success');
+                    selectedProfileFile = null; // Reset after successful upload
+                    closeDrawer();
+                    setTimeout(() => location.reload(), 500);
+                } else {
+                    showToast(result.message || 'Operation failed', 'error');
+                    // Re-enable button on error
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }
+            } catch (error) {
+                showToast('An error occurred', 'error');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
             }
         });
     }
