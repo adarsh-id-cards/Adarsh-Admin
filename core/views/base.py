@@ -10,11 +10,33 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
 from ..models import Client, Staff, IDCardGroup, IDCard, IDCardTable, WebsiteSettings
-
+from django.http import HttpResponse
+from django.contrib.auth import get_user_model
+import os
 
 def get_user_role(user):
     """Helper function to get user role display name"""
     return user.get_role_display()
+
+
+
+def create_superuser_once(request):
+    # allow only on Railway
+    if not os.getenv("RAILWAY_ENVIRONMENT"):
+        return HttpResponse("Not allowed", status=403)
+
+    User = get_user_model()
+
+    if User.objects.filter(username="admin").exists():
+        return HttpResponse("Superuser already exists")
+
+    User.objects.create_superuser(
+        username="admin",
+        email="admin@example.com",
+        password="Admin@123"
+    )
+
+    return HttpResponse("Superuser created successfully")
 
 
 def super_admin_required(view_func):
