@@ -1,0 +1,183 @@
+/* ============================================
+   MANAGE STAFF PAGE - Specific Styles
+   Uses CSS Variables from variables.css
+   ============================================ */
+
+/* ===========================================
+   STATUS BADGE - Staff Page
+   =========================================== */
+.status-badge.active {
+    background: var(--green);
+    color: var(--text-white);
+}
+
+.status-badge.inactive {
+    background: var(--red);
+    color: var(--text-white);
+}
+
+/* ===========================================
+   TABLE COLUMN WIDTHS - Staff Specific
+   Staff table has checkbox as column 1
+   =========================================== */
+/* Checkbox column */
+.data-table th:nth-child(1), 
+.data-table td:nth-child(1) {
+    width: 40px;
+    min-width: 40px;
+    max-width: 40px;
+    text-align: center;
+}
+
+/* Name column */
+.data-table th:nth-child(2), 
+.data-table td:nth-child(2) {
+    width: auto;
+    min-width: 180px;
+    text-align: left;
+}
+
+/* Email column */
+.data-table th:nth-child(3), 
+.data-table td:nth-child(3) {
+    width: auto;
+    min-width: 200px;
+    text-align: left;
+}
+
+/* Phone column */
+.data-table th:nth-child(4), 
+.data-table td:nth-child(4) {
+    width: 120px;
+    min-width: 120px;
+    max-width: 120px;
+    white-space: nowrap;
+    text-align: left;
+}
+
+/* Status column */
+.data-table th:nth-child(5), 
+.data-table td:nth-child(5) {
+    width: 100px;
+    min-width: 100px;
+    max-width: 100px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* Created At column */
+.data-table th:nth-child(6), 
+.data-table td:nth-child(6) {
+    width: 150px;
+    min-width: 150px;
+    max-width: 150px;
+    white-space: nowrap;
+    text-align: left;
+}
+
+/* Updated At column */
+.data-table th:nth-child(7), 
+.data-table td:nth-child(7) {
+    width: 150px;
+    min-width: 150px;
+    max-width: 150px;
+    white-space: nowrap;
+    text-align: left;
+}
+
+/* ===========================================
+   STAFF DRAWER - Specific Styles
+   =========================================== */
+#staff-drawer {
+    overflow: hidden;
+}
+
+#staff-drawer .drawer-form {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+}
+
+#staff-drawer .drawer-body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 25px;
+    min-height: 0;
+}
+
+#staff-drawer .drawer-footer {
+    flex-shrink: 0;
+}
+
+/* ===========================================
+   PROFILE UPLOAD - Staff Drawer
+   =========================================== */
+/* Shared with manage-client.css, can override if needed */
+
+/* ===========================================
+   FORM STYLES - Staff Drawer
+   =========================================== */
+/* Most form styles shared in manage-client.css */
+
+/* Permissions Section */
+.permissions-section {
+    background: var(--gray-50);
+    padding: var(--space-lg);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--border-light);
+}
+
+.category-header {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: var(--space-md);
+    padding: var(--space-sm) var(--space-md);
+    background: rgba(var(--primary-rgb), 0.1);
+    border-radius: var(--radius-md);
+}
+
+.permission-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-sm);
+}
+
+.permission-toggle-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-sm) var(--space-md);
+    background: var(--bg-white);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-light);
+}
+
+.permission-label {
+    font-size: var(--font-size-sm);
+    color: var(--gray-600);
+}
+
+/* ===========================================
+   TOGGLE SWITCH - Shared Styles
+   =========================================== */
+/* Toggle switch styles are in manage-client.css */
+
+/* ===========================================
+   DELETE MODAL - Staff Specific
+   =========================================== */
+/* Delete modal styles are in manage-client.css */
+
+/* ===========================================
+   RESPONSIVE
+   =========================================== */
+@media (max-width: 600px) {
+    .permission-grid {
+        grid-template-columns: 1fr;
+    }
+}
