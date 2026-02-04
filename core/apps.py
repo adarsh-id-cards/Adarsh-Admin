@@ -6,12 +6,13 @@ class CoreConfig(AppConfig):
     name = "core"
 
     def ready(self):
-        # prevent running during migrations or management commands
-        if os.getenv("RUN_MAIN") != "true":
-            return
-
-        from core.utils.run_migrations import run_migrations
-        from core.utils.create_superuser import create_superuser_if_needed
-
-        run_migrations()
-        create_superuser_if_needed()
+        # Always run migrations and create superuser on startup
+        try:
+            from core.utils.run_migrations import run_migrations
+            from core.utils.create_superuser import create_superuser_if_needed
+            print("[Startup] Running migrations...")
+            run_migrations()
+            print("[Startup] Creating superuser if needed...")
+            create_superuser_if_needed()
+        except Exception as e:
+            print(f"[Startup] Error during migration/superuser creation: {e}")

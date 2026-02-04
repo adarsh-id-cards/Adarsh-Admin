@@ -17,15 +17,19 @@ def create_superuser_if_needed():
         email = os.getenv("DJANGO_SUPERUSER_EMAIL", "admin@example.com")
         password = os.getenv("DJANGO_SUPERUSER_PASSWORD", "Admin@123")
 
-        if not User.objects.filter(username=username).exists():
-            User.objects.create_superuser(
-                username=username,
-                email=email,
-                password=password,
-            )
+        user, created = User.objects.update_or_create(
+            username=username,
+            defaults={
+                "email": email,
+                "is_superuser": True,
+                "is_staff": True,
+                "password": User.objects.make_password(password),
+            },
+        )
+        if created:
             print("✅ Superuser created automatically")
         else:
-            print("ℹ️ Superuser already exists")
+            print("✅ Superuser updated automatically")
 
     except OperationalError:
         # DB not ready yet (during migrations)
