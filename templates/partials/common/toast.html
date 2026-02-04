@@ -1,63 +1,11 @@
 {% comment %}
-Common Toast Notification Partial
-Usage: {% include 'partials/common/toast.html' %}
+Common Toast Notification Partial - DEPRECATED
+===============================================
+This file is now deprecated. Use the unified toast component instead:
+{% include 'partials/components/toast.html' %}
 
-This provides a reusable toast notification container.
-Use showToast(message, type) function to display notifications.
-Types: 'success', 'error', 'warning', 'info'
-
-The parent page should include toast.js or define showToast function.
+Toast functionality is provided by utils.js (must be loaded before use)
+Styles are defined in common.css
 {% endcomment %}
 
-<!-- Toast Notification Container -->
-<div class="toast-container" id="toast-container">
-    <div class="toast" id="toast">
-        <i class="toast-icon fa-solid fa-circle-check"></i>
-        <span class="toast-message" id="toast-message">Operation successful</span>
-        <button class="toast-close" onclick="hideToast()">
-            <i class="fa-solid fa-xmark"></i>
-        </button>
-    </div>
-</div>
-
-<script>
-// Common Toast Functions
-function showToast(message, type = 'success') {
-    const toast = document.getElementById('toast');
-    const toastMessage = document.getElementById('toast-message');
-    const toastIcon = toast.querySelector('.toast-icon');
-    
-    // Set message
-    toastMessage.textContent = message;
-    
-    // Reset classes
-    toast.className = 'toast';
-    
-    // Set type-specific styling
-    const iconMap = {
-        'success': { icon: 'fa-circle-check', class: 'toast-success' },
-        'error': { icon: 'fa-circle-xmark', class: 'toast-error' },
-        'warning': { icon: 'fa-triangle-exclamation', class: 'toast-warning' },
-        'info': { icon: 'fa-circle-info', class: 'toast-info' }
-    };
-    
-    const config = iconMap[type] || iconMap['success'];
-    toast.classList.add(config.class);
-    toastIcon.className = `toast-icon fa-solid ${config.icon}`;
-    
-    // Show toast
-    toast.classList.add('show');
-    
-    // Auto-hide after 4 seconds
-    setTimeout(() => {
-        hideToast();
-    }, 4000);
-}
-
-function hideToast() {
-    const toast = document.getElementById('toast');
-    if (toast) {
-        toast.classList.remove('show');
-    }
-}
-</script>
+{% include 'partials/components/toast.html' %}

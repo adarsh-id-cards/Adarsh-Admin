@@ -10,7 +10,7 @@
 .action-buttons-bar {
     background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
     border: 1px solid var(--border-default);
-    border-bottom: 2px solid var(--border-default);
+    border-bottom: none;
     padding: 10px 16px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }

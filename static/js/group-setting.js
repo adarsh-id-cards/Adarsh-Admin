@@ -58,13 +58,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const groupId = typeof GROUP_ID !== 'undefined' ? GROUP_ID : null;
 
     // ==================== TOAST FUNCTIONS ====================
-    function showToast(message, type = 'success') {
-        const iconClass = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-times-circle' : 'fa-info-circle';
-        toast.querySelector('i').className = 'fa-solid ' + iconClass;
-        toastMessage.textContent = message;
-        toast.classList.add('show');
-        setTimeout(() => toast.classList.remove('show'), 3000);
-    }
+    // Using shared showToast from utils.js
 
     function updateFieldCount() {
         if (fieldCountSpan) fieldCountSpan.textContent = currentFields.length;

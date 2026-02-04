@@ -17,15 +17,22 @@ from ..models import IDCardGroup, IDCard, IDCardTable
 def generate_image_filename(batch_counter, original_ext='.jpg'):
     """
     Generate a unique filename for NEW uploaded images.
-    Format: {14-digit-timestamp}_{3-digit-counter}.ext
-    Example: 20260203145230_001.jpg
+    Format: {HHMMSSmmmuuuC}.ext (13 digits total)
+    - HH = hours (2 digits)
+    - MM = minutes (2 digits)
+    - SS = seconds (2 digits)
+    - mmm = milliseconds (3 digits)
+    - uuu = microseconds (3 digits)
+    - C = single digit counter (cycles 1-9, 0, 1-9, 0...)
+    
+    Example: 1432251234561.jpg (13 digits)
     
     Args:
         batch_counter: The sequential number within the current upload batch (starts from 1)
         original_ext: The original file extension
     
     Returns:
-        New filename string
+        New filename string (13 digits + extension)
     """
     try:
         # Get file extension
@@ -38,40 +45,55 @@ def generate_image_filename(batch_counter, original_ext='.jpg'):
         if ext not in valid_extensions:
             ext = '.jpg'
         
-        # Generate 14-digit timestamp: YYYYMMDDHHmmss
-        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        # Get current time with microseconds
+        now = datetime.now()
         
-        # Format counter as 3 digits
-        counter_str = str(batch_counter).zfill(3)
+        # Format: HHMMSS (6 digits)
+        time_part = now.strftime('%H%M%S')
         
-        return f"{timestamp}_{counter_str}{ext}"
+        # Get milliseconds (3 digits) and microseconds (3 digits)
+        microseconds = now.microsecond  # 0-999999
+        milliseconds = microseconds // 1000  # First 3 digits (0-999)
+        micros = microseconds % 1000  # Last 3 digits (0-999)
+        
+        mmm = str(milliseconds).zfill(3)
+        uuu = str(micros).zfill(3)
+        
+        # Single digit counter (cycles 1-9, then 0, then repeats)
+        counter = batch_counter % 10
+        if counter == 0:
+            counter = 0  # Keep 0 as 0
+        
+        # Build filename: HHMMSSmmmuuuC (13 digits)
+        filename = f"{time_part}{mmm}{uuu}{counter}{ext}"
+        
+        return filename
     except Exception as e:
         # Fallback: generate a simple unique filename
         import uuid
-        return f"img_{uuid.uuid4().hex[:12]}{original_ext or '.jpg'}"
+        return f"img{uuid.uuid4().hex[:10]}{original_ext or '.jpg'}"
 
 
 def generate_updated_image_filename(existing_path, new_ext=None):
     """
     Generate updated filename for EXISTING images (update/reupload).
-    Keeps the base name and adds _XXXXXX (6-digit timestamp suffix).
-    If already has suffix, adds another one.
+    Keeps the ORIGINAL 13-digit timestamp and adds underscore + 6-digit HHMMSS.
     
     Example: 
-    - First upload: 20260203145230_001.jpg
-    - First update: 20260203145230_001_152345.jpg
-    - Second update: 20260203145230_001_152345_153012.jpg
+    - First upload: 1432251234561.jpg (13 digits)
+    - First update: 1432251234561_163045.jpg (13 + 1 + 6 = 20 digits)
+    - Second update: 1432251234561_171230.jpg (same 13 digits, new 6-digit time)
     
     Args:
         existing_path: The current file path or filename
         new_ext: Optional new extension (if different from original)
     
     Returns:
-        New filename string with update suffix
+        New filename string (20 digits + extension)
     """
     try:
         # Extract just the filename from path
-        if existing_path:
+        if existing_path and existing_path not in ['NOT_FOUND', '']:
             filename = os.path.basename(existing_path)
         else:
             # No existing file - generate fresh name
@@ -90,11 +112,29 @@ def generate_updated_image_filename(existing_path, new_ext=None):
         if ext not in valid_extensions:
             ext = '.jpg'
         
-        # Generate 6-digit timestamp suffix: HHmmss
-        timestamp_suffix = datetime.now().strftime('%H%M%S')
+        # Extract the ORIGINAL 13-digit timestamp from the filename
+        # Could be: 1432251234561 (13 digits) or 1432251234561_163045 (20 digits)
+        # We need to keep only the first 13 digits
         
-        # Append suffix to base name
-        new_filename = f"{base_name}_{timestamp_suffix}{ext}"
+        # Remove any underscore suffix first
+        if '_' in base_name:
+            original_13 = base_name.split('_')[0]
+        else:
+            original_13 = base_name
+        
+        # Validate it's 13 digits
+        if len(original_13) == 13 and original_13.isdigit():
+            # Valid original timestamp
+            pass
+        else:
+            # Filename doesn't follow expected pattern - generate fresh
+            return generate_image_filename(1, ext)
+        
+        # Generate new 6-digit time suffix: HHMMSS
+        time_suffix = datetime.now().strftime('%H%M%S')
+        
+        # Create new filename: original_13_digits + _ + 6_digit_time + ext
+        new_filename = f"{original_13}_{time_suffix}{ext}"
         
         return new_filename
     except Exception as e:
@@ -106,11 +146,17 @@ def generate_updated_image_filename(existing_path, new_ext=None):
 def get_client_image_folder(client):
     """
     Get the folder path for storing client images.
+    Uses client's folder code: 5 chars from name + 5 unique chars.
     Creates the folder if it doesn't exist.
     
-    Returns: folder path relative to MEDIA_ROOT like 'id_card_images/{uuid}/'
+    Returns: folder path relative to MEDIA_ROOT like 'adarshimg/{ABCDE12345}/'
     """
-    folder_path = f"id_card_images/{client.image_folder_uuid}"
+    # Ensure folder code is generated
+    if not client.image_folder_code:
+        client.generate_folder_code()
+        client.save(update_fields=['image_folder_code', 'image_folder_suffix'])
+    
+    folder_path = f"adarshimg/{client.image_folder_code}"
     
     # Ensure folder exists
     from django.conf import settings
@@ -661,19 +707,25 @@ def api_idcard_update(request, card_id):
                             # Get file extension from uploaded file
                             original_ext = os.path.splitext(uploaded_file.name)[1].lower() or '.jpg'
                             
-                            # Check if there's an existing image for this field - delete it
+                            # Check if there's an existing image for this field
                             existing_image_path = existing_field_data.get(field_name, '')
+                            
+                            # Generate filename based on whether image already exists
                             if existing_image_path and existing_image_path != 'NOT_FOUND' and existing_image_path.strip():
+                                # UPDATE: Keep original 13-digit timestamp, add new 6-digit HHMMSS (20 digits total)
+                                new_filename = generate_updated_image_filename(existing_image_path, original_ext)
+                                
+                                # Delete old image
                                 try:
                                     if default_storage.exists(existing_image_path):
                                         default_storage.delete(existing_image_path)
                                         print(f"Deleted old image: {existing_image_path}")
                                 except Exception as del_err:
                                     print(f"Warning: Could not delete old image {existing_image_path}: {del_err}")
-                            
-                            # Generate fresh filename with 14-digit timestamp + counter
-                            image_counter += 1
-                            new_filename = generate_image_filename(image_counter, original_ext)
+                            else:
+                                # FIRST UPLOAD: Generate fresh 13-digit filename
+                                image_counter += 1
+                                new_filename = generate_image_filename(image_counter, original_ext)
                             
                             file_path = f"{client_image_folder}/{new_filename}"
                             
@@ -703,18 +755,25 @@ def api_idcard_update(request, card_id):
                     # Get file extension from uploaded file
                     original_ext = os.path.splitext(uploaded_file.name)[1].lower() or '.jpg'
                     
-                    # Check if there's an existing Photo in field_data - delete it
+                    # Check if there's an existing Photo in field_data
                     existing_photo_path = existing_field_data.get('Photo', '')
+                    
+                    # Generate filename based on whether photo already exists
                     if existing_photo_path and existing_photo_path != 'NOT_FOUND' and existing_photo_path.strip():
+                        # UPDATE: Keep original 13-digit timestamp, add new 6-digit HHMMSS (20 digits total)
+                        new_filename = generate_updated_image_filename(existing_photo_path, original_ext)
+                        
+                        # Delete old photo
                         try:
                             if default_storage.exists(existing_photo_path):
                                 default_storage.delete(existing_photo_path)
                                 print(f"Deleted old photo: {existing_photo_path}")
                         except Exception as del_err:
                             print(f"Warning: Could not delete old photo {existing_photo_path}: {del_err}")
+                    else:
+                        # FIRST UPLOAD: Generate fresh 13-digit filename
+                        new_filename = generate_image_filename(9, original_ext)  # Use 9 as counter for main photo
                     
-                    # Generate fresh filename with 14-digit timestamp + counter
-                    new_filename = generate_image_filename(999, original_ext)  # Use 999 as counter for main photo
                     file_path = f"{client_image_folder}/{new_filename}"
                     
                     # Save the image
@@ -1374,10 +1433,10 @@ def api_idcard_bulk_upload(request, table_id):
                             except Exception as photo_error:
                                 # Log but don't break the whole process
                                 print(f"Error saving photo (XLSX) for {photo_column_value}: {photo_error}")
-                                field_data[img_field] = 'NOT_FOUND'  # Value given but save failed
+                                field_data[img_field] = f'PENDING:{photo_column_value}'  # Store reference for later
                         elif photo_column_value:
-                            # Value given but image not found in ZIP - store for later reupload matching
-                            field_data[img_field] = 'NOT_FOUND'
+                            # Value given but image not found in ZIP - store reference for reupload matching
+                            field_data[img_field] = f'PENDING:{photo_column_value}'
                         else:
                             # No value given at all - show colorful placeholder
                             field_data[img_field] = ''
@@ -1504,15 +1563,15 @@ def api_idcard_bulk_upload(request, table_id):
                                     photos_matched += 1
                                     total_photos_matched += 1
                                 else:
-                                    field_data[img_field] = 'NOT_FOUND'  # Save failed
+                                    field_data[img_field] = f'PENDING:{photo_column_value}'  # Save failed, store reference
                                 cards_created -= 1  # Revert since we incremented early
                             except Exception as photo_error:
                                 # Log but don't break the whole process
                                 print(f"Error saving photo (CSV) for {photo_column_value}: {photo_error}")
-                                field_data[img_field] = 'NOT_FOUND'  # Value given but save failed
+                                field_data[img_field] = f'PENDING:{photo_column_value}'  # Store reference for later
                         elif photo_column_value:
-                            # Value given but image not found in ZIP - store for later reupload matching
-                            field_data[img_field] = 'NOT_FOUND'
+                            # Value given but image not found in ZIP - store reference for reupload matching
+                            field_data[img_field] = f'PENDING:{photo_column_value}'
                         else:
                             # No value given at all - show colorful placeholder
                             field_data[img_field] = ''
@@ -1578,8 +1637,8 @@ def api_idcard_download_images(request, table_id):
         if not card_ids:
             return JsonResponse({'success': False, 'message': 'No cards selected!'}, status=400)
         
-        # Get selected cards
-        cards = IDCard.objects.filter(table=table, id__in=card_ids)
+        # Get selected cards in database order
+        cards = IDCard.objects.filter(table=table, id__in=card_ids).order_by('id')
         if not cards.exists():
             return JsonResponse({'success': False, 'message': 'No cards found!'}, status=400)
         
@@ -1686,11 +1745,11 @@ def api_idcard_reupload_images(request, table_id):
             except:
                 card_ids = []
         
-        # Get cards to process
+        # Get cards to process in database order
         if card_ids:
-            cards = IDCard.objects.filter(table=table, id__in=card_ids)
+            cards = IDCard.objects.filter(table=table, id__in=card_ids).order_by('id')
         else:
-            cards = IDCard.objects.filter(table=table)
+            cards = IDCard.objects.filter(table=table).order_by('id')
         
         # Get all cards - match by current stored filename
         cards_to_process = list(cards)
@@ -1753,7 +1812,9 @@ def api_idcard_reupload_images(request, table_id):
         if not zip_photos:
             return JsonResponse({'success': False, 'message': 'No images found in the ZIP file!'}, status=400)
         
-        # Process cards and match images using current stored filename
+        # Process cards and match images using multiple matching strategies
+        # Strategy 1: Match by original PHOTO column value (e.g., "1", "john", "student_001")
+        # Strategy 2: Match by current stored filename (e.g., "20260203145230_001")
         images_matched = 0
         images_not_matched = 0
         cards_updated = 0
@@ -1763,43 +1824,93 @@ def api_idcard_reupload_images(request, table_id):
             field_data = card.field_data or {}
             card_updated = False
             
-            # Get current stored filename (without extension) for matching
-            current_stored_filename = None
+            # Collect all possible matching keys for this card
+            matching_keys = []
             existing_image_path = None
+            pending_reference = None  # Store the PENDING: reference if found
+            
             for img_field in image_fields:
                 current_value = field_data.get(img_field, '')
-                if current_value and current_value not in ['NOT_FOUND', '']:
+                
+                # Check for PENDING: prefix (image reference waiting for upload)
+                if current_value and current_value.startswith('PENDING:'):
+                    pending_reference = current_value[8:]  # Extract the reference after "PENDING:"
+                    existing_image_path = 'PENDING'
+                    # Add the pending reference as a matching key
+                    if pending_reference:
+                        # Remove extension if present for matching
+                        ref_no_ext = os.path.splitext(pending_reference)[0] if '.' in pending_reference else pending_reference
+                        if ref_no_ext and ref_no_ext not in matching_keys:
+                            matching_keys.append(ref_no_ext)
+                        # Also add with extension
+                        if pending_reference and pending_reference not in matching_keys:
+                            matching_keys.append(pending_reference)
+                elif current_value and current_value not in ['NOT_FOUND', '']:
                     existing_image_path = current_value
-                    # Extract filename without extension from path
-                    current_stored_filename = os.path.splitext(os.path.basename(current_value))[0]
-                    break
+                    # Strategy 2: Add current stored filename (without extension)
+                    stored_filename = os.path.splitext(os.path.basename(current_value))[0]
+                    if stored_filename and stored_filename not in matching_keys:
+                        matching_keys.append(stored_filename)
+                elif current_value == 'NOT_FOUND':
+                    # Legacy: Card has a PHOTO reference but image wasn't found during upload
+                    existing_image_path = 'NOT_FOUND'
             
-            # Skip cards without existing images (nothing to match)
-            if not current_stored_filename:
-                images_not_matched += 1
-                continue
+            # Strategy 3: Try matching by any text field that looks like a photo reference
+            # (useful when PHOTO column had values like "1", "2", "john", etc.)
+            for field in table.fields:
+                if field['name'].upper() == 'PHOTO' or field.get('type') == 'image':
+                    photo_ref = field_data.get(field['name'], '')
+                    # Check for PENDING: prefix
+                    if photo_ref and photo_ref.startswith('PENDING:'):
+                        ref_value = photo_ref[8:]
+                        ref_no_ext = os.path.splitext(ref_value)[0] if '.' in ref_value else ref_value
+                        if ref_no_ext and ref_no_ext not in matching_keys:
+                            matching_keys.append(ref_no_ext)
+                    elif photo_ref and photo_ref != 'NOT_FOUND':
+                        if '/' in photo_ref:
+                            # It's a path - extract filename without extension
+                            ref_name = os.path.splitext(os.path.basename(photo_ref))[0]
+                        else:
+                            # It's a direct reference (like "1" or "john")
+                            ref_name = os.path.splitext(photo_ref)[0] if '.' in photo_ref else photo_ref
+                        if ref_name and ref_name not in matching_keys:
+                            matching_keys.append(ref_name)
             
-            # Try to match by current stored filename
+            # Strategy 4: Match by card ID as fallback
+            card_id_str = str(card.id)
+            if card_id_str not in matching_keys:
+                matching_keys.append(card_id_str)
+            
+            # Try to find a match in the ZIP photos using any of the matching keys
             matched_photo_info = None
-            if current_stored_filename in zip_photos:
-                matched_photo_info = zip_photos[current_stored_filename]
+            matched_key = None
+            for key in matching_keys:
+                if key in zip_photos:
+                    matched_photo_info = zip_photos[key]
+                    matched_key = key
+                    break
             
             if matched_photo_info:
                 try:
                     photo_info = matched_photo_info
                     batch_counter += 1
                     
-                    # Delete old image file before saving new one
-                    if existing_image_path and existing_image_path != 'NOT_FOUND':
+                    # Generate filename based on whether there's an existing valid image
+                    # PENDING and NOT_FOUND mean no actual image file exists yet
+                    if existing_image_path and existing_image_path not in ['NOT_FOUND', 'PENDING', '']:
+                        # UPDATE: Keep original 13-digit timestamp, add new 6-digit HHMMSS (20 digits total)
+                        new_filename = generate_updated_image_filename(existing_image_path, photo_info['ext'])
+                        
+                        # Delete old image file before saving new one
                         try:
                             if default_storage.exists(existing_image_path):
                                 default_storage.delete(existing_image_path)
                                 print(f"Deleted old image during reupload: {existing_image_path}")
                         except Exception as del_err:
                             print(f"Warning: Could not delete old image {existing_image_path}: {del_err}")
-                    
-                    # Generate fresh filename with 14-digit timestamp + batch counter
-                    new_filename = generate_image_filename(batch_counter, photo_info['ext'])
+                    else:
+                        # FIRST UPLOAD (was PENDING/NOT_FOUND/empty): Generate fresh 13-digit filename
+                        new_filename = generate_image_filename(batch_counter, photo_info['ext'])
                     
                     # Save to client's UUID folder
                     file_path = f"{client_image_folder}/{new_filename}"
@@ -1880,27 +1991,35 @@ def api_idcard_download_docx(request, table_id):
         if not card_ids:
             return JsonResponse({'success': False, 'message': 'No cards selected!'}, status=400)
         
-        # Get selected cards in order
-        cards = IDCard.objects.filter(table=table, id__in=card_ids)
+        # Get selected cards in database order (first uploaded = first shown)
+        cards = IDCard.objects.filter(table=table, id__in=card_ids).order_by('id')
         if not cards.exists():
             return JsonResponse({'success': False, 'message': 'No cards found!'}, status=400)
         
         # Get table fields configuration - maintain original order
         table_fields = table.fields
         
-        # Build ordered_fields list maintaining original order
+        # Build ordered_fields list - TEXT fields first, then IMAGE fields (images on right side)
         # Each field has: name, type, is_image flag
-        ordered_fields = []
+        text_fields = []
+        image_fields = []
         for f in table_fields:
             field_name = f['name']
             field_type = f.get('type', 'text')
             # Check if it's an image field
             is_image = (field_type == 'image' or field_name.upper() in ['PHOTO', 'SIGNATURE', 'IMAGE', 'PIC', 'PICTURE', 'SIGN'])
-            ordered_fields.append({
+            field_info = {
                 'name': field_name,
                 'type': field_type,
                 'is_image': is_image
-            })
+            }
+            if is_image:
+                image_fields.append(field_info)
+            else:
+                text_fields.append(field_info)
+        
+        # Combine: text fields first (left), image fields last (right)
+        ordered_fields = text_fields + image_fields
         
         # Get client/institution name from the table's group
         institution_name = table.group.client.name if table.group and table.group.client else "Institution"
@@ -1932,26 +2051,36 @@ def api_idcard_download_docx(request, table_id):
         header = section.header
         header.is_linked_to_previous = False
         
-        # Create header table for 3-column layout
-        header_table = header.add_table(rows=1, cols=3, width=Inches(10))
-        header_table.autofit = True
+        # Get current date formatted
+        from datetime import datetime
+        current_date = datetime.now().strftime('%d-%m-%Y')
+        
+        # Create header table for 3-column layout - use full available width matching data table
+        header_table = header.add_table(rows=1, cols=3, width=Cm(27.5))
+        header_table.autofit = False
+        header_table.alignment = WD_TABLE_ALIGNMENT.CENTER
         header_cells = header_table.rows[0].cells
         
-        # Left: Institution Name (Adarsh Id cards) - black, bold, Arial
+        # Set column widths for header (left wider for institute name, center for title, right for brand)
+        header_cells[0].width = Cm(9)
+        header_cells[1].width = Cm(11)
+        header_cells[2].width = Cm(7.5)
+        
+        # Left: INSTITUTE NAME: [Client Name] - bold, Arial
         left_para = header_cells[0].paragraphs[0]
-        left_run = left_para.add_run('Adarsh Id cards')
+        left_run = left_para.add_run(f'INSTITUTE NAME: {institution_name}')
         left_run.bold = True
         left_run.font.name = 'Arial'
-        left_run.font.size = Pt(11)
+        left_run.font.size = Pt(10)
         left_run.font.color.rgb = RGBColor(0, 0, 0)  # Black
         left_para.alignment = WD_ALIGN_PARAGRAPH.LEFT
         # Remove spacing below paragraph
         pPr_left = left_para._p.get_or_add_pPr()
         pPr_left.append(parse_xml(r'<w:spacing {} w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>'.format(nsdecls('w'))))
         
-        # Center: Title with Session - black, bold, Arial
+        # Center: [Table Name] (Current Date) - bold, Arial
         center_para = header_cells[1].paragraphs[0]
-        center_run = center_para.add_run(f'{table.name} - Session 2025-26')
+        center_run = center_para.add_run(f'{table.name} ({current_date})')
         center_run.bold = True
         center_run.font.name = 'Arial'
         center_run.font.size = Pt(11)
@@ -1961,12 +2090,12 @@ def api_idcard_download_docx(request, table_id):
         pPr_center = center_para._p.get_or_add_pPr()
         pPr_center.append(parse_xml(r'<w:spacing {} w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>'.format(nsdecls('w'))))
         
-        # Right: Adarsh ID Cards - black, bold, Arial
+        # Right: ADARSH ID CARDS - bold, Arial
         right_para = header_cells[2].paragraphs[0]
-        right_run = right_para.add_run('Adarsh ID Cards')
+        right_run = right_para.add_run('ADARSH ID CARDS')
         right_run.bold = True
         right_run.font.name = 'Arial'
-        right_run.font.size = Pt(11)
+        right_run.font.size = Pt(10)
         right_run.font.color.rgb = RGBColor(0, 0, 0)  # Black
         right_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
         # Remove spacing below paragraph
@@ -2475,10 +2604,9 @@ def api_idcard_download_xlsx(request, table_id):
         ws = wb.active
         ws.title = table.name[:31]  # Excel sheet names max 31 chars
         
-        # Define styles
-        header_font = Font(name='Calibri', size=11, bold=True, color='FFFFFF')
-        header_fill = PatternFill(start_color='4472C4', end_color='4472C4', fill_type='solid')
-        header_alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        # Define simple styles - no colors, just clean formatting
+        header_font = Font(name='Calibri', size=11, bold=True)
+        header_alignment = Alignment(horizontal='center', vertical='center')
         
         data_font = Font(name='Calibri', size=10)
         data_alignment = Alignment(horizontal='left', vertical='center', wrap_text=False)
@@ -2499,7 +2627,6 @@ def api_idcard_download_xlsx(request, table_id):
         for col_idx, header in enumerate(headers, 1):
             cell = ws.cell(row=1, column=col_idx, value=header)
             cell.font = header_font
-            cell.fill = header_fill
             cell.alignment = header_alignment
             cell.border = thin_border
             

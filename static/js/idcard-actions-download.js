@@ -107,6 +107,7 @@ function openDocFormatModal(cardIds) {
     const docFormatModalOverlay = document.getElementById('docFormatModalOverlay');
     if (docFormatModalOverlay) {
         docFormatModalOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden'; // Lock body scroll
     }
 }
 
@@ -114,6 +115,7 @@ function closeDocFormatModal() {
     const docFormatModalOverlay = document.getElementById('docFormatModalOverlay');
     if (docFormatModalOverlay) {
         docFormatModalOverlay.classList.remove('active');
+        document.body.style.overflow = ''; // Restore body scroll
     }
     pendingDocxDownloadIds = [];
 }

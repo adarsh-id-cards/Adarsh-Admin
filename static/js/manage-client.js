@@ -5,22 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // ====================
     // TOAST FUNCTIONS
     // ====================
-    function showToast(message, type = 'success') {
-        let toast = document.getElementById('toast');
-        if (!toast) {
-            toast = document.createElement('div');
-            toast.id = 'toast';
-            toast.className = 'toast';
-            toast.innerHTML = '<i class="fa-solid fa-check-circle"></i><span id="toastMessage">Success!</span>';
-            document.body.appendChild(toast);
-        }
-        
-        const iconClass = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-times-circle' : 'fa-info-circle';
-        toast.querySelector('i').className = 'fa-solid ' + iconClass;
-        toast.querySelector('span').textContent = message;
-        toast.classList.add('show');
-        setTimeout(() => toast.classList.remove('show'), 3000);
-    }
+    // Using shared showToast from utils.js
 
     // ====================
     // API FUNCTIONS
@@ -236,6 +221,15 @@ document.addEventListener('DOMContentLoaded', function() {
         // Reset profile preview
         const profilePreview = document.getElementById('profilePreview');
         profilePreview.innerHTML = '<i class="fa-solid fa-user"></i>';
+        profilePreview.classList.remove('has-image');
+        
+        // Reset path display
+        const profilePathDisplay = document.getElementById('clientProfilePath');
+        if (profilePathDisplay) {
+            profilePathDisplay.textContent = 'No image';
+            profilePathDisplay.classList.remove('has-path', 'not-found');
+            profilePathDisplay.classList.add('no-path');
+        }
         
         // Uncheck all permission toggles
         document.querySelectorAll('.permission-toggle-item input').forEach(cb => cb.checked = false);
@@ -253,6 +247,21 @@ document.addEventListener('DOMContentLoaded', function() {
         if (addressInput) addressInput.value = clientData.address || '';
         if (emailInput) emailInput.value = clientData.email || '';
         if (phoneInput) phoneInput.value = clientData.phone || '';
+        
+        // Populate profile picture path display
+        const profilePathDisplay = document.getElementById('clientProfilePath');
+        const profilePreview = document.getElementById('profilePreview');
+        if (clientData.profile_pic) {
+            if (profilePathDisplay) {
+                profilePathDisplay.textContent = clientData.profile_pic;
+                profilePathDisplay.classList.remove('no-path', 'not-found');
+                profilePathDisplay.classList.add('has-path');
+            }
+            if (profilePreview) {
+                profilePreview.innerHTML = `<img src="${clientData.profile_pic}" alt="Profile">`;
+                profilePreview.classList.add('has-image');
+            }
+        }
         
         // Populate permissions (convert underscore to hyphen for HTML id)
         const permissionFields = [
@@ -404,18 +413,22 @@ document.addEventListener('DOMContentLoaded', function() {
     // ====================
     const profilePicInput = document.getElementById('clientProfilePic');
     const profilePreview = document.getElementById('profilePreview');
+    const profilePathDisplay = document.getElementById('clientProfilePath');
     
     if (profilePicInput && profilePreview) {
-        console.log('Profile pic input found, attaching listener');
         profilePicInput.addEventListener('change', function(e) {
-            console.log('File input changed', e.target.files);
             const file = e.target.files[0];
             if (file) {
-                console.log('File selected:', file.name);
                 const reader = new FileReader();
                 reader.onload = function(event) {
-                    console.log('File read complete');
-                    profilePreview.innerHTML = `<img src="${event.target.result}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+                    profilePreview.innerHTML = `<img src="${event.target.result}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">`;
+                    profilePreview.classList.add('has-image');
+                    // Update path display
+                    if (profilePathDisplay) {
+                        profilePathDisplay.textContent = file.name;
+                        profilePathDisplay.classList.remove('no-path', 'not-found');
+                        profilePathDisplay.classList.add('has-path');
+                    }
                 };
                 reader.onerror = function(error) {
                     console.error('FileReader error:', error);
@@ -423,8 +436,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 reader.readAsDataURL(file);
             }
         });
-    } else {
-        console.log('Profile elements not found - Input:', profilePicInput, 'Preview:', profilePreview);
     }
     
     // ====================

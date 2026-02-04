@@ -4,15 +4,8 @@
 <head>
   <meta charset="UTF-8">
   <title>Manage Clients - Adarsh ID Cards</title>
-  <link rel="icon" type="image/x-icon" href="{% static 'assets/favicon.ico' %}">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/variables.css' %}?v=1">
-  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=38">
-  <link rel="stylesheet" href="{% static 'css/common.css' %}?v=38">
-  <link rel="stylesheet" href="{% static 'css/manage-client.css' %}?v=36">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  {% include 'partials/common/head.html' %}
+  <link rel="stylesheet" href="{% static 'css/manage-client.css' %}?v=44">
 </head>
 <body>
 
@@ -57,6 +50,7 @@
                   <i class="fa-solid fa-camera"></i> Upload Photo
                 </label>
                 <p class="upload-hint">JPG, PNG (Max 2MB)</p>
+                <div class="profile-path-display no-path" id="clientProfilePath">No image</div>
               </div>
             </div>
 
@@ -349,7 +343,7 @@
         </div>
         <div class="drawer-body">
           <div class="view-profile">
-            <div class="view-avatar">
+            <div class="view-avatar" id="viewClientAvatar">
               <i class="fa-solid fa-user"></i>
             </div>
             <div class="view-info">
@@ -407,26 +401,36 @@
     </div>
 
     <!-- Delete Confirmation Modal (Center Modal) -->
-    <div id="delete-modal" class="modal">
-      <div class="modal-content">
-        <span class="modal-close" id="closeDeleteModal">&times;</span>
-        <div class="delete-icon">
-          <i class="fa-solid fa-trash"></i>
+    <div id="delete-modal" class="center-modal-overlay">
+      <div class="center-modal delete-modal">
+        <div class="modal-header">
+          <h3><i class="fa-solid fa-triangle-exclamation"></i> Confirm Delete</h3>
+          <button class="modal-close" id="closeDeleteModal" type="button">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
         </div>
-        <p>Are you sure you want to delete <strong id="deleteClientName">this client</strong>?</p>
-        <p class="warning-text">This action cannot be undone.</p>
-        <div class="modal-actions">
-          <button type="button" class="btn btn-cancel" id="cancelDeleteBtn">Cancel</button>
-          <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+        <div class="modal-body">
+          <div class="delete-warning">
+            <div class="delete-icon">
+              <i class="fa-solid fa-trash-can"></i>
+            </div>
+            <p>Are you sure you want to delete <strong id="deleteClientName">this client</strong>?</p>
+            <p class="delete-note"><i class="fa-solid fa-exclamation-circle"></i>This action cannot be undone.</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="cancelDeleteBtn" type="button">
+            <i class="fa-solid fa-xmark"></i> Cancel
+          </button>
+          <button class="btn btn-danger" id="confirmDeleteBtn" type="button">
+            <i class="fa-solid fa-trash-can"></i> Delete
+          </button>
         </div>
       </div>
     </div>
 
     <!-- Toast Container -->
-    <div id="toast" class="toast">
-      <i class="fa-solid fa-check-circle"></i>
-      <span id="toastMessage">Success!</span>
-    </div>
+    {% include 'partials/components/toast.html' %}
 
     <!-- View Staff Drawer -->
     <div id="staff-drawer" class="drawer-modal">
@@ -599,6 +603,7 @@
 
   </main>
 
+  <script src="{% static 'js/utils.js' %}?v=1"></script>
   <script src="{% static 'js/script.js' %}"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -634,17 +639,57 @@
       const table = document.getElementById('clientsTable');
       const tbody = table.querySelector('tbody');
       
+      // Profile elements
+      const profilePicInput = document.getElementById('clientProfilePic');
+      const profilePreview = document.getElementById('profilePreview');
+      const profilePathDisplay = document.getElementById('clientProfilePath');
+      
       let selectedClientId = null;
       let selectedRow = null;
+      let selectedProfileFile = null; // Store the selected file for upload
+
+      // ==================== PROFILE PICTURE UPLOAD PREVIEW ====================
+      if (profilePicInput && profilePreview) {
+        profilePicInput.addEventListener('change', function(e) {
+          const file = e.target.files[0];
+          if (file) {
+            // Validate file size (max 2MB)
+            if (file.size > 2 * 1024 * 1024) {
+              showToast('Image size must be less than 2MB', 'error');
+              profilePicInput.value = '';
+              return;
+            }
+            
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+              showToast('Please select a valid image file', 'error');
+              profilePicInput.value = '';
+              return;
+            }
+            
+            selectedProfileFile = file;
+            const reader = new FileReader();
+            reader.onload = function(event) {
+              profilePreview.innerHTML = `<img src="${event.target.result}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">`;
+              profilePreview.classList.add('has-image');
+              // Update path display
+              if (profilePathDisplay) {
+                profilePathDisplay.textContent = file.name;
+                profilePathDisplay.classList.remove('no-path', 'not-found');
+                profilePathDisplay.classList.add('has-path');
+              }
+            };
+            reader.onerror = function(error) {
+              console.error('FileReader error:', error);
+              showToast('Failed to read image file', 'error');
+            };
+            reader.readAsDataURL(file);
+          }
+        });
+      }
 
       // ==================== TOAST FUNCTIONS ====================
-      function showToast(message, type = 'success') {
-        const iconClass = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-times-circle' : 'fa-info-circle';
-        toast.querySelector('i').className = 'fa-solid ' + iconClass;
-        toastMessage.textContent = message;
-        toast.classList.add('show');
-        setTimeout(() => toast.classList.remove('show'), 3000);
-      }
+      // Using shared showToast from utils.js
 
       // ==================== SELECT ROW FUNCTION ====================
       function selectRow(row) {
@@ -728,6 +773,19 @@
         clientForm.reset();
         clientIdInput.value = '';
         
+        // Reset profile preview and file
+        selectedProfileFile = null;
+        profilePreview.innerHTML = '<i class="fa-solid fa-user"></i>';
+        profilePreview.classList.remove('has-image');
+        if (profilePicInput) profilePicInput.value = '';
+        
+        // Reset path display
+        if (profilePathDisplay) {
+          profilePathDisplay.textContent = 'No image';
+          profilePathDisplay.classList.remove('has-path', 'not-found');
+          profilePathDisplay.classList.add('no-path');
+        }
+        
         // Reset all permission toggles to unchecked (OFF by default for new clients)
         permissionFields.forEach(field => {
           const el = document.getElementById(field);
@@ -750,6 +808,18 @@
             document.getElementById('clientPhone').value = clientData.phone || '';
             document.getElementById('clientAddress').value = clientData.address || '';
             
+            // Load existing photo if available
+            if (clientData.photo_url) {
+              profilePreview.innerHTML = `<img src="${clientData.photo_url}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">`;
+              profilePreview.classList.add('has-image');
+              // Update path display
+              if (profilePathDisplay) {
+                profilePathDisplay.textContent = clientData.photo_url;
+                profilePathDisplay.classList.remove('no-path', 'not-found');
+                profilePathDisplay.classList.add('has-path');
+              }
+            }
+            
             // Set permissions from client data
             permissionFields.forEach(field => {
               const el = document.getElementById(field);
@@ -759,10 +829,12 @@
         }
         
         clientDrawer.classList.add('open');
+        document.body.style.overflow = 'hidden';
       }
       
       function closeDrawerFn() {
         clientDrawer.classList.remove('open');
+        document.body.style.overflow = '';
       }
 
       // ==================== MODAL FUNCTIONS ====================
@@ -774,24 +846,36 @@
         document.getElementById('viewClientCreated').textContent = clientData.created_at || '-';
         document.getElementById('viewClientUpdated').textContent = clientData.updated_at || '-';
         
+        // Update avatar with photo if available
+        const avatarEl = document.getElementById('viewClientAvatar');
+        if (clientData.photo_url) {
+          avatarEl.innerHTML = `<img src="${clientData.photo_url}" alt="${clientData.name}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+        } else {
+          avatarEl.innerHTML = '<i class="fa-solid fa-user"></i>';
+        }
+        
         const statusEl = document.getElementById('viewClientStatus');
         statusEl.textContent = clientData.status === 'active' ? 'Active' : 'Inactive';
         statusEl.className = 'status-badge ' + (clientData.status === 'active' ? 'active' : 'inactive');
         
         viewModal.classList.add('open');
+        document.body.style.overflow = 'hidden';
       }
       
       function closeViewModalFn() {
         viewModal.classList.remove('open');
+        document.body.style.overflow = '';
       }
       
       function openDeleteModalFn(clientName) {
         document.getElementById('deleteClientName').textContent = clientName;
         deleteModal.classList.add('show');
+        document.body.style.overflow = 'hidden';
       }
       
       function closeDeleteModalFn() {
         deleteModal.classList.remove('show');
+        document.body.style.overflow = '';
       }
 
       // ==================== API CALLS ====================
@@ -811,27 +895,57 @@
         }
       }
       
-      async function createClient(formData) {
+      async function createClient(formData, file = null) {
         try {
-          const response = await fetch('/api/client/create/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData)
-          });
-          return await response.json();
+          // Use FormData if there's a file to upload
+          if (file) {
+            const data = new FormData();
+            data.append('photo', file);
+            // Add all other form fields
+            Object.keys(formData).forEach(key => {
+              data.append(key, typeof formData[key] === 'boolean' ? (formData[key] ? 'true' : 'false') : formData[key]);
+            });
+            const response = await fetch('/api/client/create/', {
+              method: 'POST',
+              body: data
+            });
+            return await response.json();
+          } else {
+            const response = await fetch('/api/client/create/', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(formData)
+            });
+            return await response.json();
+          }
         } catch (error) {
           return { success: false, message: 'Network error. Please try again.' };
         }
       }
       
-      async function updateClient(clientId, formData) {
+      async function updateClient(clientId, formData, file = null) {
         try {
-          const response = await fetch(`/api/client/${clientId}/update/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData)
-          });
-          return await response.json();
+          // Use FormData if there's a file to upload
+          if (file) {
+            const data = new FormData();
+            data.append('photo', file);
+            // Add all other form fields
+            Object.keys(formData).forEach(key => {
+              data.append(key, typeof formData[key] === 'boolean' ? (formData[key] ? 'true' : 'false') : formData[key]);
+            });
+            const response = await fetch(`/api/client/${clientId}/update/`, {
+              method: 'POST',
+              body: data
+            });
+            return await response.json();
+          } else {
+            const response = await fetch(`/api/client/${clientId}/update/`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(formData)
+            });
+            return await response.json();
+          }
         } catch (error) {
           return { success: false, message: 'Network error. Please try again.' };
         }
@@ -926,13 +1040,14 @@
         let result;
         
         if (clientId) {
-          result = await updateClient(clientId, formData);
+          result = await updateClient(clientId, formData, selectedProfileFile);
         } else {
-          result = await createClient(formData);
+          result = await createClient(formData, selectedProfileFile);
         }
         
         if (result.success) {
           showToast(result.message, 'success');
+          selectedProfileFile = null; // Reset after successful upload
           closeDrawerFn();
           setTimeout(() => location.reload(), 500);
         } else {
@@ -978,6 +1093,7 @@
       // Close modals on overlay click
       viewModal.addEventListener('click', (e) => { if (e.target === viewModal) closeViewModalFn(); });
       clientDrawer.addEventListener('click', (e) => { if (e.target === clientDrawer) closeDrawerFn(); });
+      deleteModal.addEventListener('click', (e) => { if (e.target === deleteModal) closeDeleteModalFn(); });
 
       // ==================== SEARCH & FILTER ====================
       const searchInput = document.getElementById('searchInput');
@@ -1040,9 +1156,165 @@
         });
       });
 
-      document.addEventListener('click', function() {
-        filterDropdown.classList.remove('open');
+      // ==================== PAGINATION ====================
+      const paginationInfo = document.querySelector('.pagination-info');
+      const pageNumbers = document.querySelector('.page-numbers');
+      const firstPageBtn = document.getElementById('firstPage');
+      const prevPageBtn = document.getElementById('prevPage');
+      const nextPageBtn = document.getElementById('nextPage');
+      const lastPageBtn = document.getElementById('lastPage');
+      const rowsDropdown = document.getElementById('rowsDropdown');
+      const rowsToggle = document.getElementById('rowsToggle');
+      const rowsOptions = document.getElementById('rowsOptions');
+      const rowsSelectedText = document.getElementById('rowsSelectedText');
+
+      document.addEventListener('click', function(e) {
+        if (!filterDropdown.contains(e.target)) {
+          filterDropdown.classList.remove('open');
+        }
+        if (rowsDropdown && !rowsDropdown.contains(e.target)) {
+          rowsDropdown.classList.remove('open');
+        }
       });
+      
+      let currentPage = 1;
+      let rowsPerPage = 10;
+      let allRows = Array.from(tbody.querySelectorAll('tr:not(.no-data-row)'));
+      
+      // Initialize all rows as filtered=true
+      allRows.forEach(row => row.dataset.filtered = 'true');
+      
+      function updatePagination() {
+        // Get filtered rows (rows that match search criteria)
+        const filteredRows = allRows.filter(row => row.dataset.filtered === 'true');
+        const totalRows = filteredRows.length;
+        const totalPages = Math.max(1, Math.ceil(totalRows / rowsPerPage));
+        
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+        
+        const startIndex = (currentPage - 1) * rowsPerPage;
+        const endIndex = Math.min(startIndex + rowsPerPage, totalRows);
+        
+        // Hide all rows first
+        allRows.forEach(row => row.style.display = 'none');
+        
+        // Show only current page rows from filtered results
+        filteredRows.slice(startIndex, endIndex).forEach(row => row.style.display = '');
+        
+        // Update pagination info
+        if (paginationInfo) {
+          if (totalRows === 0) {
+            paginationInfo.innerHTML = 'Showing <strong>0</strong> results';
+          } else {
+            paginationInfo.innerHTML = `Showing <strong>${startIndex + 1}-${endIndex}</strong> of <strong>${totalRows}</strong> results`;
+          }
+        }
+        
+        // Update page numbers
+        if (pageNumbers) {
+          pageNumbers.innerHTML = '';
+          const maxVisiblePages = 5;
+          let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+          let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+          
+          if (endPage - startPage < maxVisiblePages - 1) {
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+          }
+          
+          for (let i = startPage; i <= endPage; i++) {
+            const pageBtn = document.createElement('button');
+            pageBtn.className = 'page-num' + (i === currentPage ? ' active' : '');
+            pageBtn.textContent = i;
+            pageBtn.addEventListener('click', () => goToPage(i));
+            pageNumbers.appendChild(pageBtn);
+          }
+        }
+        
+        // Update button states
+        if (firstPageBtn) firstPageBtn.disabled = currentPage === 1;
+        if (prevPageBtn) prevPageBtn.disabled = currentPage === 1;
+        if (nextPageBtn) nextPageBtn.disabled = currentPage === totalPages;
+        if (lastPageBtn) lastPageBtn.disabled = currentPage === totalPages;
+      }
+      
+      function goToPage(page) {
+        currentPage = page;
+        // Clear selection when changing pages
+        if (selectedRow) {
+          selectedRow.classList.remove('selected');
+          selectedRow = null;
+          selectedClientId = null;
+          editClientBtn.disabled = true;
+          viewClientBtn.disabled = true;
+          viewStaffBtn.disabled = true;
+          deleteClientBtn.disabled = true;
+          activeClientBtn.disabled = true;
+        }
+        updatePagination();
+      }
+      
+      // Pagination button events
+      if (firstPageBtn) firstPageBtn.addEventListener('click', () => goToPage(1));
+      if (prevPageBtn) prevPageBtn.addEventListener('click', () => goToPage(currentPage - 1));
+      if (nextPageBtn) nextPageBtn.addEventListener('click', () => goToPage(currentPage + 1));
+      if (lastPageBtn) {
+        lastPageBtn.addEventListener('click', () => {
+          const filteredRows = allRows.filter(row => row.dataset.filtered === 'true');
+          const totalPages = Math.max(1, Math.ceil(filteredRows.length / rowsPerPage));
+          goToPage(totalPages);
+        });
+      }
+      
+      // Rows per page dropdown
+      if (rowsDropdown && rowsToggle && rowsOptions) {
+        rowsToggle.addEventListener('click', function(e) {
+          e.stopPropagation();
+          rowsDropdown.classList.toggle('open');
+        });
+        
+        rowsOptions.querySelectorAll('.dropdown-option').forEach(option => {
+          option.addEventListener('click', function() {
+            rowsOptions.querySelectorAll('.dropdown-option').forEach(o => o.classList.remove('selected'));
+            this.classList.add('selected');
+            rowsPerPage = parseInt(this.dataset.value);
+            if (rowsSelectedText) rowsSelectedText.textContent = rowsPerPage;
+            currentPage = 1;
+            rowsDropdown.classList.remove('open');
+            updatePagination();
+          });
+        });
+      }
+      
+      // Override performSearch to work with pagination
+      const originalPerformSearch = performSearch;
+      performSearch = function() {
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        
+        allRows.forEach(row => {
+          const cells = row.querySelectorAll('td');
+          let match = false;
+          
+          if (currentFilter === 'all' || !searchTerm) {
+            const text = row.textContent.toLowerCase();
+            match = !searchTerm || text.includes(searchTerm);
+          } else {
+            const columnIndex = filterColumnMap[currentFilter];
+            if (columnIndex !== null && cells[columnIndex]) {
+              const cellText = cells[columnIndex].textContent.toLowerCase();
+              match = cellText.includes(searchTerm);
+            }
+          }
+          
+          row.dataset.filtered = match ? 'true' : 'false';
+        });
+        
+        currentPage = 1;
+        updatePagination();
+      };
+      
+      // Initialize pagination
+      updatePagination();
 
       // Auto-open drawer if ?add=1 is in URL
       const urlParams = new URLSearchParams(window.location.search);

@@ -67,15 +67,12 @@ function earlyInitLazyLoadState() {
         if (paginationBar.dataset.status) {
             lazyLoadState.currentStatus = paginationBar.dataset.status;
         }
-        console.log('Early lazy load init:', lazyLoadState);
     }
 }
 
 function initLazyLoadState() {
     const paginationBar = document.getElementById('paginationBar');
-    console.log('paginationBar element:', paginationBar);
     if (paginationBar) {
-        console.log('paginationBar dataset:', paginationBar.dataset);
         lazyLoadState.totalCount = parseInt(paginationBar.dataset.totalCount) || 0;
         lazyLoadState.hasMore = paginationBar.dataset.hasMore === 'true';
         lazyLoadState.loadedCount = parseInt(paginationBar.dataset.initialLoaded) || allRows.length;
@@ -85,9 +82,7 @@ function initLazyLoadState() {
         if (paginationBar.dataset.status) {
             lazyLoadState.currentStatus = paginationBar.dataset.status;
         }
-        console.log('Lazy load state after init:', JSON.stringify(lazyLoadState));
     } else {
-        console.warn('paginationBar not found!');
         lazyLoadState.loadedCount = allRows.length;
         lazyLoadState.totalCount = allRows.length;
         lazyLoadState.hasMore = false;
@@ -569,19 +564,29 @@ function createRowFromCard(card, index) {
             
             if (fieldType === 'image' || fieldName.toLowerCase() === 'photo') {
                 let imageHtml = '';
-                // Create full path with /media/ prefix
-                const fullImagePath = fieldValue && fieldValue !== 'NOT_FOUND' 
+                // Check if it's a PENDING reference (waiting for image)
+                const isPending = fieldValue && fieldValue.startsWith('PENDING:');
+                const pendingRef = isPending ? fieldValue.substring(8) : null;
+                
+                // Create full path with /media/ prefix (only for actual paths)
+                const fullImagePath = fieldValue && !isPending && fieldValue !== 'NOT_FOUND' 
                     ? (fieldValue.startsWith('/media/') || fieldValue.startsWith('http') ? fieldValue : `/media/${fieldValue}`)
                     : fieldValue;
                 
-                if (fieldValue && fieldValue !== 'NOT_FOUND') {
-                    // Add cache-busting timestamp to prevent browser caching stale images
+                if (fieldValue && !isPending && fieldValue !== 'NOT_FOUND') {
+                    // Valid image path - show the image
                     const cacheBuster = `?t=${Date.now()}`;
                     imageHtml = `<img src="/media/${fieldValue}${cacheBuster}" alt="${fieldName}" class="table-image">`;
-                } else if (fieldValue === 'NOT_FOUND') {
-                    imageHtml = `<div class="no-image passport-placeholder not-found"><i class="fa-solid fa-user-xmark"></i></div>`;
+                } else if (isPending || fieldValue === 'NOT_FOUND') {
+                    // PENDING or NOT_FOUND - Colorful placeholder (image expected but missing)
+                    const refDisplay = pendingRef ? `<span class="pending-ref" title="${pendingRef}">${pendingRef}</span>` : '';
+                    imageHtml = `<div class="no-image colorful-placeholder pending-image">
+                        <i class="fa-solid fa-image"></i>
+                        ${refDisplay}
+                    </div>`;
                 } else {
-                    imageHtml = `<div class="no-image colorful-placeholder"><i class="fa-solid fa-user-astronaut"></i></div>`;
+                    // Empty/null - Gray placeholder (no image column value given)
+                    imageHtml = `<div class="no-image passport-placeholder no-image-given"><i class="fa-solid fa-user"></i></div>`;
                 }
                 
                 html += `<td class="image-field image-cell" 
@@ -679,6 +684,18 @@ function attachRowEventHandlers(row) {
         });
     });
     
+    row.querySelectorAll('.download-single-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (typeof downloadSingleCard === 'function') downloadSingleCard(this.getAttribute('data-card-id'));
+        });
+    });
+    
+    row.querySelectorAll('.back-approved-row-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (typeof backToApprovedCard === 'function') backToApprovedCard(this.getAttribute('data-card-id'));
+        });
+    });
+    
     row.querySelectorAll('.editable-cell:not(.image-field)').forEach(cell => {
         cell.addEventListener('dblclick', function() {
             if (typeof startCellEdit === 'function') {
@@ -690,11 +707,9 @@ function attachRowEventHandlers(row) {
 
 async function loadMoreData() {
     if (lazyLoadState.isLoading || !lazyLoadState.hasMore || !lazyLoadState.tableId) {
-        console.log('loadMoreData skipped:', { isLoading: lazyLoadState.isLoading, hasMore: lazyLoadState.hasMore, tableId: lazyLoadState.tableId });
         return;
     }
     
-    console.log('loadMoreData starting...');
     lazyLoadState.isLoading = true;
     showLazyLoadIndicator(true);
     
@@ -735,6 +750,9 @@ async function loadMoreData() {
                 renderTable();
             }
             
+            // Handle any broken images in newly loaded rows
+            handleBrokenImages();
+            
             updateLazyLoadPaginationInfo();
             
             const paginationBar = document.getElementById('paginationBar');
@@ -743,8 +761,6 @@ async function loadMoreData() {
                 paginationBar.dataset.totalCount = data.total_count.toString();
                 paginationBar.dataset.initialLoaded = lazyLoadState.loadedCount.toString();
             }
-            
-            console.log(`Loaded ${data.cards.length} more cards. Total loaded: ${lazyLoadState.loadedCount}/${lazyLoadState.totalCount}`);
         }
         
     } catch (error) {
@@ -762,7 +778,6 @@ function checkLoadMore() {
     }
     
     if (lazyLoadState.loadedCount < 200 && lazyLoadState.hasMore) {
-        console.log('Auto-loading more data (less than 200 rows loaded)');
         loadMoreData();
         return;
     }
@@ -776,7 +791,6 @@ function checkLoadMore() {
         
         const threshold = Math.max(800, scrollHeight * 0.2);
         if (scrollRemaining < threshold) {
-            console.log(`Lazy load triggered: scrollRemaining=${scrollRemaining}px, threshold=${threshold}px, loaded=${lazyLoadState.loadedCount}/${lazyLoadState.totalCount}`);
             loadMoreData();
         }
     }
@@ -843,6 +857,55 @@ function highlightSearchResult() {
 }
 
 // ==========================================
+// HANDLE BROKEN IMAGES
+// ==========================================
+
+function handleBrokenImages() {
+    // Add error handlers to all table images
+    const tableImages = document.querySelectorAll('.table-image');
+    tableImages.forEach(img => {
+        // Skip if placeholder already exists (template already handled it)
+        if (img.parentElement.querySelector('.no-image')) {
+            img.style.display = 'none';
+            return;
+        }
+        
+        // Check if image already failed (no src or empty src)
+        if (!img.src || img.src === window.location.href || img.src.includes('NOT_FOUND')) {
+            showImagePlaceholder(img);
+            return;
+        }
+        
+        img.onerror = function() {
+            showImagePlaceholder(this);
+        };
+        
+        // Check if image already errored (naturalWidth is 0 for broken images)
+        if (img.complete && img.naturalWidth === 0) {
+            showImagePlaceholder(img);
+        }
+    });
+}
+
+function showImagePlaceholder(img) {
+    // Skip if placeholder already exists
+    if (img.parentElement.querySelector('.no-image')) {
+        img.style.display = 'none';
+        return;
+    }
+    
+    // Create placeholder div
+    const placeholder = document.createElement('div');
+    placeholder.className = 'no-image colorful-placeholder';
+    placeholder.title = 'Image not available';
+    placeholder.innerHTML = '<i class="fa-solid fa-user-astronaut"></i>';
+    
+    // Replace img with placeholder
+    img.style.display = 'none';
+    img.parentElement.insertBefore(placeholder, img);
+}
+
+// ==========================================
 // INITIALIZATION
 // ==========================================
 
@@ -853,26 +916,24 @@ function initTableModule() {
     renderTable();
     highlightSearchResult();
     initLazyLoadState();
-    console.log('Lazy load initialized:', lazyLoadState);
     renderTable();
     
+    // Handle broken images after table render
+    handleBrokenImages();
+    
     setTimeout(() => {
-        console.log('Running initial checkLoadMore...');
         checkLoadMore();
     }, 500);
     
     // Scroll listener
     const idcardTable = document.querySelector('.idcard-table');
     if (idcardTable) {
-        console.log('Scroll listener attached to .idcard-table');
         idcardTable.addEventListener('scroll', function() {
             checkLoadMore();
             if (endlessScrollMode) {
                 updatePageNumbersForEndless(filteredRows.length);
             }
         });
-    } else {
-        console.error('Could not find .idcard-table element for scroll listener');
     }
     
     window.addEventListener('scroll', function() {
@@ -884,7 +945,6 @@ function initTableModule() {
         if (lazyLoadState.hasMore && !lazyLoadState.isLoading) {
             checkLoadMore();
         } else if (!lazyLoadState.hasMore) {
-            console.log('All data loaded, stopping interval');
             clearInterval(lazyLoadInterval);
         }
     }, 1000);
@@ -913,6 +973,7 @@ window.loadMoreData = loadMoreData;
 window.checkLoadMore = checkLoadMore;
 window.loadAllData = loadAllData;
 window.attachRowEventHandlers = attachRowEventHandlers;
+window.handleBrokenImages = handleBrokenImages;
 window.lazyLoadState = lazyLoadState;
 
 window.IDCardApp.initTableModule = initTableModule;

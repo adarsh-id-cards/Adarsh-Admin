@@ -65,6 +65,42 @@ function retrieveCard(cardId) {
     }
 }
 
+// Single card download (download the actual image/card)
+function downloadSingleCard(cardId) {
+    // Get the row to find image data
+    const row = document.querySelector(`tr[data-card-id="${cardId}"]`);
+    if (!row) {
+        if (typeof showToast === 'function') showToast('Card not found', false);
+        return;
+    }
+    
+    // Find the image in the row
+    const img = row.querySelector('.table-image');
+    if (img && img.src) {
+        // Create download link
+        const link = document.createElement('a');
+        link.href = img.src;
+        link.download = `card_${cardId}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        if (typeof showToast === 'function') showToast('Card image downloaded');
+    } else {
+        if (typeof showToast === 'function') showToast('No image found for this card', false);
+    }
+}
+
+// Move single card back to approved
+function backToApprovedCard(cardId) {
+    if (typeof apiCall === 'function') {
+        apiCall(`/api/card/${cardId}/status/`, 'POST', { status: 'approved' })
+            .then(data => {
+                if (typeof showToast === 'function') showToast('Card moved back to approved');
+                location.reload();
+            });
+    }
+}
+
 // ==========================================
 // BULK STATUS OPERATIONS
 // ==========================================
@@ -177,6 +213,7 @@ function bulkDeletePermanent(cardIds) {
     const deleteModalOverlay = document.getElementById('deleteModalOverlay');
     if (deleteModalOverlay) {
         deleteModalOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden'; // Lock body scroll
     }
 }
 
@@ -247,6 +284,92 @@ function initRowActionHandlers() {
             const cardId = this.getAttribute('data-card-id');
             retrieveCard(cardId);
         });
+    });
+    
+    // Download single row button (for Download list - downloads single card image)
+    document.querySelectorAll('.download-single-row-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const cardId = this.getAttribute('data-card-id');
+            downloadSingleCard(cardId);
+        });
+    });
+}
+
+// ==========================================
+// BULK DOWNLOAD (Move to download status)
+// ==========================================
+
+function bulkDownload(cardIds) {
+    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
+    if (!tableId) {
+        if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
+        return;
+    }
+    
+    const csrfToken = typeof getCSRFToken === 'function' ? getCSRFToken() : '';
+    
+    fetch(`/api/table/${tableId}/cards/bulk-status/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify({
+            card_ids: cardIds,
+            status: 'download'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (typeof showToast === 'function') showToast(`${data.updated_count} card(s) moved to download list`);
+            window.location.href = `?status=download`;
+        } else {
+            if (typeof showToast === 'function') showToast(data.message || 'Error updating cards', false);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        if (typeof showToast === 'function') showToast('Error moving to download', false);
+    });
+}
+
+// ==========================================
+// BULK BACK TO APPROVED (Move from download back to approved)
+// ==========================================
+
+function bulkBackToApproved(cardIds) {
+    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
+    if (!tableId) {
+        if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
+        return;
+    }
+    
+    const csrfToken = typeof getCSRFToken === 'function' ? getCSRFToken() : '';
+    
+    fetch(`/api/table/${tableId}/cards/bulk-status/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify({
+            card_ids: cardIds,
+            status: 'approved'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (typeof showToast === 'function') showToast(`${data.updated_count} card(s) moved back to approved`);
+            window.location.href = `?status=approved`;
+        } else {
+            if (typeof showToast === 'function') showToast(data.message || 'Error updating cards', false);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        if (typeof showToast === 'function') showToast('Error moving to approved', false);
     });
 }
 
@@ -321,6 +444,22 @@ function initBulkActionHandlers() {
             bulkDeletePermanent(selectedIds);
         }
     });
+    
+    // Download Card button (move to download status from Approved)
+    document.getElementById('downloadCardBtn')?.addEventListener('click', function() {
+        const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
+        if (selectedIds.length > 0) {
+            bulkDownload(selectedIds);
+        }
+    });
+    
+    // Back to Approved button (move from download back to approved)
+    document.getElementById('unapprovedBtnD')?.addEventListener('click', function() {
+        const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
+        if (selectedIds.length > 0) {
+            bulkBackToApproved(selectedIds);
+        }
+    });
 }
 
 // ==========================================
@@ -339,6 +478,8 @@ window.unapproveCard = unapproveCard;
 window.unverifyCard = unverifyCard;
 window.downloadCard = downloadCard;
 window.retrieveCard = retrieveCard;
+window.downloadSingleCard = downloadSingleCard;
+window.backToApprovedCard = backToApprovedCard;
 window.bulkVerify = bulkVerify;
 window.bulkApprove = bulkApprove;
 window.bulkUnapprove = bulkUnapprove;
@@ -346,6 +487,8 @@ window.bulkUnverify = bulkUnverify;
 window.bulkDelete = bulkDelete;
 window.bulkRetrieve = bulkRetrieve;
 window.bulkDeletePermanent = bulkDeletePermanent;
+window.bulkDownload = bulkDownload;
+window.bulkBackToApproved = bulkBackToApproved;
 window.createCard = createCard;
 
 window.IDCardApp = window.IDCardApp || {};

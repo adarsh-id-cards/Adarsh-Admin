@@ -2,9 +2,8 @@
 // Contains: Search input, filter dropdown, sort dropdown, rows per page, search all modal
 
 // ==========================================
-// SEARCH STATE
+// SEARCH STATE (searchQuery is defined in table module)
 // ==========================================
-var searchQuery = '';
 
 // ==========================================
 // SEARCH INPUT HANDLERS
@@ -27,16 +26,32 @@ function initSearchHandlers() {
             updateClearButton();
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(() => {
-                searchQuery = this.value.trim();
-                applyClassSectionFilters();
+                const query = this.value.trim();
+                // Use table module's searchRows function
+                if (typeof searchRows === 'function') {
+                    searchRows(query);
+                } else if (typeof window.searchRows === 'function') {
+                    window.searchRows(query);
+                } else {
+                    // Fallback to old method
+                    searchQuery = query;
+                    applyClassSectionFilters();
+                }
             }, 300);
         });
         
         searchInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 clearTimeout(searchTimeout);
-                searchQuery = this.value.trim();
-                applyClassSectionFilters();
+                const query = this.value.trim();
+                if (typeof searchRows === 'function') {
+                    searchRows(query);
+                } else if (typeof window.searchRows === 'function') {
+                    window.searchRows(query);
+                } else {
+                    searchQuery = query;
+                    applyClassSectionFilters();
+                }
             }
         });
         
@@ -44,8 +59,14 @@ function initSearchHandlers() {
             searchClearBtn.addEventListener('click', function() {
                 searchInput.value = '';
                 updateClearButton();
-                searchQuery = '';
-                applyClassSectionFilters();
+                if (typeof searchRows === 'function') {
+                    searchRows('');
+                } else if (typeof window.searchRows === 'function') {
+                    window.searchRows('');
+                } else {
+                    searchQuery = '';
+                    applyClassSectionFilters();
+                }
                 searchInput.focus();
             });
         }
@@ -61,22 +82,17 @@ let currentClassFilter = 'all';
 let currentSectionFilter = 'all';
 
 function initFilterHandlers() {
-    console.log('Initializing Class/Section filter handlers...');
-    
     // Populate filter options from table data
     populateFilterOptions();
     
     // Attach click handlers to filter options
     attachClassFilterHandlers();
     attachSectionFilterHandlers();
-    
-    console.log('Filter handlers initialized');
 }
 
 function populateFilterOptions() {
     const tableBody = document.getElementById('cardsTableBody');
     if (!tableBody) {
-        console.log('No table body found for filter population');
         return;
     }
     
@@ -87,7 +103,6 @@ function populateFilterOptions() {
     // Get header indices for Class and Section columns
     const headerRow = document.querySelector('#data-table thead tr');
     if (!headerRow) {
-        console.log('No header row found');
         return;
     }
     
@@ -103,17 +118,12 @@ function populateFilterOptions() {
         // Match CLASS or similar names
         if (classColIndex === -1 && (fieldNameUpper === 'CLASS' || fieldNameUpper === 'STD' || fieldNameUpper === 'STANDARD' || fieldNameUpper === 'GRADE' || fieldNameUpper.includes('CLASS'))) {
             classColIndex = index;
-            console.log('Found CLASS column at index:', classColIndex, 'name:', fieldName);
         }
         // Match SECTION or similar names
         if (sectionColIndex === -1 && (fieldNameUpper === 'SECTION' || fieldNameUpper === 'SEC' || fieldNameUpper === 'DIV' || fieldNameUpper === 'DIVISION' || fieldNameUpper.includes('SECTION'))) {
             sectionColIndex = index;
-            console.log('Found SECTION column at index:', sectionColIndex, 'name:', fieldName);
         }
     });
-    
-    console.log('Class column index:', classColIndex, 'Section column index:', sectionColIndex);
-    console.log('Total rows:', rows.length);
     
     // Collect unique values from rows
     rows.forEach((row, rowIndex) => {
@@ -138,9 +148,6 @@ function populateFilterOptions() {
             }
         }
     });
-    
-    console.log('Found class values:', Array.from(classValues));
-    console.log('Found section values:', Array.from(sectionValues));
     
     // Populate Class dropdown
     const classOptionsContainer = document.getElementById('classFilterOptions');
@@ -173,8 +180,6 @@ function populateFilterOptions() {
             option.textContent = classVal;
             classOptionsContainer.appendChild(option);
         });
-        
-        console.log('Added', sortedClasses.length, 'class options');
     }
     
     // Populate Section dropdown
@@ -202,8 +207,6 @@ function populateFilterOptions() {
             option.textContent = sectionVal;
             sectionOptionsContainer.appendChild(option);
         });
-        
-        console.log('Added', sortedSections.length, 'section options');
     }
     
     // Attach click handlers to the new options
@@ -294,7 +297,9 @@ function applyClassSectionFilters() {
     
     // Get all rows
     const tableBody = document.getElementById('cardsTableBody');
-    if (!tableBody) return;
+    if (!tableBody) {
+        return;
+    }
     
     const rows = tableBody.querySelectorAll('tr[data-card-id]');
     let visibleCount = 0;
@@ -415,6 +420,7 @@ function initSearchAllModal() {
     function openSearchAllModal() {
         if (searchAllModalOverlay) {
             searchAllModalOverlay.classList.add('active');
+            document.body.style.overflow = 'hidden'; // Lock body scroll
             setTimeout(() => {
                 if (searchAllInput) searchAllInput.focus();
             }, 100);
@@ -424,6 +430,7 @@ function initSearchAllModal() {
     function closeSearchAllModalFn() {
         if (searchAllModalOverlay) {
             searchAllModalOverlay.classList.remove('active');
+            document.body.style.overflow = ''; // Restore body scroll
         }
         if (searchAllInput) searchAllInput.value = '';
         if (clearSearchInput) clearSearchInput.style.display = 'none';
@@ -602,7 +609,7 @@ function displaySearchResults(results, query, container, closeModalFn) {
 function initImageSortModal() {
     const imageSortBtn = document.getElementById('imageSortBtn');
     const imageSortModalOverlay = document.getElementById('imageSortModalOverlay');
-    const closeImageSortModal = document.getElementById('closeImageSortModal');
+    const closeImageSortModalBtn = document.getElementById('closeImageSortModal');
     const clearImageSort = document.getElementById('clearImageSort');
     const applyImageSort = document.getElementById('applyImageSort');
     const imageSortColumn = document.getElementById('imageSortColumn');
@@ -611,23 +618,32 @@ function initImageSortModal() {
     function openImageSortModal() {
         if (imageSortModalOverlay) {
             imageSortModalOverlay.classList.add('active');
+            document.body.style.overflow = 'hidden'; // Lock body scroll
         }
     }
     
     function closeImageSortModalFn() {
         if (imageSortModalOverlay) {
             imageSortModalOverlay.classList.remove('active');
+            document.body.style.overflow = ''; // Restore body scroll
         }
     }
     
+    // Open button
     if (imageSortBtn) {
         imageSortBtn.addEventListener('click', openImageSortModal);
     }
     
-    if (closeImageSortModal) {
-        closeImageSortModal.addEventListener('click', closeImageSortModalFn);
+    // Close button (X in header)
+    if (closeImageSortModalBtn) {
+        closeImageSortModalBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            closeImageSortModalFn();
+        });
     }
     
+    // Click outside to close
     if (imageSortModalOverlay) {
         imageSortModalOverlay.addEventListener('click', function(e) {
             if (e.target === this) closeImageSortModalFn();

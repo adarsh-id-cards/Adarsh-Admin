@@ -15,6 +15,7 @@
     opacity: 0;
     visibility: hidden;
     transition: all 0.3s ease;
+    overflow: hidden;
 }
 
 .side-modal-overlay.active {
@@ -25,8 +26,8 @@
 .side-modal {
     position: fixed;
     top: 0;
-    right: -520px;
-    width: 520px;
+    right: -650px;
+    width: 650px;
     max-width: 95vw;
     height: 100vh;
     background: var(--bg-white);
@@ -208,9 +209,35 @@
     color: #e65100;
 }
 
+.form-photo-preview.pending-image {
+    border: 2px dashed #f59e0b;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+}
+
+.form-photo-preview.pending-image i {
+    color: #d97706;
+}
+
 .form-photo-preview.has-image {
     border: 2px solid #4caf50;
     background: #fff;
+}
+
+/* Image preview small (in form fields) */
+.image-preview-small.pending-image {
+    border: 2px dashed #f59e0b;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+}
+
+.image-preview-small.pending-image i {
+    color: #d97706;
+}
+
+/* Path display states */
+.photo-path-display.pending,
+.image-path-display.pending {
+    color: #d97706;
+    font-style: italic;
 }
 
 /* Form Fields Grid */
@@ -500,8 +527,6 @@ textarea.form-control {
     flex: 1;
     overflow: auto;
     border: 1px solid rgba(0,0,0,0.15);
-    border-top: none;
-    border-bottom: none;
     border-radius: 0;
     background: #fff;
     margin: 0;
@@ -558,7 +583,7 @@ textarea.form-control {
 .action-buttons-bar {
     background: rgba(255, 255, 255, 0.95);
     border: 1px solid rgba(0,0,0,0.15);
-    border-bottom: 2px solid rgba(0,0,0,0.15);
+    border-bottom: none;
     border-radius: 0;
     padding: 8px 16px;
     margin-bottom: 0;
@@ -624,10 +649,43 @@ textarea.form-control {
     background: #dc2626;
 }
 
+/* Purple buttons */
+.action-buttons-group .btn.btn-purple {
+    background: #8b5cf6;
+    color: #fff;
+}
+
+.action-buttons-group .btn.btn-purple:hover:not(:disabled) {
+    background: #7c3aed;
+}
+
+/* Orange buttons */
+.action-buttons-group .btn.btn-orange {
+    background: #f97316;
+    color: #fff;
+}
+
+.action-buttons-group .btn.btn-orange:hover:not(:disabled) {
+    background: #ea580c;
+}
+
+/* Teal buttons */
+.action-buttons-group .btn.btn-teal {
+    background: #14b8a6;
+    color: #fff;
+}
+
+.action-buttons-group .btn.btn-teal:hover:not(:disabled) {
+    background: #0d9488;
+}
+
 /* Keep white text on colored buttons when disabled */
 .action-buttons-group .btn.btn-blue:disabled,
 .action-buttons-group .btn.btn-green:disabled,
-.action-buttons-group .btn.btn-red:disabled {
+.action-buttons-group .btn.btn-red:disabled,
+.action-buttons-group .btn.btn-purple:disabled,
+.action-buttons-group .btn.btn-orange:disabled,
+.action-buttons-group .btn.btn-teal:disabled {
     color: #fff;
 }
 
@@ -642,8 +700,10 @@ textarea.form-control {
     background: rgba(255, 255, 255, 0.95);
     border: 1px solid rgba(0,0,0,0.1);
     border-top: none;
+    border-bottom: none;
     padding: 8px 12px;
     gap: 12px;
+    margin-bottom: 0;
 }
 
 .search-filter-bar .action-left {
@@ -1288,9 +1348,9 @@ textarea.form-control {
 
 /* Image column for dynamic image fields */
 .idcard-table .image-col {
-    width: 55px;
-    min-width: 55px;
-    max-width: 60px;
+    width: 65px;
+    min-width: 65px;
+    max-width: 70px;
     text-align: center;
 }
 
@@ -1298,9 +1358,10 @@ textarea.form-control {
 .idcard-table td.image-cell {
     text-align: center;
     vertical-align: middle;
-    padding: 1px;
-    width: 55px;
-    min-width: 55px;
+    padding: 4px;
+    width: 60px;
+    min-width: 60px;
+    max-width: 70px;
 }
 
 /* Dynamic image field images */
@@ -1315,6 +1376,21 @@ textarea.form-control {
     margin: 0 auto;
     cursor: pointer;
     transition: transform 0.2s ease;
+    background: #f1f5f9;
+    position: relative;
+}
+
+/* Handle broken images - hide alt text */
+.table-image[src=""],
+.table-image:not([src]),
+.table-image[src*="NOT_FOUND"] {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Fallback for broken images via onerror */
+.table-image.img-error {
+    display: none !important;
 }
 
 .table-image:hover {
@@ -1327,20 +1403,26 @@ textarea.form-control {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: 2px;
 }
 
 .edit-photo-btn {
-    width: 100%;
-    max-width: 40px;
-    padding: 2px 6px;
-    font-size: 10px;
+    width: 35px;
+    padding: 2px 4px;
+    font-size: 9px;
     font-weight: 600;
     background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
     color: white;
     border: none;
     border-radius: 3px;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.edit-photo-btn i {
+    font-size: 9px;
 }
 
 /* Placeholder when no image in dynamic image field */
@@ -1355,6 +1437,11 @@ textarea.form-control {
     justify-content: center;
     margin: 0 auto;
     box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+}
+
+.no-image i {
+    font-size: 16px;
+    color: #94a3b8;
 }
 
 /* Passport style placeholder */
@@ -1392,6 +1479,44 @@ textarea.form-control {
     text-shadow: 0 1px 2px rgba(0,0,0,0.2);
 }
 
+/* Pending image placeholder - image reference exists but waiting for upload */
+.no-image.colorful-placeholder.pending-image,
+.no-image.pending-image {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #ea580c 100%);
+    border: 1px solid #d97706;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+    position: relative;
+}
+
+.no-image.colorful-placeholder.pending-image i,
+.no-image.pending-image i {
+    font-size: 16px;
+    color: #ffffff;
+}
+
+.no-image .pending-ref {
+    display: block;
+    font-size: 8px;
+    color: #ffffff;
+    margin-top: 2px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0 2px;
+}
+
+/* Gray placeholder - no image given at all */
+.no-image.passport-placeholder.no-image-given {
+    background: linear-gradient(180deg, #f0f0f0 0%, #d5d5d5 100%);
+    border: 1px dashed #aaaaaa;
+}
+
+.no-image.passport-placeholder.no-image-given i {
+    font-size: 16px;
+    color: #888888;
+}
+
 .no-image i {
     font-size: 12px;
     color: #b0bec5;
@@ -1399,8 +1524,8 @@ textarea.form-control {
 
 /* Fixed columns - Action - wider for buttons */
 .idcard-table .action-col {
-    width: 85px;
-    min-width: 85px;
+    width: 110px;
+    min-width: 110px;
     text-align: center;
 }
 
@@ -1499,6 +1624,42 @@ textarea.form-control {
     background: #2563eb;
 }
 
+/* Download single button - green (for download list) */
+.download-single-btn {
+    padding: 3px 10px;
+    font-size: 9px;
+    font-weight: 500;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.download-single-btn:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+/* Back to approved row button - orange */
+.back-approved-row-btn {
+    padding: 3px 10px;
+    font-size: 9px;
+    font-weight: 500;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.back-approved-row-btn:hover {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+}
+
 /* Retrieve row button - blue */
 .retrieve-row-btn {
     padding: 3px 10px;
@@ -1521,6 +1682,8 @@ textarea.form-control {
 .action-cell {
     text-align: center !important;
     vertical-align: middle;
+    min-width: 110px;
+    width: 110px;
 }
 
 .action-cell .action-buttons {
@@ -1529,6 +1692,15 @@ textarea.form-control {
     justify-content: center;
     align-items: center;
     gap: 2px;
+    white-space: nowrap;
+}
+
+/* Downloaded status badge in action cell */
+.action-cell .status-badge {
+    display: inline-flex !important;
+    white-space: nowrap !important;
+    flex-wrap: nowrap !important;
+    min-width: max-content;
 }
 
 /* Approve row button - green */
@@ -1556,16 +1728,23 @@ textarea.form-control {
 
 /* Status badge styling */
 .status-badge {
-    display: inline-block;
-    padding: 3px 8px;
-    font-size: 9px;
-    font-weight: 500;
-    border-radius: 3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    font-size: 10px;
+    font-weight: 600;
+    border-radius: 4px;
     text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.status-badge i {
+    font-size: 10px;
 }
 
 .status-badge.download {
-    background: #3b82f6;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
     color: #fff;
 }
 
@@ -1782,78 +1961,81 @@ body.sidebar-collapsed .pagination-bar {
 .pagination-center {
     display: flex;
     align-items: center;
-    gap: 0;
+    gap: 6px;
 }
 
 .pagination-btn {
-    width: 32px;
-    height: 32px;
-    border: 1px solid rgba(0, 0, 0, 0.15);
-    background: #fff;
-    border-radius: 0;
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--gray-300);
+    background: var(--bg-white);
+    border-radius: var(--radius-lg);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #666;
-    font-size: 12px;
+    color: var(--gray-600);
+    font-size: 13px;
     transition: all 0.2s ease;
-    margin-left: -1px;
+    margin: 0;
 }
 
-.pagination-btn:first-child {
-    margin-left: 0;
-}
-
-.pagination-btn:hover {
-    background: #f5f5f5;
-    border-color: #3498db;
-    color: #3498db;
+.pagination-btn:hover:not(:disabled) {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--text-white);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(102, 126, 234, 0.3);
 }
 
 .pagination-btn:disabled {
-    opacity: 0.5;
+    opacity: 0.4;
     cursor: not-allowed;
-    background: #f5f5f5;
+    background: var(--gray-100);
 }
 
 .pagination-btn:disabled:hover {
-    background: #f5f5f5;
-    border-color: rgba(0, 0, 0, 0.1);
-    color: #666;
+    transform: none;
+    box-shadow: none;
+    background: var(--gray-100);
+    border-color: var(--gray-300);
+    color: var(--gray-600);
 }
 
 .page-numbers {
     display: flex;
     align-items: center;
-    gap: 0;
+    gap: 4px;
     margin: 0;
 }
 
 .page-num {
-    min-width: 32px;
-    height: 32px;
-    border: 1px solid rgba(0, 0, 0, 0.15);
-    background: #fff;
-    border-radius: 0;
+    min-width: 34px;
+    height: 34px;
+    border: 1px solid var(--gray-300);
+    background: var(--bg-white);
+    border-radius: var(--radius-lg);
     cursor: pointer;
     font-size: 13px;
     font-weight: 500;
-    color: #666;
+    color: var(--gray-600);
     transition: all 0.2s ease;
-    margin-left: -1px;
+    margin: 0;
+    padding: 0 8px;
 }
 
 .page-num:hover {
-    background: #f5f5f5;
-    border-color: #3498db;
-    color: #3498db;
+    background: var(--gray-100);
+    border-color: var(--primary);
+    color: var(--primary);
 }
 
 .page-num.active {
-    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    background: var(--primary-gradient);
     border-color: transparent;
-    color: #fff;
+    color: var(--text-white);
+    box-shadow: 0 2px 6px rgba(102, 126, 234, 0.35);
+}
 }
 
 .page-dots {
@@ -1870,7 +2052,7 @@ body.sidebar-collapsed .pagination-bar {
 /* Rows per page custom dropdown */
 .rows-dropdown {
     position: relative;
-    min-width: 70px;
+    min-width: 80px;
     overflow: visible;
 }
 
@@ -1879,13 +2061,13 @@ body.sidebar-collapsed .pagination-bar {
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 6px 12px;
-    border: 1px solid rgba(0, 0, 0, 0.15);
-    background: #fff;
-    border-radius: 0;
+    padding: 8px 14px;
+    border: 1px solid var(--gray-300);
+    background: var(--bg-white);
+    border-radius: var(--radius-lg);
     font-size: 13px;
     font-weight: 500;
-    color: #2c3e50;
+    color: var(--gray-700);
     cursor: pointer;
     outline: none;
     width: 100%;
@@ -1893,12 +2075,18 @@ body.sidebar-collapsed .pagination-bar {
 }
 
 .rows-dropdown .dropdown-toggle:hover {
-    background-color: rgba(52, 152, 219, 0.1);
-    border-color: #3498db;
+    background-color: var(--gray-50);
+    border-color: var(--primary);
+}
+
+.rows-dropdown.open .dropdown-toggle {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
 }
 
 .rows-dropdown .dropdown-toggle i {
     font-size: 10px;
+    color: var(--gray-500);
     transition: transform 0.2s ease;
 }
 
@@ -1914,10 +2102,10 @@ body.sidebar-collapsed .pagination-bar {
     left: 0;
     right: 0;
     margin-bottom: 8px;
-    background: #fff;
-    border: 1px solid rgba(0, 0, 0, 0.15);
-    border-radius: 0;
-    box-shadow: 0 -8px 20px rgba(0, 0, 0, 0.15);
+    background: var(--bg-white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.12);
     z-index: 9999;
     overflow: hidden;
     padding: 6px;
@@ -1928,25 +2116,25 @@ body.sidebar-collapsed .pagination-bar {
 }
 
 .rows-dropdown .dropdown-option {
-    padding: 8px 12px;
+    padding: 8px 14px;
     font-size: 13px;
-    color: #333;
+    color: var(--gray-700);
     cursor: pointer;
-    border-radius: 0;
-    transition: background 0.2s ease;
+    border-radius: var(--radius);
+    transition: all 0.2s ease;
     margin: 2px 0;
     text-align: center;
 }
 
 .rows-dropdown .dropdown-option:hover {
-    background: rgba(52, 152, 219, 0.1);
-    color: #3498db;
+    background: var(--gray-100);
+    color: var(--primary);
 }
 
 .rows-dropdown .dropdown-option.selected {
-    background: rgba(52, 152, 219, 0.15);
-    color: #3498db;
-    font-weight: 500;
+    background: rgba(102, 126, 234, 0.12);
+    color: var(--primary);
+    font-weight: 600;
 }
 
 /* Updated By */
@@ -2036,6 +2224,8 @@ body.sidebar-collapsed .pagination-bar {
     padding: 25px;
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
 }
 
 /* Photo Upload Section */
@@ -2155,21 +2345,7 @@ body.sidebar-collapsed .pagination-bar {
     border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 
-.btn-secondary {
-    background: #e9ecef;
-    color: #495057;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 10px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.btn-secondary:hover {
-    background: #dee2e6;
-}
+/* btn-secondary styling is defined in variables.css - no override needed */
 
 .btn-primary {
     background: #667eea;
@@ -2511,16 +2687,25 @@ body.sidebar-collapsed .pagination-bar {
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
+    z-index: 10;
+    position: relative;
 }
 
 .upload-modal-close:hover {
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.4);
+    transform: scale(1.1);
+}
+
+.upload-modal-close:active {
+    transform: scale(0.95);
 }
 
 .upload-modal-body {
     padding: 20px;
     overflow-y: auto;
+    overflow-x: hidden;
     flex: 1;
+    min-height: 0;
 }
 
 .upload-status {
@@ -2899,23 +3084,35 @@ body.sidebar-collapsed .pagination-bar {
 }
 
 .upload-modal-footer .btn-secondary {
-    background: #e5e7eb;
-    color: #374151;
-    border: none;
+    background: #f3f4f6 !important;
+    color: #374151 !important;
+    border: 1px solid #d1d5db !important;
 }
 
 .upload-modal-footer .btn-secondary:hover {
-    background: #d1d5db;
+    background: #e5e7eb !important;
+    border-color: #9ca3af !important;
 }
 
 .upload-modal-footer .btn-primary {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    color: #fff;
-    border: none;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    color: #fff !important;
+    border: none !important;
 }
 
 .upload-modal-footer .btn-primary:hover {
-    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+}
+
+/* Danger button for delete modal */
+.upload-modal-footer .btn-danger {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+    color: #fff !important;
+    border: none !important;
+}
+
+.upload-modal-footer .btn-danger:hover {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
 }
 
 /* Delete Permanent Modal Styles */
@@ -3085,10 +3282,12 @@ body.sidebar-collapsed .pagination-bar {
 
 .search-all-modal .upload-modal-body {
     flex: 1;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
     padding: 20px;
+    min-height: 0;
 }
 
 .search-all-form {

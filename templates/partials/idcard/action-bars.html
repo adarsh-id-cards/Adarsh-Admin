@@ -74,7 +74,7 @@
         </button>
         <button class="btn action-btn btn-green" id="approveBtn" disabled title="Approve selected cards">
             <i class="fa-solid fa-circle-check"></i>
-            <span class="btn-text">Approve</span>
+            <span class="btn-text">Approve Selected</span>
         </button>
         <div class="action-divider"></div>
         <button class="btn action-btn btn-blue" id="downloadImgBtnV" title="Download images as ZIP">
@@ -151,13 +151,9 @@
             <i class="fa-solid fa-eye"></i>
             <span class="btn-text">View</span>
         </button>
-        <button class="btn action-btn btn-blue" id="retrieveBtnA" disabled title="Retrieve to pending">
-            <i class="fa-solid fa-rotate-left"></i>
-            <span class="btn-text">Retrieve</span>
-        </button>
-        <button class="btn action-btn btn-red" id="unapprovedBtn" disabled title="Move back to verified">
-            <i class="fa-solid fa-circle-xmark"></i>
-            <span class="btn-text">Unapproved</span>
+        <button class="btn action-btn btn-purple" id="downloadCardBtn" disabled title="Move to download list">
+            <i class="fa-solid fa-download"></i>
+            <span class="btn-text">Download Selected</span>
         </button>
         <div class="action-divider"></div>
         <button class="btn action-btn btn-blue" id="downloadImgBtnA" title="Download images as ZIP">
@@ -183,7 +179,7 @@
     </div>
 </div>
 
-<!-- Action Bar - Download List -->
+<!-- Action Bar - Download List (Final stage - no status change buttons, only export options) -->
 <div class="action-bar action-buttons-bar" id="downloadActionBar" {% if current_status != 'download' %}style="display: none;"{% endif %}>
     <div class="action-buttons-group">
         <button class="btn action-btn btn-green" id="editBtnD" disabled title="Edit selected card">
@@ -194,30 +190,26 @@
             <i class="fa-solid fa-eye"></i>
             <span class="btn-text">View</span>
         </button>
-        <button class="btn action-btn btn-blue" id="retrieveBtnD" disabled title="Retrieve to pending">
-            <i class="fa-solid fa-rotate-left"></i>
-            <span class="btn-text">Retrieve</span>
-        </button>
         <div class="action-divider"></div>
-        <button class="btn action-btn btn-blue" id="downloadImgBtnD" title="Download images as ZIP">
-            <i class="fa-solid fa-image"></i>
-            <span class="btn-text">Download Img</span>
+        <button class="btn action-btn btn-purple" id="downloadImgBtnD" title="Download images as ZIP">
+            <i class="fa-solid fa-images"></i>
+            <span class="btn-text">Export Images</span>
         </button>
-        <button class="btn action-btn btn-blue" id="downloadDocxBtnD" title="Download as Word document">
+        <button class="btn action-btn btn-purple" id="downloadDocxBtnD" title="Download as Word document">
             <i class="fa-solid fa-file-word"></i>
-            <span class="btn-text">Download Docx</span>
+            <span class="btn-text">Export Word</span>
         </button>
-        <button class="btn action-btn btn-blue" id="downloadXlsxBtnD" title="Download as Excel file">
+        <button class="btn action-btn btn-purple" id="downloadXlsxBtnD" title="Download as Excel file">
             <i class="fa-solid fa-file-excel"></i>
-            <span class="btn-text">Download XLSX</span>
+            <span class="btn-text">Export Excel</span>
         </button>
-        <button class="btn action-btn btn-green" id="downloadPdfBtnD" disabled title="Download as PDF">
+        <button class="btn action-btn btn-teal" id="downloadPdfBtnD" disabled title="Download as PDF">
             <i class="fa-solid fa-file-pdf"></i>
-            <span class="btn-text">Download PDF</span>
+            <span class="btn-text">Export PDF</span>
         </button>
         <button class="btn action-btn btn-red" id="reuploadImageBtnD" title="Reupload images from ZIP">
             <i class="fa-solid fa-rotate"></i>
-            <span class="btn-text">Reupload Image</span>
+            <span class="btn-text">Reupload</span>
         </button>
     </div>
 </div>

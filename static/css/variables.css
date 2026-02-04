@@ -43,6 +43,8 @@
     --red-light: #f87171;
     --red-bg: #fee2e2;
     --red-rgb: 239, 68, 68;
+    --danger: var(--red);
+    --danger-dark: var(--red-dark);
     
     /* Yellow / Warning */
     --yellow: #f59e0b;

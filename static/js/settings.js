@@ -280,30 +280,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ===== Toast Notification =====
-    function showToast(message, type = 'success') {
-        const toast = document.getElementById('toast');
-        const toastMessage = toast.querySelector('.toast-message');
-        const toastIcon = toast.querySelector('.toast-icon i');
-        
-        toastMessage.textContent = message;
-        
-        // Reset classes
-        toast.classList.remove('success', 'error');
-        
-        if (type === 'success') {
-            toast.classList.add('success');
-            toastIcon.className = 'fa-solid fa-check';
-        } else if (type === 'error') {
-            toast.classList.add('error');
-            toastIcon.className = 'fa-solid fa-xmark';
-        }
-        
-        toast.classList.add('show');
-        
-        setTimeout(() => {
-            toast.classList.remove('show');
-        }, 3000);
-    }
+    // Using shared showToast from utils.js
 
     // ===== Add CSS Animation =====
     const style = document.createElement('style');

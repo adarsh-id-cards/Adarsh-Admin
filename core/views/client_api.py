@@ -10,15 +10,31 @@ import json
 from ..models import Client, Staff, User
 
 
+def parse_bool(value):
+    """Parse boolean from string or bool"""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.lower() in ('true', '1', 'yes', 'on')
+    return bool(value)
+
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_client_create(request):
     """API endpoint to create a new client"""
     try:
-        data = json.loads(request.body)
+        # Check if it's a multipart form (file upload) or JSON
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            data = request.POST
+            photo = request.FILES.get('photo')
+        else:
+            data = json.loads(request.body)
+            photo = None
         
         # Create the user first
-        username = data.get('email', '').split('@')[0].lower().replace('.', '_')
+        email = data.get('email', '')
+        username = email.split('@')[0].lower().replace('.', '_') if email else 'user'
         # Make username unique
         base_username = username
         counter = 1
@@ -32,7 +48,7 @@ def api_client_create(request):
         
         user = User.objects.create_user(
             username=username,
-            email=data.get('email', ''),
+            email=email,
             first_name=name_parts[0] if name_parts else '',
             last_name=' '.join(name_parts[1:]) if len(name_parts) > 1 else '',
             phone=data.get('phone', ''),
@@ -50,41 +66,46 @@ def api_client_create(request):
             state=data.get('state', ''),
             pincode=data.get('pincode', ''),
             # Staff Permissions
-            perm_staff_list=data.get('perm_staff_list', False),
-            perm_staff_add=data.get('perm_staff_add', False),
-            perm_staff_edit=data.get('perm_staff_edit', False),
-            perm_staff_delete=data.get('perm_staff_delete', False),
-            perm_staff_status=data.get('perm_staff_status', False),
+            perm_staff_list=parse_bool(data.get('perm_staff_list', False)),
+            perm_staff_add=parse_bool(data.get('perm_staff_add', False)),
+            perm_staff_edit=parse_bool(data.get('perm_staff_edit', False)),
+            perm_staff_delete=parse_bool(data.get('perm_staff_delete', False)),
+            perm_staff_status=parse_bool(data.get('perm_staff_status', False)),
             # ID Card Setting Permissions
-            perm_idcard_setting_list=data.get('perm_idcard_setting_list', False),
-            perm_idcard_setting_add=data.get('perm_idcard_setting_add', False),
-            perm_idcard_setting_edit=data.get('perm_idcard_setting_edit', False),
-            perm_idcard_setting_delete=data.get('perm_idcard_setting_delete', False),
-            perm_idcard_setting_status=data.get('perm_idcard_setting_status', False),
+            perm_idcard_setting_list=parse_bool(data.get('perm_idcard_setting_list', False)),
+            perm_idcard_setting_add=parse_bool(data.get('perm_idcard_setting_add', False)),
+            perm_idcard_setting_edit=parse_bool(data.get('perm_idcard_setting_edit', False)),
+            perm_idcard_setting_delete=parse_bool(data.get('perm_idcard_setting_delete', False)),
+            perm_idcard_setting_status=parse_bool(data.get('perm_idcard_setting_status', False)),
             # ID Card List Permissions
-            perm_idcard_pending_list=data.get('perm_idcard_pending_list', False),
-            perm_idcard_verified_list=data.get('perm_idcard_verified_list', False),
-            perm_idcard_pool_list=data.get('perm_idcard_pool_list', False),
-            perm_idcard_approved_list=data.get('perm_idcard_approved_list', False),
-            perm_idcard_download_list=data.get('perm_idcard_download_list', False),
-            perm_idcard_reprint_list=data.get('perm_idcard_reprint_list', False),
+            perm_idcard_pending_list=parse_bool(data.get('perm_idcard_pending_list', False)),
+            perm_idcard_verified_list=parse_bool(data.get('perm_idcard_verified_list', False)),
+            perm_idcard_pool_list=parse_bool(data.get('perm_idcard_pool_list', False)),
+            perm_idcard_approved_list=parse_bool(data.get('perm_idcard_approved_list', False)),
+            perm_idcard_download_list=parse_bool(data.get('perm_idcard_download_list', False)),
+            perm_idcard_reprint_list=parse_bool(data.get('perm_idcard_reprint_list', False)),
             # ID Card Action Permissions
-            perm_idcard_add=data.get('perm_idcard_add', False),
-            perm_idcard_edit=data.get('perm_idcard_edit', False),
-            perm_idcard_delete=data.get('perm_idcard_delete', False),
-            perm_idcard_info=data.get('perm_idcard_info', False),
-            perm_idcard_approve=data.get('perm_idcard_approve', False),
-            perm_idcard_verify=data.get('perm_idcard_verify', False),
-            perm_idcard_bulk_upload=data.get('perm_idcard_bulk_upload', False),
-            perm_idcard_bulk_download=data.get('perm_idcard_bulk_download', False),
-            perm_idcard_created_at=data.get('perm_idcard_created_at', False),
-            perm_idcard_updated_at=data.get('perm_idcard_updated_at', False),
-            perm_idcard_delete_from_pool=data.get('perm_idcard_delete_from_pool', False),
-            perm_delete_all_idcard=data.get('perm_delete_all_idcard', False),
-            perm_reupload_idcard_image=data.get('perm_reupload_idcard_image', False),
-            perm_idcard_retrieve=data.get('perm_idcard_retrieve', False),
+            perm_idcard_add=parse_bool(data.get('perm_idcard_add', False)),
+            perm_idcard_edit=parse_bool(data.get('perm_idcard_edit', False)),
+            perm_idcard_delete=parse_bool(data.get('perm_idcard_delete', False)),
+            perm_idcard_info=parse_bool(data.get('perm_idcard_info', False)),
+            perm_idcard_approve=parse_bool(data.get('perm_idcard_approve', False)),
+            perm_idcard_verify=parse_bool(data.get('perm_idcard_verify', False)),
+            perm_idcard_bulk_upload=parse_bool(data.get('perm_idcard_bulk_upload', False)),
+            perm_idcard_bulk_download=parse_bool(data.get('perm_idcard_bulk_download', False)),
+            perm_idcard_created_at=parse_bool(data.get('perm_idcard_created_at', False)),
+            perm_idcard_updated_at=parse_bool(data.get('perm_idcard_updated_at', False)),
+            perm_idcard_delete_from_pool=parse_bool(data.get('perm_idcard_delete_from_pool', False)),
+            perm_delete_all_idcard=parse_bool(data.get('perm_delete_all_idcard', False)),
+            perm_reupload_idcard_image=parse_bool(data.get('perm_reupload_idcard_image', False)),
+            perm_idcard_retrieve=parse_bool(data.get('perm_idcard_retrieve', False)),
             status='active'
         )
+        
+        # Handle photo upload
+        if photo:
+            client.photo = photo
+            client.save()
         
         return JsonResponse({
             'success': True,
@@ -95,6 +116,7 @@ def api_client_create(request):
                 'email': user.email,
                 'phone': user.phone,
                 'status': client.status,
+                'photo_url': client.photo.url if client.photo else None,
             }
         })
     except Exception as e:
@@ -153,6 +175,7 @@ def api_client_get(request, client_id):
                 'perm_reupload_idcard_image': client.perm_reupload_idcard_image,
                 'perm_idcard_retrieve': client.perm_idcard_retrieve,
                 'status': client.status,
+                'photo_url': client.photo.url if client.photo else None,
                 'created_at': client.created_at.strftime('%d-%m-%Y %I:%M %p'),
                 'updated_at': client.updated_at.strftime('%d-%m-%Y %I:%M %p'),
             }
@@ -167,7 +190,14 @@ def api_client_update(request, client_id):
     """API endpoint to update a client"""
     try:
         client = get_object_or_404(Client, id=client_id)
-        data = json.loads(request.body)
+        
+        # Check if it's a multipart form (file upload) or JSON
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            data = request.POST
+            photo = request.FILES.get('photo')
+        else:
+            data = json.loads(request.body)
+            photo = None
         
         # Update user details
         user = client.user
@@ -193,22 +223,26 @@ def api_client_update(request, client_id):
         if 'pincode' in data:
             client.pincode = data['pincode']
         
+        # Handle photo upload
+        if photo:
+            client.photo = photo
+        
         # Update Staff Permissions
         for perm in ['perm_staff_list', 'perm_staff_add', 'perm_staff_edit', 'perm_staff_delete', 'perm_staff_status']:
             if perm in data:
-                setattr(client, perm, data[perm])
+                setattr(client, perm, parse_bool(data[perm]))
         
         # Update ID Card Setting Permissions
         for perm in ['perm_idcard_setting_list', 'perm_idcard_setting_add', 'perm_idcard_setting_edit', 
                      'perm_idcard_setting_delete', 'perm_idcard_setting_status']:
             if perm in data:
-                setattr(client, perm, data[perm])
+                setattr(client, perm, parse_bool(data[perm]))
         
         # Update ID Card List Permissions
         for perm in ['perm_idcard_pending_list', 'perm_idcard_verified_list', 'perm_idcard_pool_list',
                      'perm_idcard_approved_list', 'perm_idcard_download_list', 'perm_idcard_reprint_list']:
             if perm in data:
-                setattr(client, perm, data[perm])
+                setattr(client, perm, parse_bool(data[perm]))
         
         # Update ID Card Action Permissions
         for perm in ['perm_idcard_add', 'perm_idcard_edit', 'perm_idcard_delete', 'perm_idcard_info',
@@ -217,7 +251,7 @@ def api_client_update(request, client_id):
                      'perm_idcard_delete_from_pool', 'perm_delete_all_idcard', 'perm_reupload_idcard_image',
                      'perm_idcard_retrieve']:
             if perm in data:
-                setattr(client, perm, data[perm])
+                setattr(client, perm, parse_bool(data[perm]))
             
         client.save()
         
@@ -230,6 +264,7 @@ def api_client_update(request, client_id):
                 'email': user.email,
                 'phone': user.phone or '',
                 'status': client.status,
+                'photo_url': client.photo.url if client.photo else None,
             }
         })
     except Exception as e:

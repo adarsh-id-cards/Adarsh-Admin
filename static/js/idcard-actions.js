@@ -44,7 +44,6 @@
             return false;
         }
         
-        console.log('IDCard Actions: All modules verified');
         return true;
     }
     
@@ -53,8 +52,6 @@
     // ==========================================
     
     function initializeApp() {
-        console.log('IDCard Actions: Starting initialization...');
-        
         // Set global table ID from template variable
         if (typeof TABLE_ID !== 'undefined') {
             window.IDCardApp.tableId = TABLE_ID;
@@ -76,52 +73,42 @@
             // Core module - CSRF, toast, sidebar, checkboxes, dropdowns
             if (window.IDCardApp && window.IDCardApp.initCoreModule) {
                 window.IDCardApp.initCoreModule();
-                console.log('  ✓ Core module initialized');
             }
             
             // Table module - Table rendering, pagination, lazy loading
             if (window.IDCardApp && window.IDCardApp.initTableModule) {
                 window.IDCardApp.initTableModule();
-                console.log('  ✓ Table module initialized');
             }
             
             // Search module - Search, filter, sort
             if (window.IDCardApp && window.IDCardApp.initSearchModule) {
                 window.IDCardApp.initSearchModule();
-                console.log('  ✓ Search module initialized');
             }
             
             // Upload module - XLSX, ZIP uploads
             if (window.IDCardApp && window.IDCardApp.initUploadModule) {
                 window.IDCardApp.initUploadModule();
-                console.log('  ✓ Upload module initialized');
             }
             
             // Download module - Download images, DOCX, XLSX
             if (window.IDCardApp && window.IDCardApp.initDownloadModule) {
                 window.IDCardApp.initDownloadModule();
-                console.log('  ✓ Download module initialized');
             }
             
             // Modal module - Side modal, delete modal
             if (window.IDCardApp && window.IDCardApp.initModalModule) {
                 window.IDCardApp.initModalModule();
-                console.log('  ✓ Modal module initialized');
             }
             
             // API module - Card status operations, bulk actions
             if (window.IDCardApp && window.IDCardApp.initApiModule) {
                 window.IDCardApp.initApiModule();
-                console.log('  ✓ API module initialized');
             }
             
             // Edit module - Inline cell editing
             if (window.IDCardApp && window.IDCardApp.initEditModule) {
                 window.IDCardApp.initEditModule();
-                console.log('  ✓ Edit module initialized');
             }
-            
-            console.log('IDCard Actions: All modules initialized successfully!');
             
             // Dispatch custom event for other scripts that may depend on this
             document.dispatchEvent(new CustomEvent('idcard-actions-ready'));
@@ -356,18 +343,7 @@
     // ==========================================
     
     function logPerformance() {
-        if (window.performance && window.performance.timing) {
-            window.addEventListener('load', function() {
-                setTimeout(function() {
-                    const timing = window.performance.timing;
-                    const loadTime = timing.loadEventEnd - timing.navigationStart;
-                    const domReady = timing.domContentLoadedEventEnd - timing.navigationStart;
-                    
-                    console.log(`IDCard Actions: Page load time: ${loadTime}ms`);
-                    console.log(`IDCard Actions: DOM ready time: ${domReady}ms`);
-                }, 0);
-            });
-        }
+        // Performance logging disabled in production
     }
     
     // ==========================================
@@ -431,6 +407,6 @@
         }
     };
     
-    console.log('IDCard Actions: Main module loaded (v2.0.0)');
+// IDCard Actions: Main module loaded (v2.0.0)
     
 })();

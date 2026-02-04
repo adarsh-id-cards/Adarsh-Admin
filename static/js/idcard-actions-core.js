@@ -1,5 +1,6 @@
 // ID Card Actions - Core Utilities Module
-// Contains: CSRF token, toast notifications, sidebar toggle, checkbox functionality
+// Contains: Sidebar toggle, checkbox functionality, API helpers
+// Note: CSRF token and toast functions are now in utils.js
 
 // ==========================================
 // GLOBAL STATE
@@ -18,184 +19,24 @@ window.getTableId = getTableId;
 window.IDCardApp.getTableId = getTableId;
 
 // ==========================================
-// CSRF TOKEN HELPER
+// EXPOSE UTILS FUNCTIONS TO IDCardApp
+// (utils.js must be loaded before this file)
 // ==========================================
-function getCSRFToken() {
-    const cookie = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='));
-    return cookie ? cookie.split('=')[1] : '';
+if (typeof getCSRFToken === 'function') {
+    window.IDCardApp.getCSRFToken = getCSRFToken;
 }
-
-// Expose globally
-window.getCSRFToken = getCSRFToken;
-window.IDCardApp.getCSRFToken = getCSRFToken;
-
-// ==========================================
-// TOAST NOTIFICATION SYSTEM
-// ==========================================
-
-let downloadToastTimeout = null;
-
-function showToast(message, isSuccess = true) {
-    const toast = document.getElementById('toast');
-    const toastMessage = document.getElementById('toastMessage');
-    const toastIcon = document.getElementById('toastIcon');
-    const toastProgress = document.getElementById('toastProgress');
-    const toastProgressBar = document.getElementById('toastProgressBar');
-    
-    if (toast && toastMessage) {
-        toastMessage.textContent = message;
-        
-        // Hide progress bar for regular toasts
-        if (toastProgress) {
-            toastProgress.style.display = 'none';
-        }
-        if (toastProgressBar) {
-            toastProgressBar.classList.remove('indeterminate');
-            toastProgressBar.style.width = '0%';
-        }
-        
-        // Set icon based on success/error
-        if (toastIcon) {
-            toastIcon.className = isSuccess ? 'fa-solid fa-check-circle' : 'fa-solid fa-times-circle';
-        }
-        
-        toast.className = 'toast show ' + (isSuccess ? 'success' : 'error');
-        setTimeout(() => {
-            toast.className = 'toast';
-        }, 3000);
-    }
+if (typeof showToast === 'function') {
+    window.IDCardApp.showToast = showToast;
 }
-
-function showProgressToast(message, progress = -1) {
-    const toast = document.getElementById('toast');
-    const toastMessage = document.getElementById('toastMessage');
-    const toastIcon = document.getElementById('toastIcon');
-    const toastProgress = document.getElementById('toastProgress');
-    const toastProgressBar = document.getElementById('toastProgressBar');
-    const toastPercent = document.getElementById('toastPercent');
-    
-    // Clear any existing timeout
-    if (downloadToastTimeout) {
-        clearTimeout(downloadToastTimeout);
-        downloadToastTimeout = null;
-    }
-    
-    if (toast && toastMessage) {
-        toastMessage.textContent = message;
-        
-        // Set downloading icon (spinner)
-        if (toastIcon) {
-            toastIcon.className = 'fa-solid fa-spinner';
-        }
-        
-        // Show progress bar
-        if (toastProgress) {
-            toastProgress.style.display = 'block';
-        }
-        
-        // Show/update percentage
-        if (toastPercent) {
-            if (progress >= 0) {
-                toastPercent.style.display = 'inline';
-                toastPercent.textContent = Math.round(progress) + '%';
-            } else {
-                toastPercent.style.display = 'none';
-            }
-        }
-        
-        if (toastProgressBar) {
-            if (progress < 0) {
-                // Indeterminate progress
-                toastProgressBar.classList.add('indeterminate');
-                toastProgressBar.style.width = '30%';
-            } else {
-                // Determinate progress
-                toastProgressBar.classList.remove('indeterminate');
-                toastProgressBar.style.width = Math.min(progress, 100) + '%';
-            }
-        }
-        
-        toast.className = 'toast show downloading';
-    }
+if (typeof showProgressToast === 'function') {
+    window.IDCardApp.showProgressToast = showProgressToast;
 }
-
-function showDownloadComplete(message = 'Successfully downloaded!') {
-    const toast = document.getElementById('toast');
-    const toastMessage = document.getElementById('toastMessage');
-    const toastIcon = document.getElementById('toastIcon');
-    const toastProgress = document.getElementById('toastProgress');
-    const toastProgressBar = document.getElementById('toastProgressBar');
-    const toastPercent = document.getElementById('toastPercent');
-    
-    // Clear any existing timeout
-    if (downloadToastTimeout) {
-        clearTimeout(downloadToastTimeout);
-        downloadToastTimeout = null;
-    }
-    
-    if (toast && toastMessage) {
-        toastMessage.textContent = message;
-        
-        // Set success icon
-        if (toastIcon) {
-            toastIcon.className = 'fa-solid fa-check-circle';
-        }
-        
-        // Show progress bar at 100%
-        if (toastProgress) {
-            toastProgress.style.display = 'block';
-        }
-        
-        if (toastProgressBar) {
-            toastProgressBar.classList.remove('indeterminate');
-            toastProgressBar.style.width = '100%';
-        }
-        
-        // Show 100% text
-        if (toastPercent) {
-            toastPercent.style.display = 'inline';
-            toastPercent.textContent = '100%';
-        }
-        
-        toast.className = 'toast show download-complete';
-        
-        // Auto-hide after 3 seconds
-        downloadToastTimeout = setTimeout(() => {
-            hideProgressToast();
-        }, 3000);
-    }
+if (typeof showDownloadComplete === 'function') {
+    window.IDCardApp.showDownloadComplete = showDownloadComplete;
 }
-
-function hideProgressToast() {
-    const toast = document.getElementById('toast');
-    const toastProgress = document.getElementById('toastProgress');
-    const toastPercent = document.getElementById('toastPercent');
-    const toastProgressBar = document.getElementById('toastProgressBar');
-    
-    if (toast) {
-        toast.className = 'toast';
-    }
-    if (toastProgress) {
-        toastProgress.style.display = 'none';
-    }
-    if (toastPercent) {
-        toastPercent.style.display = 'none';
-    }
-    if (toastProgressBar) {
-        toastProgressBar.style.width = '0%';
-        toastProgressBar.classList.remove('indeterminate');
-    }
+if (typeof hideToast === 'function') {
+    window.IDCardApp.hideProgressToast = hideToast;
 }
-
-// Expose toast functions globally
-window.showToast = showToast;
-window.showProgressToast = showProgressToast;
-window.showDownloadComplete = showDownloadComplete;
-window.hideProgressToast = hideProgressToast;
-window.IDCardApp.showToast = showToast;
-window.IDCardApp.showProgressToast = showProgressToast;
-window.IDCardApp.showDownloadComplete = showDownloadComplete;
-window.IDCardApp.hideProgressToast = hideProgressToast;
 
 // ==========================================
 // API CALL HELPER
@@ -311,8 +152,8 @@ function updateButtonStates() {
         if (btn) btn.disabled = !singleSelected;
     });
     
-    // Multi select buttons (Delete, Verify, Approve, Unapproved, Retrieve, Unverify)
-    document.querySelectorAll('[id^="deleteBtn"], [id^="verifyBtn"], [id^="approveBtn"], [id^="unapprovedBtn"], [id^="retrieveBtn"], [id^="unverifyBtn"]').forEach(btn => {
+    // Multi select buttons (Delete, Verify, Approve, Unapproved, Retrieve, Unverify, Download Card, Back to Approved)
+    document.querySelectorAll('[id^="deleteBtn"], [id^="verifyBtn"], [id^="approveBtn"], [id^="unapprovedBtn"], [id^="retrieveBtn"], [id^="unverifyBtn"], #downloadCardBtn').forEach(btn => {
         if (btn) btn.disabled = !anySelected;
     });
     
@@ -347,7 +188,7 @@ function initCheckboxes() {
     // Individual row checkboxes - use event delegation
     const tableBody = document.getElementById('cardsTableBody');
     if (tableBody) {
-        // Handle Shift+Click for range selection and single-select without Shift
+        // Handle Shift+Click for range selection
         tableBody.addEventListener('click', function(e) {
             if (e.target.classList.contains('rowCheckbox')) {
                 const rowCheckboxes = [...getRowCheckboxes()];
@@ -356,21 +197,16 @@ function initCheckboxes() {
                 if (e.shiftKey && lastClickedCheckboxIndex !== null && currentIndex !== lastClickedCheckboxIndex) {
                     // Shift+Click: Range selection
                     e.preventDefault(); // Prevent default checkbox behavior
-                    e.stopPropagation(); // Stop event from bubbling
                     
                     const start = Math.min(lastClickedCheckboxIndex, currentIndex);
                     const end = Math.max(lastClickedCheckboxIndex, currentIndex);
                     
-                    // Check all checkboxes in range (from first selected to last selected, inclusive)
+                    // Check all checkboxes in range (from anchor to current, inclusive)
                     for (let i = start; i <= end; i++) {
                         if (rowCheckboxes[i]) {
                             rowCheckboxes[i].checked = true;
                         }
                     }
-                    
-                    // IMPORTANT: Directly set the clicked checkbox (e.target) as checked
-                    // This ensures the last clicked is always selected
-                    e.target.checked = true;
                     
                     // Trigger change event for button state update
                     updateButtonStates();
@@ -378,28 +214,14 @@ function initCheckboxes() {
                     // Don't update lastClickedCheckboxIndex for shift+click 
                     // so user can continue selecting ranges from the original anchor
                 } else {
-                    // Without Shift (or first click): Only one checkbox can be selected at a time
-                    // Uncheck all others first
-                    rowCheckboxes.forEach((cb, idx) => {
-                        if (idx !== currentIndex) {
-                            cb.checked = false;
-                        }
-                    });
-                    
-                    // Also uncheck selectAll
-                    if (selectAll) {
-                        selectAll.checked = false;
-                    }
-                    
-                    // Deactivate Select All DB
-                    const selectAllDbBtn = document.getElementById('selectAllDbBtn');
-                    if (selectAllDbBtn) {
-                        selectAllDbBtn.classList.remove('active');
-                        window.IDCardApp.allDbCardIds = null;
-                    }
-                    
+                    // Normal click (without Shift): Toggle this checkbox and set as anchor
                     // Update last clicked index - this becomes the anchor for Shift+Click
                     lastClickedCheckboxIndex = currentIndex;
+                    
+                    // Also uncheck selectAll if unchecking a checkbox
+                    if (!e.target.checked && selectAll) {
+                        selectAll.checked = false;
+                    }
                 }
             }
         });
@@ -573,6 +395,7 @@ function setupDropdown(dropdownId) {
 function initDropdowns() {
     setupDropdown('filterDropdown');
     setupDropdown('rowsDropdown');
+    setupDropdown('sortDropdown');
     setupDropdown('classFilterDropdown');
     setupDropdown('sectionFilterDropdown');
     

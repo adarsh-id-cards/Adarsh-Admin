@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/variables.css' %}?v=1">
   <link rel="stylesheet" href="{% static 'css/style.css' %}?v=36">
-  <link rel="stylesheet" href="{% static 'css/common.css' %}?v=36">
+  <link rel="stylesheet" href="{% static 'css/common.css' %}?v=43">
   <link rel="stylesheet" href="{% static 'css/settings.css' %}?v=36">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
@@ -225,14 +225,10 @@
   </main>
 
   <!-- Toast Notification -->
-  <div class="toast" id="toast">
-    <div class="toast-icon">
-      <i class="fa-solid fa-check"></i>
-    </div>
-    <span class="toast-message">Settings saved successfully!</span>
-  </div>
+  {% include 'partials/components/toast.html' %}
 
+  <script src="{% static 'js/utils.js' %}?v=1"></script>
   <script src="{% static 'js/script.js' %}"></script>
-  <script src="{% static 'js/settings.js' %}"></script>
+  <script src="{% static 'js/settings.js' %}?v=2"></script>
 </body>
 </html>

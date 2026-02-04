@@ -10,12 +10,27 @@ import json
 from ..models import Staff, User
 
 
+def parse_bool(value):
+    """Parse boolean from string or bool"""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.lower() in ('true', '1', 'yes', 'on')
+    return bool(value)
+
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_staff_create(request):
     """API endpoint to create a new admin staff"""
     try:
-        data = json.loads(request.body)
+        # Check if it's a multipart form (file upload) or JSON
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            data = request.POST
+            profile_image = request.FILES.get('profile_image')
+        else:
+            data = json.loads(request.body)
+            profile_image = None
         
         # Create the user first
         email = data.get('email', '')
@@ -31,6 +46,16 @@ def api_staff_create(request):
         name = data.get('name', '')
         name_parts = name.split() if name else []
         
+        # Get password from form or use default
+        password = data.get('password', '')
+        if isinstance(password, str):
+            password = password.strip() or 'staff123'
+        else:
+            password = 'staff123'
+        
+        # Get status from form
+        is_active = parse_bool(data.get('is_active', True))
+        
         user = User.objects.create_user(
             username=username,
             email=email,
@@ -38,8 +63,14 @@ def api_staff_create(request):
             last_name=' '.join(name_parts[1:]) if len(name_parts) > 1 else '',
             phone=data.get('phone', ''),
             role='admin_staff',
+            is_active=is_active,
         )
-        user.set_password('staff123')  # Default password
+        user.set_password(password)
+        
+        # Handle profile image upload to user
+        if profile_image:
+            user.profile_image = profile_image
+        
         user.save()
         
         # Create the staff profile
@@ -50,17 +81,17 @@ def api_staff_create(request):
             department=data.get('department', ''),
             designation=data.get('designation', ''),
             # Staff Permissions
-            perm_staff_list=data.get('perm_staff_list', False),
-            perm_staff_add=data.get('perm_staff_add', False),
-            perm_staff_edit=data.get('perm_staff_edit', False),
-            perm_staff_delete=data.get('perm_staff_delete', False),
-            perm_staff_status=data.get('perm_staff_status', False),
+            perm_staff_list=parse_bool(data.get('perm_staff_list', False)),
+            perm_staff_add=parse_bool(data.get('perm_staff_add', False)),
+            perm_staff_edit=parse_bool(data.get('perm_staff_edit', False)),
+            perm_staff_delete=parse_bool(data.get('perm_staff_delete', False)),
+            perm_staff_status=parse_bool(data.get('perm_staff_status', False)),
             # ID Card Setting Permissions
-            perm_idcard_setting_list=data.get('perm_idcard_setting_list', False),
-            perm_idcard_setting_add=data.get('perm_idcard_setting_add', False),
-            perm_idcard_setting_edit=data.get('perm_idcard_setting_edit', False),
-            perm_idcard_setting_delete=data.get('perm_idcard_setting_delete', False),
-            perm_idcard_setting_status=data.get('perm_idcard_setting_status', False),
+            perm_idcard_setting_list=parse_bool(data.get('perm_idcard_setting_list', False)),
+            perm_idcard_setting_add=parse_bool(data.get('perm_idcard_setting_add', False)),
+            perm_idcard_setting_edit=parse_bool(data.get('perm_idcard_setting_edit', False)),
+            perm_idcard_setting_delete=parse_bool(data.get('perm_idcard_setting_delete', False)),
+            perm_idcard_setting_status=parse_bool(data.get('perm_idcard_setting_status', False)),
         )
         
         return JsonResponse({
@@ -72,6 +103,7 @@ def api_staff_create(request):
                 'email': user.email,
                 'phone': user.phone,
                 'status': 'active' if user.is_active else 'inactive',
+                'profile_image_url': user.profile_image.url if user.profile_image else None,
             }
         })
     except Exception as e:
@@ -108,6 +140,7 @@ def api_staff_get(request, staff_id):
                 'perm_idcard_setting_delete': staff.perm_idcard_setting_delete,
                 'perm_idcard_setting_status': staff.perm_idcard_setting_status,
                 'status': 'active' if user.is_active else 'inactive',
+                'profile_image_url': user.profile_image.url if user.profile_image else None,
                 'created_at': staff.created_at.strftime('%d-%m-%Y %I:%M %p'),
                 'updated_at': staff.updated_at.strftime('%d-%m-%Y %I:%M %p'),
             }
@@ -122,7 +155,14 @@ def api_staff_update(request, staff_id):
     """API endpoint to update a staff"""
     try:
         staff = get_object_or_404(Staff, id=staff_id)
-        data = json.loads(request.body)
+        
+        # Check if it's a multipart form (file upload) or JSON
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            data = request.POST
+            profile_image = request.FILES.get('profile_image')
+        else:
+            data = json.loads(request.body)
+            profile_image = None
         
         # Update user details
         user = staff.user
@@ -134,6 +174,20 @@ def api_staff_update(request, staff_id):
             name_parts = data['name'].split()
             user.first_name = name_parts[0] if name_parts else ''
             user.last_name = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
+        
+        # Update password if provided
+        password = data.get('password', '')
+        if isinstance(password, str) and password.strip():
+            user.set_password(password.strip())
+        
+        # Update status if provided
+        if 'is_active' in data:
+            user.is_active = parse_bool(data['is_active'])
+        
+        # Handle profile image upload
+        if profile_image:
+            user.profile_image = profile_image
+        
         user.save()
         
         # Update staff details
@@ -147,13 +201,13 @@ def api_staff_update(request, staff_id):
         # Update Staff Permissions
         for perm in ['perm_staff_list', 'perm_staff_add', 'perm_staff_edit', 'perm_staff_delete', 'perm_staff_status']:
             if perm in data:
-                setattr(staff, perm, data[perm])
+                setattr(staff, perm, parse_bool(data[perm]))
         
         # Update ID Card Setting Permissions
         for perm in ['perm_idcard_setting_list', 'perm_idcard_setting_add', 'perm_idcard_setting_edit', 
                      'perm_idcard_setting_delete', 'perm_idcard_setting_status']:
             if perm in data:
-                setattr(staff, perm, data[perm])
+                setattr(staff, perm, parse_bool(data[perm]))
             
         staff.save()
         
@@ -166,6 +220,7 @@ def api_staff_update(request, staff_id):
                 'email': user.email,
                 'phone': user.phone or '',
                 'status': 'active' if user.is_active else 'inactive',
+                'profile_image_url': user.profile_image.url if user.profile_image else None,
             }
         })
     except Exception as e:

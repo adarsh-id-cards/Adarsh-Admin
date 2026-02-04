@@ -148,7 +148,10 @@ function openUploadModal(matchedFields, missingFields, ignoredFields, dataRowCou
     
     dataRowsCount.textContent = `${dataRowCount} data row${dataRowCount !== 1 ? 's' : ''} found`;
     
-    if (uploadModalOverlay) uploadModalOverlay.classList.add('active');
+    if (uploadModalOverlay) {
+        uploadModalOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden'; // Lock body scroll
+    }
 }
 
 function closeUploadModalFn() {
@@ -157,7 +160,10 @@ function closeUploadModalFn() {
     const zipFileStatus = document.getElementById('zipFileStatus');
     const photoZipInput = document.getElementById('photoZipInput');
     
-    if (uploadModalOverlay) uploadModalOverlay.classList.remove('active');
+    if (uploadModalOverlay) {
+        uploadModalOverlay.classList.remove('active');
+        document.body.style.overflow = ''; // Restore body scroll
+    }
     pendingUploadFile = null;
     pendingZipFile = null;
     zipFileNames = [];

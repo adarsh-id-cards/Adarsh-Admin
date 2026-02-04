@@ -22,34 +22,25 @@ document.addEventListener('DOMContentLoaded', function() {
     const table = document.getElementById('staff-table');
     const tbody = document.getElementById('staff-table-body');
     
+    // Profile and password elements (used in drawer)
+    const profilePicInput = document.getElementById('profile-input');
+    const profilePreview = document.getElementById('profile-preview');
+    const profilePathDisplay = document.getElementById('staff-profile-path');
+    const togglePasswordBtn = document.getElementById('toggle-password');
+    const passwordInput = document.getElementById('staff-password');
+    const passwordRequired = document.getElementById('password-required');
+    
     let selectedStaffId = null;
     let selectedRow = null;
     let currentMode = 'add';
+    let selectedProfileFile = null; // Store the selected file for upload
 
     // ==================== TOAST FUNCTIONS ====================
-    function showToast(message, type = 'success') {
-        // Create toast if not exists
-        let toast = document.getElementById('toast');
-        if (!toast) {
-            toast = document.createElement('div');
-            toast.id = 'toast';
-            toast.className = 'toast';
-            toast.innerHTML = '<i class="fa-solid fa-check-circle"></i><span id="toastMessage">Success!</span>';
-            document.body.appendChild(toast);
-        }
-        
-        const iconClass = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-times-circle' : 'fa-info-circle';
-        toast.querySelector('i').className = 'fa-solid ' + iconClass;
-        toast.querySelector('span').textContent = message;
-        toast.classList.add('show');
-        setTimeout(() => toast.classList.remove('show'), 3000);
-    }
+    // Using shared showToast from utils.js
 
     // ==================== ROW SELECTION ====================
-    console.log('Staff page loaded - tbody:', tbody ? 'found' : 'NOT FOUND');
     
     function selectStaffRow(row) {
-        console.log('selectStaffRow called', row);
         if (!row || !row.dataset.staffId) return;
         
         // Remove selection from all rows and uncheck all checkboxes
@@ -64,10 +55,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Select current row and check its checkbox
         row.classList.add('selected');
         const checkbox = row.querySelector('.row-checkbox');
-        console.log('Checkbox found:', checkbox);
         if (checkbox) {
             checkbox.checked = true;
-            console.log('Checkbox checked:', checkbox.checked);
         }
         
         selectedRow = row;
@@ -91,15 +80,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Set up row click handlers
     if (tbody) {
-        console.log('Setting up row click handlers on tbody');
         // Row click - select row and check checkbox
         tbody.addEventListener('click', function(e) {
-            console.log('Row click detected, target:', e.target.tagName);
             // If clicking directly on checkbox, let the change handler deal with it
             if (e.target.type === 'checkbox') return;
             
             const row = e.target.closest('tr');
-            console.log('Row found:', row, 'staffId:', row?.dataset?.staffId);
             if (row && row.dataset.staffId && !row.classList.contains('no-data-row')) {
                 selectStaffRow(row);
             }
@@ -156,6 +142,21 @@ document.addEventListener('DOMContentLoaded', function() {
         currentMode = mode;
         staffForm.reset();
         
+        // Reset profile preview and file
+        selectedProfileFile = null;
+        if (profilePreview) {
+            profilePreview.innerHTML = '<i class="fa-solid fa-user"></i>';
+            profilePreview.classList.remove('has-image');
+        }
+        if (profilePicInput) profilePicInput.value = '';
+        
+        // Reset path display
+        if (profilePathDisplay) {
+            profilePathDisplay.textContent = 'No image';
+            profilePathDisplay.classList.remove('has-path', 'not-found');
+            profilePathDisplay.classList.add('no-path');
+        }
+        
         // Reset all permission toggles to unchecked
         permissionFields.forEach(field => {
             const el = document.getElementById(field);
@@ -163,6 +164,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         const submitBtnText = document.getElementById('submit-btn-text');
+        const passwordField = document.getElementById('staff-password');
+        const passwordWrapper = passwordField ? passwordField.closest('.form-group') : null;
         
         if (mode === 'add') {
             drawerTitle.textContent = 'Add New Staff';
@@ -170,18 +173,43 @@ document.addEventListener('DOMContentLoaded', function() {
             if (submitBtnText) submitBtnText.textContent = 'Add Staff';
             submitBtn.style.display = 'inline-flex';
             enableFormInputs(true);
+            // Password required on add
+            if (passwordField) {
+                passwordField.required = true;
+                passwordField.placeholder = 'Enter password';
+            }
+            if (passwordRequired) passwordRequired.style.display = '';
         } else if (mode === 'edit') {
             drawerTitle.textContent = 'Edit Staff';
             drawerIcon.className = 'fa-solid fa-pen-to-square';
             if (submitBtnText) submitBtnText.textContent = 'Save Changes';
             submitBtn.style.display = 'inline-flex';
             enableFormInputs(true);
+            // Password optional on edit
+            if (passwordField) {
+                passwordField.required = false;
+                passwordField.placeholder = 'Leave blank to keep current';
+            }
+            if (passwordRequired) passwordRequired.style.display = 'none';
             
             if (staffData) {
                 document.getElementById('staff-name').value = staffData.name || '';
                 document.getElementById('staff-email').value = staffData.email || '';
                 document.getElementById('staff-phone').value = staffData.phone || '';
                 document.getElementById('staff-address').value = staffData.address || '';
+                document.getElementById('staff-status').value = staffData.status === 'active' ? 'true' : 'false';
+                
+                // Load existing photo if available
+                if (staffData.profile_image_url && profilePreview) {
+                    profilePreview.innerHTML = `<img src="${staffData.profile_image_url}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">`;
+                    profilePreview.classList.add('has-image');
+                    // Update path display
+                    if (profilePathDisplay) {
+                        profilePathDisplay.textContent = staffData.profile_image_url;
+                        profilePathDisplay.classList.remove('no-path', 'not-found');
+                        profilePathDisplay.classList.add('has-path');
+                    }
+                }
                 
                 // Set permissions from staff data
                 permissionFields.forEach(field => {
@@ -195,12 +223,27 @@ document.addEventListener('DOMContentLoaded', function() {
             drawerIcon.className = 'fa-solid fa-eye';
             submitBtn.style.display = 'none';
             enableFormInputs(false);
+            // Hide password field in view mode
+            if (passwordWrapper) passwordWrapper.style.display = 'none';
             
             if (staffData) {
                 document.getElementById('staff-name').value = staffData.name || '';
                 document.getElementById('staff-email').value = staffData.email || '';
                 document.getElementById('staff-phone').value = staffData.phone || '';
                 document.getElementById('staff-address').value = staffData.address || '';
+                document.getElementById('staff-status').value = staffData.status === 'active' ? 'true' : 'false';
+                
+                // Load existing photo if available
+                if (staffData.profile_image_url && profilePreview) {
+                    profilePreview.innerHTML = `<img src="${staffData.profile_image_url}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">`;
+                    profilePreview.classList.add('has-image');
+                    // Update path display
+                    if (profilePathDisplay) {
+                        profilePathDisplay.textContent = staffData.profile_image_url;
+                        profilePathDisplay.classList.remove('no-path', 'not-found');
+                        profilePathDisplay.classList.add('has-path');
+                    }
+                }
                 
                 // Set permissions from staff data
                 permissionFields.forEach(field => {
@@ -209,6 +252,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (el) el.checked = staffData[apiField] === true;
                 });
             }
+        }
+        
+        // Show password field if not view mode
+        if (mode !== 'view' && passwordWrapper) {
+            passwordWrapper.style.display = '';
         }
         
         staffDrawer.classList.add('open');
@@ -253,27 +301,57 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    async function createStaff(formData) {
+    async function createStaff(formData, file = null) {
         try {
-            const response = await fetch('/api/staff/create/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
-            });
-            return await response.json();
+            // Use FormData if there's a file to upload
+            if (file) {
+                const data = new FormData();
+                data.append('profile_image', file);
+                // Add all other form fields
+                Object.keys(formData).forEach(key => {
+                    data.append(key, typeof formData[key] === 'boolean' ? (formData[key] ? 'true' : 'false') : formData[key]);
+                });
+                const response = await fetch('/api/staff/create/', {
+                    method: 'POST',
+                    body: data
+                });
+                return await response.json();
+            } else {
+                const response = await fetch('/api/staff/create/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                return await response.json();
+            }
         } catch (error) {
             return { success: false, message: 'Network error. Please try again.' };
         }
     }
     
-    async function updateStaff(staffId, formData) {
+    async function updateStaff(staffId, formData, file = null) {
         try {
-            const response = await fetch(`/api/staff/${staffId}/update/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
-            });
-            return await response.json();
+            // Use FormData if there's a file to upload
+            if (file) {
+                const data = new FormData();
+                data.append('profile_image', file);
+                // Add all other form fields
+                Object.keys(formData).forEach(key => {
+                    data.append(key, typeof formData[key] === 'boolean' ? (formData[key] ? 'true' : 'false') : formData[key]);
+                });
+                const response = await fetch(`/api/staff/${staffId}/update/`, {
+                    method: 'POST',
+                    body: data
+                });
+                return await response.json();
+            } else {
+                const response = await fetch(`/api/staff/${staffId}/update/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                return await response.json();
+            }
         } catch (error) {
             return { success: false, message: 'Network error. Please try again.' };
         }
@@ -326,9 +404,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (deleteStaffBtn) {
         deleteStaffBtn.addEventListener('click', () => {
-            if (!selectedStaffId || !selectedRow) return;
+            if (!selectedStaffId || !selectedRow) {
+                return;
+            }
             
-            const staffName = selectedRow.querySelector('td:first-child').textContent;
+            // Name is in the 2nd column (index 1), not first (checkbox is first)
+            const staffName = selectedRow.querySelector('td:nth-child(2)').textContent;
             openDeleteModal(staffName);
         });
     }
@@ -373,13 +454,14 @@ document.addEventListener('DOMContentLoaded', function() {
             let result;
             
             if (currentMode === 'edit' && selectedStaffId) {
-                result = await updateStaff(selectedStaffId, formData);
+                result = await updateStaff(selectedStaffId, formData, selectedProfileFile);
             } else {
-                result = await createStaff(formData);
+                result = await createStaff(formData, selectedProfileFile);
             }
             
             if (result.success) {
                 showToast(result.message, 'success');
+                selectedProfileFile = null; // Reset after successful upload
                 closeDrawer();
                 setTimeout(() => location.reload(), 500);
             } else {
@@ -396,7 +478,7 @@ document.addEventListener('DOMContentLoaded', function() {
         cancelStaffDrawer.addEventListener('click', function(e) {
             e.preventDefault();
             closeDrawer();
-        });
+    });
     }
     
     // Close drawer on overlay click
@@ -404,30 +486,76 @@ document.addEventListener('DOMContentLoaded', function() {
         staffDrawerOverlay.addEventListener('click', closeDrawer);
     }
 
-    // ==================== PROFILE PICTURE UPLOAD ====================
-    const profilePicInput = document.getElementById('profile-input');
-    const profilePreview = document.getElementById('profile-preview');
+    // ==================== PASSWORD TOGGLE ====================
+    if (togglePasswordBtn && passwordInput) {
+        togglePasswordBtn.addEventListener('click', function() {
+            const type = passwordInput.type === 'password' ? 'text' : 'password';
+            passwordInput.type = type;
+            const icon = this.querySelector('i');
+            if (icon) {
+                icon.className = type === 'password' ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash';
+            }
+        });
+    }
+
+    // ==================== SELECT ALL CHECKBOX ====================
+    const selectAllCheckbox = document.getElementById('select-all-checkbox');
     
+    if (selectAllCheckbox && tbody) {
+        selectAllCheckbox.addEventListener('change', function() {
+            const checkboxes = tbody.querySelectorAll('.row-checkbox');
+            checkboxes.forEach(cb => {
+                cb.checked = this.checked;
+            });
+            
+            // If checked, select first row; if unchecked, clear selection
+            if (this.checked) {
+                const firstRow = tbody.querySelector('tr[data-staff-id]');
+                if (firstRow) selectStaffRow(firstRow);
+            } else {
+                clearStaffSelection();
+            }
+        });
+    }
+
+    // ==================== PROFILE PICTURE UPLOAD ====================
     if (profilePicInput && profilePreview) {
-        console.log('Profile pic input found, attaching listener');
         profilePicInput.addEventListener('change', function(e) {
-            console.log('File input changed', e.target.files);
             const file = e.target.files[0];
             if (file) {
-                console.log('File selected:', file.name);
+                // Validate file size (max 2MB)
+                if (file.size > 2 * 1024 * 1024) {
+                    showToast('Image size must be less than 2MB', 'error');
+                    profilePicInput.value = '';
+                    return;
+                }
+                
+                // Validate file type
+                if (!file.type.startsWith('image/')) {
+                    showToast('Please select a valid image file', 'error');
+                    profilePicInput.value = '';
+                    return;
+                }
+                
+                selectedProfileFile = file;
                 const reader = new FileReader();
                 reader.onload = function(event) {
-                    console.log('File read complete');
-                    profilePreview.innerHTML = `<img src="${event.target.result}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
+                    profilePreview.innerHTML = `<img src="${event.target.result}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">`;
+                    profilePreview.classList.add('has-image');
+                    // Update path display
+                    if (profilePathDisplay) {
+                        profilePathDisplay.textContent = file.name;
+                        profilePathDisplay.classList.remove('no-path', 'not-found');
+                        profilePathDisplay.classList.add('has-path');
+                    }
                 };
                 reader.onerror = function(error) {
                     console.error('FileReader error:', error);
+                    showToast('Failed to read image file', 'error');
                 };
                 reader.readAsDataURL(file);
             }
         });
-    } else {
-        console.log('Profile elements not found - Input:', profilePicInput, 'Preview:', profilePreview);
     }
 
     // ==================== FILTER & SEARCH ====================
@@ -502,10 +630,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 currentFilter = value;
                 
                 if (searchInput) {
-                    searchInput.placeholder = value === 'all' ? 'Search All...' : `Search ${text}...`;
+                    searchInput.placeholder = value === '' ? 'Search All...' : `Search ${text}...`;
                 }
                 
                 filterDropdown.classList.remove('open');
+                // Will be overridden by performSearchWithPagination later
                 performSearch();
             });
         });
@@ -535,12 +664,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         if (deleteModal) {
             deleteModal.classList.add('show');
+            document.body.style.overflow = 'hidden';
         }
     }
 
     function closeDeleteModalFn() {
         if (deleteModal) {
             deleteModal.classList.remove('show');
+            document.body.style.overflow = '';
         }
     }
 
@@ -578,4 +709,187 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // ==================== PAGINATION ====================
+    const rowCountEl = document.getElementById('row-count');
+    const pageNumbersEl = document.getElementById('page-numbers');
+    const firstPageBtn = document.getElementById('firstPage');
+    const prevPageBtn = document.getElementById('prevPage');
+    const nextPageBtn = document.getElementById('nextPage');
+    const lastPageBtn = document.getElementById('lastPage');
+    const rowsDropdown = document.getElementById('rowsDropdown');
+    const rowsToggle = document.getElementById('rowsToggle');
+    const rowsOptions = document.getElementById('rowsOptions');
+    const rowsSelectedText = document.getElementById('rowsSelectedText');
+    
+    let currentPage = 1;
+    let rowsPerPage = 10;
+    let allRows = [];
+    let filteredRows = [];
+    
+    function initPagination() {
+        if (!tbody) return;
+        
+        // Get all data rows (exclude no-data row)
+        allRows = Array.from(tbody.querySelectorAll('tr:not(.no-data-row)'));
+        filteredRows = [...allRows];
+        
+        updatePagination();
+    }
+    
+    function updatePagination() {
+        // Filter rows based on search and filter criteria
+        filteredRows = allRows.filter(row => row.style.display !== 'none');
+        
+        const totalRows = filteredRows.length;
+        const totalPages = Math.max(1, Math.ceil(totalRows / rowsPerPage));
+        
+        // Ensure current page is valid
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+        
+        const startIndex = (currentPage - 1) * rowsPerPage;
+        const endIndex = Math.min(startIndex + rowsPerPage, totalRows);
+        
+        // Hide all rows first, then show only current page
+        allRows.forEach(row => {
+            row.style.display = 'none';
+        });
+        
+        filteredRows.slice(startIndex, endIndex).forEach(row => {
+            row.style.display = '';
+        });
+        
+        // Update row count text
+        if (rowCountEl) {
+            if (totalRows === 0) {
+                rowCountEl.innerHTML = 'Showing <strong>0</strong> results';
+            } else {
+                rowCountEl.innerHTML = `Showing <strong>${startIndex + 1}-${endIndex}</strong> of <strong>${totalRows}</strong> results`;
+            }
+        }
+        
+        // Update page numbers
+        if (pageNumbersEl) {
+            pageNumbersEl.innerHTML = '';
+            const maxVisiblePages = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+            
+            if (endPage - startPage < maxVisiblePages - 1) {
+                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.className = 'page-num' + (i === currentPage ? ' active' : '');
+                pageBtn.textContent = i;
+                pageBtn.addEventListener('click', () => goToPage(i));
+                pageNumbersEl.appendChild(pageBtn);
+            }
+        }
+        
+        // Update button states
+        if (firstPageBtn) firstPageBtn.disabled = currentPage === 1;
+        if (prevPageBtn) prevPageBtn.disabled = currentPage === 1;
+        if (nextPageBtn) nextPageBtn.disabled = currentPage === totalPages;
+        if (lastPageBtn) lastPageBtn.disabled = currentPage === totalPages;
+    }
+    
+    function goToPage(page) {
+        currentPage = page;
+        clearStaffSelection();
+        updatePagination();
+    }
+    
+    // Pagination button events
+    if (firstPageBtn) firstPageBtn.addEventListener('click', () => goToPage(1));
+    if (prevPageBtn) prevPageBtn.addEventListener('click', () => goToPage(currentPage - 1));
+    if (nextPageBtn) nextPageBtn.addEventListener('click', () => goToPage(currentPage + 1));
+    if (lastPageBtn) {
+        lastPageBtn.addEventListener('click', () => {
+            const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
+            goToPage(totalPages);
+        });
+    }
+    
+    // Rows per page dropdown
+    if (rowsDropdown && rowsToggle && rowsOptions) {
+        rowsToggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            rowsDropdown.classList.toggle('open');
+        });
+        
+        rowsOptions.querySelectorAll('.dropdown-option').forEach(option => {
+            option.addEventListener('click', function() {
+                rowsOptions.querySelectorAll('.dropdown-option').forEach(opt => {
+                    opt.classList.remove('selected');
+                });
+                this.classList.add('selected');
+                
+                rowsPerPage = parseInt(this.dataset.value);
+                if (rowsSelectedText) rowsSelectedText.textContent = rowsPerPage;
+                
+                currentPage = 1;
+                rowsDropdown.classList.remove('open');
+                updatePagination();
+            });
+        });
+        
+        document.addEventListener('click', function(e) {
+            if (!rowsDropdown.contains(e.target)) {
+                rowsDropdown.classList.remove('open');
+            }
+        });
+    }
+    
+    // Override performSearch to integrate with pagination
+    const originalPerformSearch = performSearch;
+    function performSearchWithPagination() {
+        const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        
+        // Reset visibility for pagination recalculation
+        allRows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            let matchSearch = false;
+            let matchStatus = true;
+            
+            // Check status filter
+            if (currentFilter === 'active' || currentFilter === 'inactive') {
+                const rowStatus = row.dataset.staffStatus;
+                matchStatus = rowStatus === currentFilter;
+            }
+            
+            // Check search term
+            if (!searchTerm) {
+                matchSearch = true;
+            } else {
+                cells.forEach(cell => {
+                    if (cell.textContent.toLowerCase().includes(searchTerm)) {
+                        matchSearch = true;
+                    }
+                });
+            }
+            
+            // Mark row as filtered or not (using data attribute instead of display)
+            row.dataset.filtered = (matchSearch && matchStatus) ? 'true' : 'false';
+            row.style.display = (matchSearch && matchStatus) ? '' : 'none';
+        });
+        
+        // Reset to page 1 and update pagination
+        currentPage = 1;
+        updatePagination();
+    }
+    
+    // Override the original performSearch globally
+    performSearch = performSearchWithPagination;
+    
+    // Replace search handler
+    if (searchInput) {
+        searchInput.removeEventListener('input', originalPerformSearch);
+        searchInput.addEventListener('input', performSearchWithPagination);
+    }
+    
+    // Initialize pagination on page load
+    initPagination();
 });

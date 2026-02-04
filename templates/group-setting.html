@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/variables.css' %}?v=1">
   <link rel="stylesheet" href="{% static 'css/style.css' %}?v=36">
-  <link rel="stylesheet" href="{% static 'css/common.css' %}?v=36">
+  <link rel="stylesheet" href="{% static 'css/common.css' %}?v=43">
   <link rel="stylesheet" href="{% static 'css/group-setting.css' %}?v=36">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <!-- SheetJS for Excel export -->
@@ -139,10 +139,7 @@
       </div>
 
       <!-- Toast notification -->
-      <div id="toast" class="toast">
-        <i class="fa-solid fa-check-circle"></i>
-        <span id="toastMessage">Success!</span>
-      </div>
+      {% include 'partials/components/toast.html' %}
 
       <!-- Action Bar -->
       <div class="action-bar">
@@ -258,7 +255,8 @@
   <script>
     const GROUP_ID = {% if group %}{{ group.id }}{% else %}null{% endif %};
   </script>
+  <script src="{% static 'js/utils.js' %}?v=1"></script>
   <script src="{% static 'js/script.js' %}?v=39"></script>
-  <script src="{% static 'js/group-setting.js' %}?v=13"></script>
+  <script src="{% static 'js/group-setting.js' %}?v=14"></script>
 </body>
 </html>

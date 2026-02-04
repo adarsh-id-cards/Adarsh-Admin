@@ -36,9 +36,13 @@
                             data-field-type="image"
                             data-original-value="{{ field.value }}">
                             <div class="image-with-edit">
-                                {% if field.value and field.value != 'NOT_FOUND' and 'id_card_images' in field.value|lower %}
-                                <img src="/media/{{ field.value }}" alt="{{ field.name }}" class="table-image" loading="lazy">
-                                {% elif field.value and field.value != 'NOT_FOUND' %}
+                                {% if field.value and 'PENDING:' in field.value %}
+                                <!-- Image reference exists but waiting for upload via ZIP reupload -->
+                                <div class="no-image pending-image" title="Waiting for image: {{ field.value|slice:'8:' }}">
+                                    <i class="fa-solid fa-clock"></i>
+                                    <span class="pending-ref">{{ field.value|slice:'8:' }}</span>
+                                </div>
+                                {% elif field.value and field.value != 'NOT_FOUND' and field.value != '' %}
                                 <img src="/media/{{ field.value }}" alt="{{ field.name }}" class="table-image" loading="lazy">
                                 {% elif field.value == 'NOT_FOUND' %}
                                 <!-- Image name was given but not found in ZIP - grayscale placeholder -->
@@ -88,19 +92,17 @@
                             <i class="fa-solid fa-download"></i>
                             <span>Download</span>
                         </button>
-                        <button class="row-action-btn unapprove-row-btn" data-card-id="{{ card.id }}" title="Move back to verified">
-                            <i class="fa-solid fa-rotate-left"></i>
-                            <span>Unapprove</span>
-                        </button>
                         {% elif current_status == 'pool' %}
                         <button class="row-action-btn retrieve-row-btn" data-card-id="{{ card.id }}" title="Retrieve to pending">
                             <i class="fa-solid fa-rotate-left"></i>
                             <span>Retrieve</span>
                         </button>
                         {% elif current_status == 'download' %}
-                        <span class="status-badge download">
-                            <i class="fa-solid fa-check-circle"></i> Downloaded
-                        </span>
+                        <!-- Download list - Download single card image -->
+                        <button class="row-action-btn download-single-row-btn" data-card-id="{{ card.id }}" title="Download this card's image">
+                            <i class="fa-solid fa-download"></i>
+                            <span>Download</span>
+                        </button>
                         {% else %}
                         <span class="status-badge {{ card.status }}">{{ card.get_status_display }}</span>
                         {% endif %}

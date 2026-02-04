@@ -4,6 +4,60 @@
    ============================================ */
 
 /* ===========================================
+   SCROLLBAR STYLES (Visible scrollbars for drawers/modals)
+   =========================================== */
+.drawer-body::-webkit-scrollbar,
+.modal-body::-webkit-scrollbar,
+.side-modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.drawer-body::-webkit-scrollbar-track,
+.modal-body::-webkit-scrollbar-track,
+.side-modal-body::-webkit-scrollbar-track {
+  background: var(--gray-100);
+  border-radius: 4px;
+}
+
+.drawer-body::-webkit-scrollbar-thumb,
+.modal-body::-webkit-scrollbar-thumb,
+.side-modal-body::-webkit-scrollbar-thumb {
+  background: var(--gray-400);
+  border-radius: 4px;
+}
+
+.drawer-body::-webkit-scrollbar-thumb:hover,
+.modal-body::-webkit-scrollbar-thumb:hover,
+.side-modal-body::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-500);
+}
+
+/* Firefox scrollbar */
+.drawer-body,
+.modal-body,
+.side-modal-body {
+  scrollbar-width: thin;
+  scrollbar-color: var(--gray-400) var(--gray-100);
+}
+
+/* ===========================================
+   BODY SCROLL LOCK (when modals are open)
+   =========================================== */
+body[style*="overflow: hidden"],
+body[style*="overflow:hidden"] {
+  overflow: hidden !important;
+  height: 100vh;
+  position: fixed;
+  width: 100%;
+}
+
+/* Alternative: Use a class instead of inline style */
+body.modal-open {
+  overflow: hidden !important;
+  height: 100vh;
+}
+
+/* ===========================================
    ACTION BAR
    =========================================== */
 .action-bar {
@@ -721,6 +775,7 @@ tbody tr.selected:hover { background-color: var(--bg-selected-hover); }
   opacity: 0;
   visibility: hidden;
   transition: all var(--transition-slow);
+  overflow: hidden;
 }
 
 .modal-overlay.active,
@@ -793,6 +848,16 @@ tbody tr.selected:hover { background-color: var(--bg-selected-hover); }
   background: rgba(255, 255, 255, 0.3);
 }
 
+/* Form inside drawer needs to be flex container */
+.drawer-content form,
+.drawer-content .drawer-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .modal-body,
 .drawer-body {
   padding: 25px;
@@ -829,20 +894,21 @@ tbody tr.selected:hover { background-color: var(--bg-selected-hover); }
 
 /* Cancel Button */
 .drawer-footer .btn-cancel,
-.drawer-footer .btn-secondary,
 .modal-actions .btn-cancel {
   background: var(--gray-100);
-  color: var(--gray-500);
-  border: 1px solid var(--gray-200);
+  color: var(--gray-600);
+  border: 1px solid var(--gray-300);
 }
 
 .drawer-footer .btn-cancel:hover,
-.drawer-footer .btn-secondary:hover,
 .modal-actions .btn-cancel:hover {
   background: var(--gray-200);
-  color: var(--gray-600);
-  border-color: var(--gray-300);
+  color: var(--gray-700);
+  border-color: var(--gray-400);
 }
+
+/* Secondary Button - uses variables.css definition */
+/* .btn-secondary has dark gray bg with white text */
 
 /* Save/Create Button (Primary Gradient) */
 .drawer-footer .btn-save,
@@ -1033,17 +1099,20 @@ tbody tr.selected:hover { background-color: var(--bg-selected-hover); }
 
 /* ===========================================
    TOAST NOTIFICATION
+   Unified toast system used across all pages
+   Types: success (green), error (red), info (blue), warning (orange)
    =========================================== */
 .toast {
   position: fixed;
   bottom: 32px;
-  right: -350px;
-  min-width: 240px;
+  right: -400px;
+  min-width: 280px;
+  max-width: 450px;
   background: var(--primary-gradient);
   color: var(--text-white);
-  padding: var(--space-lg) 32px var(--space-lg) var(--space-2xl);
+  padding: var(--space-lg) var(--space-xl);
   border-radius: var(--radius-xl);
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-base);
   box-shadow: var(--shadow-lg);
   z-index: var(--z-toast);
   opacity: 0;
@@ -1053,14 +1122,48 @@ tbody tr.selected:hover { background-color: var(--bg-selected-hover); }
   gap: var(--space-md);
 }
 
-.toast.show { right: 32px; opacity: 1; }
+.toast.show { 
+  right: 32px; 
+  opacity: 1; 
+}
 
+/* Toast Type Colors */
+.toast.success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.toast.error {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.toast.info {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.toast.warning {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+/* Toast Icon */
+.toast i,
+.toast .toast-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+/* Toast Content */
 .toast-content {
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
   flex: 1;
-  min-width: 180px;
+  min-width: 0;
+}
+
+.toast-message,
+#toastMessage {
+  font-weight: 500;
+  line-height: 1.4;
 }
 
 .toast-message-row {
@@ -1070,41 +1173,69 @@ tbody tr.selected:hover { background-color: var(--bg-selected-hover); }
   gap: var(--space-md);
 }
 
+/* Toast Close Button */
+.toast-close {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  padding: 4px;
+  font-size: 16px;
+  transition: color var(--transition-fast);
+}
+
+.toast-close:hover {
+  color: #fff;
+}
+
+/* Toast Progress Bar (for downloads) */
 .toast-percent {
   font-weight: var(--font-weight-bold);
-  font-size: 15px;
-  min-width: 45px;
+  font-size: 14px;
+  min-width: 42px;
   text-align: right;
 }
 
 .toast-progress {
   width: 100%;
-  height: 8px;
+  height: 6px;
   background: rgba(255, 255, 255, 0.25);
   border-radius: var(--radius-sm);
   overflow: hidden;
-  min-width: 200px;
 }
 
 .toast-progress-bar {
   height: 100%;
-  background: linear-gradient(90deg, #fff 0%, #a0f0a0 100%);
+  background: linear-gradient(90deg, #fff 0%, rgba(255,255,255,0.8) 100%);
   border-radius: var(--radius-sm);
   width: 0%;
   transition: width var(--transition-base);
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.4);
 }
 
 .toast-progress-bar.indeterminate {
   width: 30%;
-  background: #fff;
   animation: indeterminate-progress 1.5s infinite ease-in-out;
 }
 
-.toast.downloading { min-width: 280px; }
-.toast.downloading i { animation: spin-icon 1s linear infinite; }
-.toast.download-complete { background: linear-gradient(90deg, #10b981 0%, #059669 100%) !important; }
-.toast.download-complete i { animation: none !important; }
+/* Toast Downloading State */
+.toast.downloading { 
+  min-width: 320px;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+}
+
+.toast.downloading i { 
+  animation: spin-icon 1s linear infinite; 
+}
+
+/* Toast Download Complete */
+.toast.download-complete { 
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important; 
+}
+
+.toast.download-complete i { 
+  animation: none !important; 
+}
 
 @keyframes indeterminate-progress {
   0% { transform: translateX(-100%); }
@@ -1393,10 +1524,13 @@ body.sidebar-collapsed .pagination-bar { left: var(--sidebar-collapsed); }
   .search-box { min-width: 140px; max-width: 100%; }
   
   .toast {
-    min-width: 200px;
-    font-size: var(--font-size-base);
-    padding: var(--space-md) var(--space-xl);
+    min-width: 220px;
+    max-width: calc(100vw - 32px);
+    font-size: var(--font-size-sm);
+    padding: var(--space-md) var(--space-lg);
+    bottom: 16px;
+    right: -100%;
   }
   
-  .toast.show { right: var(--space-lg); }
+  .toast.show { right: 16px; }
 }

@@ -1,15 +1,10 @@
 // ID Card Actions - Inline Edit Module
 // Contains: Inline cell editing functionality
+// Note: Uses shared getCSRFToken from utils.js
 
 // ==========================================
 // HELPER FUNCTIONS
 // ==========================================
-
-function getCSRFTokenForEdit() {
-    const csrfCookie = document.cookie.split('; ')
-        .find(row => row.startsWith('csrftoken='));
-    return csrfCookie ? csrfCookie.split('=')[1] : '';
-}
 
 function getAdjacentCell(currentCell, direction) {
     const row = currentCell.closest('tr');
@@ -121,7 +116,7 @@ function saveCellEdit(cell, newValue, cardId, field) {
     `;
     
     // Save via API
-    const csrfToken = getCSRFTokenForEdit();
+    const csrfToken = getCSRFToken();
     
     fetch(`/api/card/${cardId}/update-field/`, {
         method: 'POST',
@@ -330,11 +325,8 @@ function openImagePreview(src) {
 function initRowClickHandlers() {
     const table = document.getElementById('data-table');
     if (!table) {
-        console.log('initRowClickHandlers: table not found');
         return;
     }
-    
-    console.log('initRowClickHandlers: Setting up row click handlers');
     
     // Single click on row (not on specific elements) toggles checkbox
         table.addEventListener('click', function(e) {
@@ -361,7 +353,6 @@ function initRowClickHandlers() {
             if (checkbox) {
                 checkbox.checked = true;
                 checkbox.dispatchEvent(new Event('change', { bubbles: true }));
-                console.log('Row clicked, checkbox set to true');
             }
         });
 }

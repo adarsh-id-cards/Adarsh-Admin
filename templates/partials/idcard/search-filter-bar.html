@@ -7,7 +7,7 @@
             <button class="btn btn-select-all" id="selectAllDbBtn" title="Select all cards in database">
                 <i class="fa-solid fa-check-double"></i> Select All
             </button>
-            <button class="btn btn-settings" id="imageSortBtn" title="Filter by image status">
+            <button class="btn btn-settings" id="imageSortBtn" title="Filter by image status" onclick="document.getElementById('imageSortModalOverlay').classList.add('active')">
                 <i class="fa-solid fa-image"></i> Image Sort
             </button>
         </div>
@@ -20,9 +20,25 @@
         </div>
     </div>
     
-    <!-- Right Section - Class and Section Filters -->
+    <!-- Right Section - Sort, Class and Section Filters -->
     <div class="action-right">
         <div class="filter-group">
+            <!-- Sort Dropdown -->
+            <div class="custom-dropdown" id="sortDropdown">
+                <button class="dropdown-toggle" id="sortToggle" type="button">
+                    <i class="fa-solid fa-sort"></i>
+                    <span id="sortSelectedText">Sort</span>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-options" id="sortOptions">
+                    <div class="dropdown-option selected" data-value="sr-asc">SR No. (Ascending)</div>
+                    <div class="dropdown-option" data-value="sr-desc">SR No. (Descending)</div>
+                    <div class="dropdown-option" data-value="name-asc">Name (A-Z)</div>
+                    <div class="dropdown-option" data-value="name-desc">Name (Z-A)</div>
+                    <div class="dropdown-option" data-value="date-newest">Date (Newest)</div>
+                    <div class="dropdown-option" data-value="date-oldest">Date (Oldest)</div>
+                </div>
+            </div>
             <!-- Class Filter Dropdown -->
             <div class="custom-dropdown" id="classFilterDropdown">
                 <button class="dropdown-toggle" id="classFilterToggle" type="button">
