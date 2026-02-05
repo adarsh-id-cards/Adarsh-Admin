@@ -16,6 +16,7 @@ services:
     buildCommand: |
       pip install -r requirements.txt
       python manage.py collectstatic --no-input
+      python manage.py migrate --no-input
 
     # Start command - runs startup.py BEFORE gunicorn
     startCommand: python startup.py && gunicorn config.wsgi

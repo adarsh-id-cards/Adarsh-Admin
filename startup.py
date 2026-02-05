@@ -22,19 +22,26 @@ import django
 def main():
     """
     Main startup routine for Render deployment.
-    Only runs when RENDER=true is set.
+    Runs when RENDER environment variable is set (Render sets RENDER_EXTERNAL_HOSTNAME).
     """
-    # Check if we're in Render environment
-    is_render = os.getenv("RENDER", "").lower() == "true"
+    # Check if we're in Render/Production environment
+    # Render automatically sets RENDER_EXTERNAL_HOSTNAME, not RENDER=true
+    is_render = bool(os.getenv("RENDER_EXTERNAL_HOSTNAME")) or os.getenv("RENDER", "").lower() == "true"
     is_production = os.getenv("ENV", "").lower() == "production"
     force_startup = os.getenv("RUN_STARTUP", "").lower() == "true"
+    debug_mode = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes")
     
-    if not (is_render or is_production or force_startup):
-        print("[Startup] Skipping (not production environment)")
+    # Run startup if: on Render, or production, or forced, or DEBUG=False
+    should_run = is_render or is_production or force_startup or not debug_mode
+    
+    if not should_run:
+        print("[Startup] Skipping (local development mode)")
         return True
     
     print("=" * 60)
-    print("[Startup] Render Deployment Initialization")
+    print("[Startup] Deployment Initialization")
+    print(f"  RENDER_EXTERNAL_HOSTNAME: {os.getenv('RENDER_EXTERNAL_HOSTNAME', 'not set')}")
+    print(f"  DEBUG: {os.getenv('DEBUG', 'not set')}")
     print("=" * 60)
     
     # Setup Django
