@@ -73,7 +73,7 @@
             <i class="fa-solid fa-check-circle"></i>
           </div>
           <div class="stat-info">
-            <div class="stat-value" id="verifiedCards">156</div>
+            <div class="stat-value" id="verifiedCards">{{ verified_cards|default:0 }}</div>
             <div class="stat-label">Verified Cards</div>
             <span class="stat-change positive"><i class="fa-solid fa-arrow-up"></i> 12 this week</span>
           </div>
@@ -95,7 +95,7 @@
             <i class="fa-solid fa-download"></i>
           </div>
           <div class="stat-info">
-            <div class="stat-value" id="downloadedCards">656</div>
+            <div class="stat-value" id="downloadedCards">{{ downloaded_cards|default:0 }}</div>
             <div class="stat-label">Downloaded Cards</div>
             <span class="stat-change positive"><i class="fa-solid fa-arrow-up"></i> 45 this week</span>
           </div>
@@ -270,7 +270,7 @@
                   </div>
                   <span class="card-overview-label">Active Staff</span>
                 </div>
-                <span class="card-overview-value">10</span>
+                <span class="card-overview-value">{{ active_staff|default:0 }}</span>
               </div>
             </div>
           </div>

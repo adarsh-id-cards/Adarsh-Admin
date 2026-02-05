@@ -144,8 +144,21 @@ function closeSideModal() {
 }
 
 // Helper function to extract short path (last folder + filename)
-function getShortPath(fullPath) {
+// Uses global getShortPath from utils.js if available, with fallback
+function getShortPathLocal(fullPath) {
+    // Prefer global utility from utils.js (handles PENDING: prefix properly)
+    if (typeof window.getShortPath === 'function') {
+        return window.getShortPath(fullPath);
+    }
+    
+    // Fallback implementation
     if (!fullPath) return '';
+    
+    // Handle PENDING: prefix
+    if (fullPath.startsWith && fullPath.startsWith('PENDING:')) {
+        return `Pending: ${fullPath.substring(8)}`;
+    }
+    
     // Remove leading /media/ if present
     let path = fullPath.replace(/^\/media\//, '');
     // Split by / and get last 2 parts (folder + filename)
@@ -205,7 +218,7 @@ function populateFormFields(cardData) {
             formPhotoPreview.innerHTML = `<img src="${imgSrc}${cacheBuster}" alt="Photo">`;
         }
         if (photoPathDisplay) {
-            photoPathDisplay.textContent = getShortPath(imgSrc);
+            photoPathDisplay.textContent = getShortPathLocal(imgSrc);
         }
     } else if (isPending) {
         // PENDING - Colorful placeholder (image reference exists but waiting for upload)
@@ -348,7 +361,7 @@ function populateFormFields(cardData) {
                         previewContainer.innerHTML = `<img src="${imgSrc}${cacheBuster}" alt="${fieldName}">`;
                     }
                     if (pathDisplay) {
-                        pathDisplay.textContent = getShortPath(imgSrc);
+                        pathDisplay.textContent = getShortPathLocal(imgSrc);
                     }
                 } else if (isPendingImg) {
                     // PENDING - waiting for image upload
@@ -561,8 +574,16 @@ function updateExistingCard(cardId, fieldData, imageFiles, mainPhoto) {
 }
 
 // ==========================================
-// DELETE MODAL
+// DELETE MODAL (Permanent Delete - Pool List)
 // ==========================================
+
+// Generate random 6-digit numeric code
+function generateVerificationCode() {
+    return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+// Current verification code for permanent delete
+let currentVerificationCode = null;
 
 function closeDeleteModalFn() {
     const deleteModalOverlay = document.getElementById('deleteModalOverlay');
@@ -570,7 +591,64 @@ function closeDeleteModalFn() {
         deleteModalOverlay.classList.remove('active');
         document.body.style.overflow = ''; // Restore body scroll
     }
+    // Reset verification
+    const verificationInput = document.getElementById('deleteVerificationInput');
+    const confirmBtn = document.getElementById('confirmDeleteModal');
+    if (verificationInput) {
+        verificationInput.value = '';
+        verificationInput.classList.remove('valid', 'invalid');
+    }
+    if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<i class="fa-solid fa-trash"></i> Delete Permanently';
+    }
+    const verificationStatus = document.getElementById('verificationStatus');
+    if (verificationStatus) {
+        verificationStatus.textContent = '';
+        verificationStatus.classList.remove('match', 'no-match');
+    }
     window.pendingDeleteCardIds = null;
+    currentVerificationCode = null;
+}
+
+function openPermanentDeleteModal(cardIds) {
+    // Generate new verification code
+    currentVerificationCode = generateVerificationCode();
+    
+    // Update count text
+    const deleteCountText = document.getElementById('deleteCountText');
+    if (deleteCountText) {
+        deleteCountText.textContent = `${cardIds.length} card(s)`;
+    }
+    
+    // Display the verification code
+    const codeDisplay = document.getElementById('deleteVerificationCode');
+    if (codeDisplay) {
+        codeDisplay.textContent = currentVerificationCode;
+    }
+    
+    // Store card IDs
+    window.pendingDeleteCardIds = cardIds;
+    
+    // Reset and show modal
+    const verificationInput = document.getElementById('deleteVerificationInput');
+    if (verificationInput) {
+        verificationInput.value = '';
+        verificationInput.classList.remove('valid', 'invalid');
+    }
+    
+    const confirmBtn = document.getElementById('confirmDeleteModal');
+    if (confirmBtn) {
+        confirmBtn.disabled = true;
+    }
+    
+    const deleteModalOverlay = document.getElementById('deleteModalOverlay');
+    if (deleteModalOverlay) {
+        deleteModalOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        // Focus verification input
+        setTimeout(() => verificationInput?.focus(), 100);
+    }
 }
 
 function initDeleteModal() {
@@ -578,7 +656,9 @@ function initDeleteModal() {
     const closeDeleteModal = document.getElementById('closeDeleteModal');
     const cancelDeleteModal = document.getElementById('cancelDeleteModal');
     const confirmDeleteModal = document.getElementById('confirmDeleteModal');
+    const verificationInput = document.getElementById('deleteVerificationInput');
     
+    // Close handlers
     if (closeDeleteModal) {
         closeDeleteModal.addEventListener('click', function(e) {
             e.preventDefault();
@@ -600,6 +680,44 @@ function initDeleteModal() {
         });
     }
     
+    // Verification code input handler
+    if (verificationInput) {
+        verificationInput.addEventListener('input', function() {
+            const entered = this.value.trim();
+            const confirmBtn = document.getElementById('confirmDeleteModal');
+            const verificationStatus = document.getElementById('verificationStatus');
+            
+            if (entered.length === 6) {
+                if (entered === currentVerificationCode) {
+                    this.classList.remove('invalid');
+                    this.classList.add('valid');
+                    if (confirmBtn) confirmBtn.disabled = false;
+                    if (verificationStatus) {
+                        verificationStatus.textContent = '✓ Code matched';
+                        verificationStatus.classList.remove('no-match');
+                        verificationStatus.classList.add('match');
+                    }
+                } else {
+                    this.classList.remove('valid');
+                    this.classList.add('invalid');
+                    if (confirmBtn) confirmBtn.disabled = true;
+                    if (verificationStatus) {
+                        verificationStatus.textContent = '✗ Code does not match';
+                        verificationStatus.classList.remove('match');
+                        verificationStatus.classList.add('no-match');
+                    }
+                }
+            } else {
+                this.classList.remove('valid', 'invalid');
+                if (confirmBtn) confirmBtn.disabled = true;
+                if (verificationStatus) {
+                    verificationStatus.textContent = '';
+                    verificationStatus.classList.remove('match', 'no-match');
+                }
+            }
+        });
+    }
+    
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' && deleteModalOverlay?.classList.contains('active')) {
             closeDeleteModalFn();
@@ -617,6 +735,13 @@ function initDeleteModal() {
             if (!cardIds || cardIds.length === 0 || !tableId) {
                 if (typeof showToast === 'function') showToast('Error: No cards selected or Table ID not found', false);
                 closeDeleteModalFn();
+                return;
+            }
+            
+            // Double-check verification code
+            const verificationInput = document.getElementById('deleteVerificationInput');
+            if (!verificationInput || verificationInput.value !== currentVerificationCode) {
+                if (typeof showToast === 'function') showToast('Please enter the correct verification code', false);
                 return;
             }
             
@@ -655,15 +780,113 @@ function initDeleteModal() {
 }
 
 // ==========================================
+// SIMPLE DELETE MODAL (Move to Pool - Pending/Verified)
+// ==========================================
+
+function closeSimpleDeleteModalFn() {
+    const modal = document.getElementById('simpleDeleteModalOverlay');
+    if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+    window.pendingSimpleDeleteCardIds = null;
+}
+
+function openSimpleDeleteModal(cardIds) {
+    window.pendingSimpleDeleteCardIds = cardIds;
+    
+    const countText = document.getElementById('simpleDeleteCountText');
+    if (countText) {
+        countText.textContent = `${cardIds.length} card(s)`;
+    }
+    
+    const modal = document.getElementById('simpleDeleteModalOverlay');
+    if (modal) {
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+function initSimpleDeleteModal() {
+    const modal = document.getElementById('simpleDeleteModalOverlay');
+    const closeBtn = document.getElementById('closeSimpleDeleteModal');
+    const cancelBtn = document.getElementById('cancelSimpleDeleteModal');
+    const confirmBtn = document.getElementById('confirmSimpleDeleteModal');
+    
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeSimpleDeleteModalFn);
+    }
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', closeSimpleDeleteModalFn);
+    }
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) closeSimpleDeleteModalFn();
+        });
+    }
+    
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal?.classList.contains('active')) {
+            closeSimpleDeleteModalFn();
+        }
+    });
+    
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', function() {
+            const cardIds = window.pendingSimpleDeleteCardIds;
+            const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
+            
+            if (!cardIds || cardIds.length === 0 || !tableId) {
+                if (typeof showToast === 'function') showToast('Error: No cards selected', false);
+                closeSimpleDeleteModalFn();
+                return;
+            }
+            
+            this.disabled = true;
+            this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Deleting...';
+            
+            // Delete cards (moves to pool status)
+            fetch(`/api/table/${tableId}/cards/bulk-status/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': typeof getCSRFToken === 'function' ? getCSRFToken() : ''
+                },
+                body: JSON.stringify({ card_ids: cardIds, status: 'pool' })
+            })
+            .then(response => response.json())
+            .then(data => {
+                closeSimpleDeleteModalFn();
+                if (data.success) {
+                    if (typeof showToast === 'function') showToast(`${data.updated_count} card(s) deleted`);
+                    location.reload();
+                } else {
+                    if (typeof showToast === 'function') showToast(data.message || 'Error deleting cards', false);
+                    confirmBtn.disabled = false;
+                    confirmBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i> Delete';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                closeSimpleDeleteModalFn();
+                if (typeof showToast === 'function') showToast('Error deleting cards', false);
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i> Delete';
+            });
+        });
+    }
+}
+
+// ==========================================
 // INITIALIZATION
 // ==========================================
 
 function initModalModule() {
     try {
         const sideModalOverlay = document.getElementById('sideModalOverlay');
+        const saveSideModalBtn = document.getElementById('saveSideModal');
         const formPhotoInput = document.getElementById('formPhotoInput');
         const formPhotoPreview = document.getElementById('formPhotoPreview');
-        const saveSideModalBtn = document.getElementById('saveSideModal');
         
         // Close side modal handlers
         const closeSideModalBtn = document.getElementById('closeSideModal');
@@ -768,13 +991,8 @@ function initModalModule() {
             if (!editBtn) return;
             
             e.stopPropagation();
-            const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
             
-            if (selectedIds.length > 1) {
-                if (typeof showToast === 'function') showToast('Please select only one row to edit', 'error');
-                return;
-            }
-            
+            // Pencil button directly edits the card it's on, regardless of checkbox selection
             const cardId = editBtn.getAttribute('data-card-id');
             if (cardId) {
                 fetchCardAndOpenModal('edit', cardId);
@@ -799,6 +1017,9 @@ function initModalModule() {
     // Initialize delete modal
     initDeleteModal();
     
+    // Initialize simple delete modal (for pending/verified)
+    initSimpleDeleteModal();
+    
     // Delete key handler
     document.addEventListener('keydown', function(e) {
         if (e.key !== 'Delete') return;
@@ -808,6 +1029,7 @@ function initModalModule() {
         if (sideModalOverlay?.classList.contains('active')) return;
         if (document.getElementById('uploadModalOverlay')?.classList.contains('active')) return;
         if (document.getElementById('deleteModalOverlay')?.classList.contains('active')) return;
+        if (document.getElementById('simpleDeleteModalOverlay')?.classList.contains('active')) return;
         
         const selectedIds = typeof getSelectedCardIds === 'function' ? getSelectedCardIds() : [];
         if (selectedIds.length === 0) return;
@@ -817,9 +1039,11 @@ function initModalModule() {
         const currentStatus = typeof CURRENT_STATUS !== 'undefined' ? CURRENT_STATUS : 'pending';
         
         if (currentStatus === 'pool') {
-            directPermanentDelete(selectedIds);
+            // Pool list: use permanent delete with verification code
+            openPermanentDeleteModal(selectedIds);
         } else {
-            if (typeof bulkDelete === 'function') bulkDelete(selectedIds);
+            // Other lists: use simple delete (move to pool) with confirmation
+            openSimpleDeleteModal(selectedIds);
         }
     });
     
@@ -864,5 +1088,9 @@ window.IDCardApp.initModalModule = initModalModule;
 window.IDCardApp.openSideModal = openSideModal;
 window.IDCardApp.closeSideModal = closeSideModal;
 window.IDCardApp.fetchCardAndOpenModal = fetchCardAndOpenModal;
+window.IDCardApp.openSimpleDeleteModal = openSimpleDeleteModal;
+window.IDCardApp.openPermanentDeleteModal = openPermanentDeleteModal;
 window.openSideModal = openSideModal;
 window.closeSideModal = closeSideModal;
+window.openSimpleDeleteModal = openSimpleDeleteModal;
+window.openPermanentDeleteModal = openPermanentDeleteModal;

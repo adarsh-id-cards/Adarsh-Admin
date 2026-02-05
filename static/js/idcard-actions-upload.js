@@ -12,6 +12,9 @@ var IMAGE_FIELD_TYPES = ['photo', 'mother_photo', 'father_photo', 'barcode', 'qr
 // Image field name patterns (for detecting by name when type might not be set correctly)
 var IMAGE_FIELD_NAME_PATTERNS = ['photo', 'f photo', 'father photo', 'm photo', 'mother photo', 'sign', 'signature', 'barcode', 'qr', 'qr_code', 'image'];
 
+// Valid image extensions
+var VALID_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
+
 // Helper function to check if a field type is an image type
 function isImageFieldType(fieldType) {
     if (!fieldType) return false;
@@ -35,6 +38,48 @@ function isImageFieldByName(fieldName) {
 function isImageField(field) {
     if (!field) return false;
     return isImageFieldType(field.type) || isImageFieldByName(field.name);
+}
+
+/**
+ * Normalize an image identifier for consistent matching.
+ * Mirrors the backend BaseService.normalize_image_identifier() function.
+ * 
+ * Handles:
+ * - Case insensitivity (P1 == p1)
+ * - Whitespace (leading/trailing/multiple spaces)
+ * - Numeric formats (1.0 -> 1)
+ * - Extension removal if present (.jpg, .png, etc.)
+ * 
+ * @param {string|number} identifier - Raw identifier from Excel or ZIP filename
+ * @returns {string} Normalized uppercase string for matching
+ */
+function normalizeImageIdentifier(identifier) {
+    if (identifier === null || identifier === undefined) return '';
+    
+    // Convert to string and trim
+    let result = String(identifier).trim();
+    if (!result) return '';
+    
+    // Handle numeric values (from Excel: 1.0 -> "1")
+    const numVal = parseFloat(result);
+    if (!isNaN(numVal) && numVal === Math.floor(numVal)) {
+        result = String(Math.floor(numVal));
+    }
+    
+    // Remove common image extensions if present
+    const lowerResult = result.toLowerCase();
+    for (const ext of VALID_IMAGE_EXTENSIONS) {
+        if (lowerResult.endsWith(ext)) {
+            result = result.slice(0, -ext.length);
+            break;
+        }
+    }
+    
+    // Normalize internal whitespace (multiple spaces -> single)
+    result = result.split(/\s+/).join(' ');
+    
+    // Convert to uppercase for consistent matching
+    return result.toUpperCase();
 }
 
 // ==========================================
@@ -265,43 +310,25 @@ function populateValidationResults(matchedFields, missingFields, ignoredFields, 
     // Dynamically generate ZIP upload inputs for image fields
     if (zipInputsContainer) {
         zipInputsContainer.innerHTML = '';
-        
-        // Get image fields from TABLE_FIELDS (check by type OR name)
-        const tableFields = typeof TABLE_FIELDS !== 'undefined' ? TABLE_FIELDS : [];
-        const imageFields = tableFields.filter(f => isImageField(f));
-        
-        if (imageFields.length > 0) {
-            if (photoZipSection) photoZipSection.style.display = '';
-            
-            imageFields.forEach(field => {
-                const fieldName = field.name;
-                const row = document.createElement('div');
-                row.className = 'zip-upload-row';
-                row.setAttribute('data-field-name', fieldName);
-                
-                row.innerHTML = `
-                    <label class="zip-field-label">${fieldName.toUpperCase()}</label>
-                    <div class="zip-upload-input">
-                        <input type="file" class="photo-zip-input" data-field="${fieldName}" accept=".zip" style="display: none;">
-                        <button type="button" class="btn btn-outline select-zip-btn" data-field="${fieldName}">
-                            <i class="fa-solid fa-file-zipper"></i> Select ZIP
-                        </button>
-                        <span class="zip-file-name" data-field="${fieldName}">No file selected</span>
-                    </div>
-                    <div class="zip-file-status" data-field="${fieldName}" style="display: none;">
-                        <i class="fa-solid fa-check-circle"></i>
-                        <span class="zip-file-count">0 images</span>
-                    </div>
-                `;
-                
-                zipInputsContainer.appendChild(row);
-            });
-            
-            // Re-attach event listeners for dynamically created ZIP buttons
-            initZipButtonListeners();
-        } else {
-            if (photoZipSection) photoZipSection.style.display = 'none';
+    }
+    
+    // Show/update unified ZIP section and image columns info
+    const photoZipSection = document.getElementById('photoZipSection');
+    const imageColumnsList = document.getElementById('imageColumnsList');
+    
+    // Get image fields from TABLE_FIELDS (check by type OR name)
+    const tableFields = typeof TABLE_FIELDS !== 'undefined' ? TABLE_FIELDS : [];
+    const imageFields = tableFields.filter(f => isImageField(f));
+    
+    if (imageFields.length > 0) {
+        if (photoZipSection) photoZipSection.style.display = '';
+        if (imageColumnsList) {
+            imageColumnsList.textContent = imageFields.map(f => f.name.toUpperCase()).join(', ');
         }
+        // Store image fields globally for upload processing
+        window.currentImageFields = imageFields;
+    } else {
+        if (photoZipSection) photoZipSection.style.display = 'none';
     }
 }
 
@@ -594,7 +621,19 @@ function initXlsxUpload() {
                             }, 1500);
                         }, 500);
                     } else {
-                        if (typeof showToast === 'function') showToast(result.message || 'Upload failed', false);
+                        // Handle validation errors from backend
+                        let errorMessage = result.message || 'Upload failed';
+                        
+                        // Append first few errors if present (backend returns up to 10)
+                        if (result.errors && Array.isArray(result.errors) && result.errors.length > 0) {
+                            const errorList = result.errors.slice(0, 3).join('\n• ');
+                            errorMessage += '\n\n• ' + errorList;
+                            if (result.errors.length > 3) {
+                                errorMessage += `\n... and ${result.errors.length - 3} more errors`;
+                            }
+                        }
+                        
+                        if (typeof showToast === 'function') showToast(errorMessage, false);
                         resetUploadState();
                     }
                 } catch (error) {
@@ -627,11 +666,98 @@ function initXlsxUpload() {
 }
 
 // ==========================================
-// ZIP UPLOAD HANDLERS
+// UNIFIED ZIP UPLOAD HANDLERS
+// ==========================================
+
+// Store unified ZIP files
+let unifiedZipFiles = [];
+
+function initUnifiedZipUpload() {
+    const selectBtn = document.getElementById('selectZipFilesBtn');
+    const fileInput = document.getElementById('unifiedZipInput');
+    const selectedList = document.getElementById('selectedZipsList');
+    
+    if (!selectBtn || !fileInput) return;
+    
+    selectBtn.addEventListener('click', () => fileInput.click());
+    
+    fileInput.addEventListener('change', async function() {
+        const files = Array.from(this.files);
+        
+        for (const file of files) {
+            if (!file.name.toLowerCase().endsWith('.zip')) {
+                if (typeof showToast === 'function') showToast(`${file.name} is not a ZIP file`, 'error');
+                continue;
+            }
+            
+            // Check if already added
+            if (unifiedZipFiles.some(f => f.name === file.name)) {
+                if (typeof showToast === 'function') showToast(`${file.name} already added`, 'warning');
+                continue;
+            }
+            
+            unifiedZipFiles.push(file);
+        }
+        
+        updateSelectedZipsList();
+        this.value = ''; // Reset input for re-selection
+    });
+    
+    // Event delegation for remove buttons
+    if (selectedList) {
+        selectedList.addEventListener('click', function(e) {
+            const removeBtn = e.target.closest('.remove-zip');
+            if (removeBtn) {
+                const zipName = removeBtn.dataset.zipName;
+                unifiedZipFiles = unifiedZipFiles.filter(f => f.name !== zipName);
+                updateSelectedZipsList();
+            }
+        });
+    }
+}
+
+function updateSelectedZipsList() {
+    const selectedList = document.getElementById('selectedZipsList');
+    if (!selectedList) return;
+    
+    if (unifiedZipFiles.length === 0) {
+        selectedList.style.display = 'none';
+        selectedList.innerHTML = '';
+        return;
+    }
+    
+    selectedList.style.display = 'block';
+    selectedList.innerHTML = unifiedZipFiles.map(file => `
+        <div class="selected-zip-item">
+            <span class="zip-name">
+                <i class="fa-solid fa-file-zipper"></i>
+                ${file.name}
+            </span>
+            <button class="remove-zip" data-zip-name="${file.name}" title="Remove">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+    `).join('');
+}
+
+function getUnifiedZipFiles() {
+    return unifiedZipFiles;
+}
+
+function clearUnifiedZipFiles() {
+    unifiedZipFiles = [];
+    updateSelectedZipsList();
+}
+
+// ==========================================
+// ZIP UPLOAD HANDLERS (Legacy - kept for backward compatibility)
 // ==========================================
 
 function initZipUpload() {
-    // Initialize multiple ZIP upload inputs
+    // Initialize unified ZIP upload
+    initUnifiedZipUpload();
+    
+    // Legacy: Initialize multiple ZIP upload inputs
     const zipInputsContainer = document.getElementById('zipInputsContainer');
     if (!zipInputsContainer) return;
     
@@ -689,6 +815,10 @@ function initZipUpload() {
             let imageCount = 0;
             zipFileNamesMap[fieldName] = [];
             
+            // Track normalized names to detect duplicates
+            const normalizedNames = new Set();
+            const duplicates = [];
+            
             zip.forEach((relativePath, zipEntry) => {
                 if (!zipEntry.dir) {
                     const ext = relativePath.toLowerCase().substring(relativePath.lastIndexOf('.'));
@@ -696,9 +826,20 @@ function initZipUpload() {
                         imageCount++;
                         const baseName = relativePath.split('/').pop();
                         const nameWithoutExt = baseName.substring(0, baseName.lastIndexOf('.'));
+                        
+                        // Use normalized key for duplicate detection
+                        const normalizedKey = normalizeImageIdentifier(nameWithoutExt);
+                        
+                        if (normalizedNames.has(normalizedKey)) {
+                            duplicates.push(baseName);
+                        } else {
+                            normalizedNames.add(normalizedKey);
+                        }
+                        
                         zipFileNamesMap[fieldName].push({
                             fullPath: relativePath,
                             nameWithoutExt: nameWithoutExt,
+                            normalizedKey: normalizedKey,
                             originalName: baseName
                         });
                     }
@@ -707,7 +848,19 @@ function initZipUpload() {
             
             if (imageCount > 0) {
                 if (zipFileStatus) zipFileStatus.style.display = 'flex';
-                if (zipFileCount) zipFileCount.textContent = `${imageCount} image${imageCount > 1 ? 's' : ''}`;
+                
+                // Show warning if duplicates found
+                if (duplicates.length > 0) {
+                    const dupMsg = duplicates.length <= 3 
+                        ? duplicates.join(', ')
+                        : `${duplicates.slice(0, 3).join(', ')} and ${duplicates.length - 3} more`;
+                    if (zipFileCount) zipFileCount.textContent = `${imageCount} images (⚠️ ${duplicates.length} duplicates)`;
+                    if (typeof showToast === 'function') {
+                        showToast(`Warning: Duplicate filenames detected in ZIP: ${dupMsg}. Only one will be used.`, 'warning');
+                    }
+                } else {
+                    if (zipFileCount) zipFileCount.textContent = `${imageCount} image${imageCount > 1 ? 's' : ''}`;
+                }
             } else {
                 if (zipFileStatus) zipFileStatus.style.display = 'none';
                 if (typeof showToast === 'function') showToast(`No images found in ZIP for ${fieldName}`, 'error');

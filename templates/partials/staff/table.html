@@ -40,24 +40,17 @@ Contains: Table header and body for displaying staff members
             <tr class="no-data-row">
                 <td colspan="7" class="no-data">
                     <i class="fa-solid fa-user-slash"></i>
-                    <span>No staff members found</span>
+                    <span>No staff found</span>
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
     
-    <!-- Empty State -->
-    <div class="empty-state" id="empty-state" style="display: none;">
-        <i class="fa-solid fa-user-slash"></i>
-        <h3>No Staff Found</h3>
-        <p>Try adjusting your search or filter criteria</p>
-    </div>
+    <!-- Empty State - Shown when search/filter yields no results -->
+    {% include 'partials/components/empty-state.html' with id="staff-empty-state" icon="fa-user-slash" title="No Staff Found" message="Try adjusting your search or filter criteria" hidden=True %}
     
     <!-- Loading State -->
-    <div class="loading-state" id="loading-state" style="display: none;">
-        <i class="fa-solid fa-spinner fa-spin"></i>
-        <p>Loading staff...</p>
-    </div>
+    {% include 'partials/components/loading-state.html' with id="staff-loading-state" message="Loading staff..." hidden=True %}
 </div>
 <!-- Staff Table End -->

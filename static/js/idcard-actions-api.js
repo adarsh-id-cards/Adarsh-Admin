@@ -166,18 +166,23 @@ function bulkUnverify(cardIds) {
 }
 
 function bulkDelete(cardIds) {
-    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
-    if (!tableId) {
-        if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
-        return;
-    }
-    // Move to pool instead of permanent delete
-    if (typeof apiCall === 'function') {
-        apiCall(`/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'pool' })
-            .then(data => {
-                if (typeof showToast === 'function') showToast(`${data.updated_count} card(s) moved to pool`);
-                location.reload();
-            });
+    // Show confirmation modal before moving to pool
+    if (typeof openSimpleDeleteModal === 'function') {
+        openSimpleDeleteModal(cardIds);
+    } else {
+        // Fallback: direct move to pool (legacy behavior)
+        const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
+        if (!tableId) {
+            if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
+            return;
+        }
+        if (typeof apiCall === 'function') {
+            apiCall(`/api/table/${tableId}/cards/bulk-status/`, 'POST', { card_ids: cardIds, status: 'pool' })
+                .then(data => {
+                    if (typeof showToast === 'function') showToast(`${data.updated_count} card(s) moved to pool`);
+                    location.reload();
+                });
+        }
     }
 }
 
@@ -197,23 +202,29 @@ function bulkRetrieve(cardIds) {
 }
 
 function bulkDeletePermanent(cardIds) {
-    const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
-    if (!tableId) {
-        if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
-        return;
-    }
-    
-    window.pendingDeleteCardIds = cardIds;
-    
-    const deleteCountText = document.getElementById('deleteCountText');
-    if (deleteCountText) {
-        deleteCountText.textContent = `${cardIds.length} card(s)`;
-    }
-    
-    const deleteModalOverlay = document.getElementById('deleteModalOverlay');
-    if (deleteModalOverlay) {
-        deleteModalOverlay.classList.add('active');
-        document.body.style.overflow = 'hidden'; // Lock body scroll
+    // Use permanent delete modal with 6-digit verification code
+    if (typeof openPermanentDeleteModal === 'function') {
+        openPermanentDeleteModal(cardIds);
+    } else {
+        // Fallback: use old modal system
+        const tableId = typeof TABLE_ID !== 'undefined' ? TABLE_ID : (window.IDCardApp?.tableId || null);
+        if (!tableId) {
+            if (typeof showToast === 'function') showToast('Error: Table ID not found', false);
+            return;
+        }
+        
+        window.pendingDeleteCardIds = cardIds;
+        
+        const deleteCountText = document.getElementById('deleteCountText');
+        if (deleteCountText) {
+            deleteCountText.textContent = `${cardIds.length} card(s)`;
+        }
+        
+        const deleteModalOverlay = document.getElementById('deleteModalOverlay');
+        if (deleteModalOverlay) {
+            deleteModalOverlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
     }
 }
 
@@ -238,61 +249,37 @@ function createCard(fieldData) {
 // ==========================================
 
 function initRowActionHandlers() {
-    // Verify row button
-    document.querySelectorAll('.verify-row-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const cardId = this.getAttribute('data-card-id');
-            verifyCard(cardId);
-        });
-    });
+    // Use event delegation on the table body for ALL row action buttons
+    // This handles both initial rows AND dynamically loaded rows (lazy loading)
+    const tableBody = document.getElementById('cardsTableBody');
     
-    // Approve row button
-    document.querySelectorAll('.approve-row-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const cardId = this.getAttribute('data-card-id');
-            approveCard(cardId);
+    if (tableBody) {
+        tableBody.addEventListener('click', function(e) {
+            const btn = e.target.closest('.row-action-btn');
+            if (!btn) return;
+            
+            e.stopPropagation();
+            const cardId = btn.getAttribute('data-card-id');
+            if (!cardId) return;
+            
+            // Determine action by button class
+            if (btn.classList.contains('verify-row-btn')) {
+                verifyCard(cardId);
+            } else if (btn.classList.contains('approve-row-btn')) {
+                approveCard(cardId);
+            } else if (btn.classList.contains('unapprove-row-btn')) {
+                unapproveCard(cardId);
+            } else if (btn.classList.contains('unverify-row-btn')) {
+                unverifyCard(cardId);
+            } else if (btn.classList.contains('download-row-btn')) {
+                downloadCard(cardId);
+            } else if (btn.classList.contains('retrieve-row-btn')) {
+                retrieveCard(cardId);
+            } else if (btn.classList.contains('download-single-row-btn')) {
+                downloadSingleCard(cardId);
+            }
         });
-    });
-    
-    // Unapprove row button
-    document.querySelectorAll('.unapprove-row-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const cardId = this.getAttribute('data-card-id');
-            unapproveCard(cardId);
-        });
-    });
-    
-    // Unverify row button
-    document.querySelectorAll('.unverify-row-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const cardId = this.getAttribute('data-card-id');
-            unverifyCard(cardId);
-        });
-    });
-    
-    // Download row button
-    document.querySelectorAll('.download-row-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const cardId = this.getAttribute('data-card-id');
-            downloadCard(cardId);
-        });
-    });
-    
-    // Retrieve row button
-    document.querySelectorAll('.retrieve-row-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const cardId = this.getAttribute('data-card-id');
-            retrieveCard(cardId);
-        });
-    });
-    
-    // Download single row button (for Download list - downloads single card image)
-    document.querySelectorAll('.download-single-row-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const cardId = this.getAttribute('data-card-id');
-            downloadSingleCard(cardId);
-        });
-    });
+    }
 }
 
 // ==========================================

@@ -139,3 +139,49 @@ def check_image_field(field_type, field_name):
     Usage: {% check_image_field field.type field.name as is_img %}
     """
     return field_type in IMAGE_FIELD_TYPES or is_image_field_by_name(field_name)
+
+
+@register.filter
+def get_thumbnail_path(image_path):
+    """
+    Convert an image path to its thumbnail path.
+    Follows the server naming convention: {filename}_thumb.{ext}
+    
+    Usage: {{ field.value|get_thumbnail_path }}
+    
+    Example:
+        Input:  'adarshimg/ABCDE12345/14325123456101.jpg'
+        Output: 'adarshimg/ABCDE12345/14325123456101_thumb.jpg'
+    
+    Returns original path if conversion fails (fallback safe).
+    """
+    import os
+    
+    if not image_path or image_path == '' or image_path == 'NOT_FOUND':
+        return image_path
+    
+    # Handle PENDING: prefix - return as-is (no thumbnail for pending)
+    if isinstance(image_path, str) and image_path.startswith('PENDING:'):
+        return image_path
+    
+    # Split into base and extension
+    try:
+        base, ext = os.path.splitext(image_path)
+        if base and ext:
+            return f"{base}_thumb{ext}"
+    except Exception:
+        pass
+    
+    # Fallback to original path
+    return image_path
+
+
+@register.simple_tag
+def cache_bust():
+    """
+    Generate a cache-busting timestamp for image URLs.
+    Usage: {% cache_bust as cb %}
+           <img src="/media/{{ path }}?t={{ cb }}">
+    """
+    import time
+    return int(time.time())

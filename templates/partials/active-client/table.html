@@ -32,8 +32,8 @@ Contains: Table displaying active clients with groups info
             {% empty %}
             <tr class="no-data-row">
                 <td colspan="4" class="no-data">
-                    <i class="fa-solid fa-users-slash"></i>
-                    <span>No active clients found</span>
+                    <i class="fa-solid fa-building-slash"></i>
+                    <span>No clients found</span>
                 </td>
             </tr>
             {% endfor %}
@@ -41,10 +41,6 @@ Contains: Table displaying active clients with groups info
     </table>
     
     <!-- Empty State for Search -->
-    <div class="empty-state" id="empty-state" style="display: none;">
-        <i class="fa-solid fa-magnifying-glass"></i>
-        <h3>No Results Found</h3>
-        <p>Try adjusting your search criteria</p>
-    </div>
+    {% include 'partials/components/empty-state.html' with id="active-client-empty-state" icon="fa-magnifying-glass" title="No Results Found" message="Try adjusting your search criteria" hidden=True %}
 </div>
 <!-- Active Clients Table End -->

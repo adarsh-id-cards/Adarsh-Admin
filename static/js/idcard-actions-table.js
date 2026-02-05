@@ -616,18 +616,21 @@ function createRowFromCard(card, index) {
                     // PENDING - show waiting placeholder with clock icon
                     imageHtml = `<div class="no-image pending-placeholder" title="Waiting for upload: ${pendingRef}"><i class="fa-solid fa-clock"></i></div>`;
                 } else if (fieldValue && fieldValue !== '') {
-                    // Valid image path - show the image
+                    // Valid image path - use original directly (thumbnails don't exist)
                     const cacheBuster = `?t=${Date.now()}`;
-                    imageHtml = `<img src="/media/${fieldValue}${cacheBuster}" alt="${fieldName}" class="table-image ${imageTypeClass}" loading="lazy">`;
+                    const imageSrc = `/media/${fieldValue}${cacheBuster}`;
+                    imageHtml = `<img src="${imageSrc}" alt="${fieldName}" class="table-image ${imageTypeClass}" loading="lazy">`;
                 } else {
                     // Empty/null - Colorful placeholder (no image)
                     imageHtml = `<div class="no-image colorful-placeholder"><i class="fa-solid fa-user-astronaut"></i></div>`;
                 }
                 
+                // IMPORTANT: Store raw fieldValue (including PENDING:xxx) for Image Sort filter to work
+                // This matches what template table.html stores
                 html += `<td class="image-field image-cell ${imageTypeClass}" 
                     data-field-name="${fieldName}" 
                     data-field-type="image"
-                    data-original-value="${fullImagePath}">
+                    data-original-value="${fieldValue}">
                     <div class="image-with-edit">
                         ${imageHtml}
                         <button class="edit-photo-btn" data-card-id="${card.id}" title="Edit Card">Edit</button>

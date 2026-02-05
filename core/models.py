@@ -71,7 +71,12 @@ class User(AbstractUser):
     
     @property
     def is_super_admin(self):
-        return self.role == 'super_admin'
+        """
+        Check if user is super admin.
+        Accepts EITHER Django is_superuser=True OR business role='super_admin'
+        for backward compatibility with existing Django superusers.
+        """
+        return self.is_superuser or self.role == 'super_admin'
     
     @property
     def is_admin_staff(self):

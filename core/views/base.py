@@ -16,13 +16,24 @@ def get_user_role(user):
     return user.get_role_display()
 
 
+def is_super_admin_user(user):
+    """
+    Check if user has super admin privileges.
+    Accepts EITHER:
+    - Django's is_superuser=True (admin panel access)
+    - Business role='super_admin' (custom role field)
+    This ensures backward compatibility and prevents lockouts.
+    """
+    return user.is_superuser or user.role == 'super_admin'
+
+
 def super_admin_required(view_func):
     """Decorator to ensure only super_admin can access the view"""
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
         if not request.user.is_authenticated:
             return redirect('login')
-        if request.user.role != 'super_admin':
+        if not is_super_admin_user(request.user):
             # Redirect to appropriate dashboard
             if request.user.role == 'admin_staff':
                 return redirect('admin_staff_dashboard')
@@ -59,7 +70,7 @@ def api_super_admin_required(view_func):
                 'message': 'Authentication required',
                 'redirect': '/login/'
             }, status=401)
-        if request.user.role != 'super_admin':
+        if not is_super_admin_user(request.user):
             return JsonResponse({
                 'success': False,
                 'message': 'Access denied. Super Admin privileges required.'
@@ -80,6 +91,10 @@ def dashboard(request):
         'total_id_cards': IDCard.objects.count(),
         'active_clients': Client.objects.filter(status='active').count(),
         'pending_cards': IDCard.objects.filter(status='pending').count(),
+        'verified_cards': IDCard.objects.filter(status='verified').count(),
+        'approved_cards': IDCard.objects.filter(status='approved').count(),
+        'downloaded_cards': IDCard.objects.filter(status='download').count(),
+        'active_staff': Staff.objects.filter(user__is_active=True).count(),
     }
     return render(request, 'index.html', context)
 

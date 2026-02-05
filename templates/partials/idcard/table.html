@@ -1,6 +1,7 @@
 {% load static %}
 {% load custom_filters %}
 <!-- ID Cards Table -->
+{% cache_bust as cb %}
 <div class="table-wrapper">
     <div class="table-container idcard-table">
         <table id="data-table">
@@ -40,8 +41,11 @@
                             data-original-value="{{ field.value }}">
                             <div class="image-with-edit">
                                 {% if field.value and field.value != '' and not field.value|slice:":8" == "PENDING:" %}
-                                <!-- Image exists - show it -->
-                                <img src="/media/{{ field.value }}" alt="{{ field.name }}" class="table-image {{ field.name|get_image_class }}" loading="lazy">
+                                <!-- Image exists - show it directly -->
+                                <img src="/media/{{ field.value }}" 
+                                     alt="{{ field.name }}" 
+                                     class="table-image {{ field.name|get_image_class }}" 
+                                     loading="lazy">
                                 {% elif field.value|slice:":8" == "PENDING:" %}
                                 <!-- PENDING image - show waiting placeholder -->
                                 <div class="no-image pending-placeholder" title="Waiting for upload: {{ field.value|slice:'8:' }}">
@@ -110,22 +114,10 @@
                     <td class="user-cell">Admin</td>
                 </tr>
                 {% empty %}
-                <tr class="empty-row">
-                    <td colspan="50" class="no-cards">
-                        <div class="empty-state">
-                            <i class="fa-solid fa-id-card"></i>
-                            <h3>No ID Cards Found</h3>
-                            {% if current_status %}
-                            <p>No cards with "{{ current_status|title }}" status</p>
-                            {% else %}
-                            <p>Add your first ID card to get started</p>
-                            {% endif %}
-                            {% if current_status == 'pending' or not current_status %}
-                            <button class="btn btn-primary empty-add-btn" id="emptyAddBtn">
-                                <i class="fa-solid fa-plus"></i> Add New Card
-                            </button>
-                            {% endif %}
-                        </div>
+                <tr class="no-data-row">
+                    <td colspan="50" class="no-data">
+                        <i class="fa-solid fa-id-card"></i>
+                        <span>No ID cards found</span>
                     </td>
                 </tr>
                 {% endfor %}

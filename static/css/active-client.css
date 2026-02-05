@@ -8,7 +8,7 @@
    =========================================== */
 /* Name column - fluid */
 .data-table th:nth-child(1), 
-.data-table td:nth-child(1) {
+.data-table td:nth-child(1):not(.no-data) {
     width: auto;
     min-width: 180px;
     text-align: left;
@@ -16,7 +16,7 @@
 
 /* Email column - enough width for emails */
 .data-table th:nth-child(2), 
-.data-table td:nth-child(2) {
+.data-table td:nth-child(2):not(.no-data) {
     width: auto;
     min-width: 200px;
     text-align: left;
@@ -24,7 +24,7 @@
 
 /* Phone column - fixed width */
 .data-table th:nth-child(3), 
-.data-table td:nth-child(3) {
+.data-table td:nth-child(3):not(.no-data) {
     width: 120px;
     min-width: 120px;
     max-width: 120px;
@@ -34,7 +34,7 @@
 
 /* ID Card Groups column */
 .data-table th:nth-child(4), 
-.data-table td:nth-child(4) {
+.data-table td:nth-child(4):not(.no-data) {
     width: auto;
     min-width: 200px;
     text-align: left;

@@ -7,164 +7,36 @@ from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
+from django.db import transaction
 import json
 import time
 import os
 from datetime import datetime
 from ..models import IDCardGroup, IDCard, IDCardTable
 from .base import api_super_admin_required
+from ..services import IDCardService
+from ..services.image_service import ImageService
+from ..services.base import BaseService
 
 
 def generate_image_filename(batch_counter, original_ext='.jpg'):
     """
     Generate a unique filename for NEW uploaded images.
     Format: {HHMMSSmmmuuuC}.ext (13 digits total)
-    - HH = hours (2 digits)
-    - MM = minutes (2 digits)
-    - SS = seconds (2 digits)
-    - mmm = milliseconds (3 digits)
-    - uuu = microseconds (3 digits)
-    - C = single digit counter (cycles 1-9, 0, 1-9, 0...)
-    
-    Example: 1432251234561.jpg (13 digits)
-    
-    Args:
-        batch_counter: The sequential number within the current upload batch (starts from 1)
-        original_ext: The original file extension
-    
-    Returns:
-        New filename string (13 digits + extension)
     """
-    try:
-        # Get file extension
-        ext = original_ext.lower() if original_ext else '.jpg'
-        if not ext.startswith('.'):
-            ext = '.' + ext
-        
-        # Ensure valid image extension
-        valid_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
-        if ext not in valid_extensions:
-            ext = '.jpg'
-        
-        # Get current time with microseconds
-        now = datetime.now()
-        
-        # Format: HHMMSS (6 digits)
-        time_part = now.strftime('%H%M%S')
-        
-        # Get milliseconds (3 digits) and microseconds (3 digits)
-        microseconds = now.microsecond  # 0-999999
-        milliseconds = microseconds // 1000  # First 3 digits (0-999)
-        micros = microseconds % 1000  # Last 3 digits (0-999)
-        
-        mmm = str(milliseconds).zfill(3)
-        uuu = str(micros).zfill(3)
-        
-        # Single digit counter (cycles 1-9, then 0, then repeats)
-        counter = batch_counter % 10
-        if counter == 0:
-            counter = 0  # Keep 0 as 0
-        
-        # Build filename: HHMMSSmmmuuuC (13 digits)
-        filename = f"{time_part}{mmm}{uuu}{counter}{ext}"
-        
-        return filename
-    except Exception as e:
-        # Fallback: generate a simple unique filename
-        import uuid
-        return f"img{uuid.uuid4().hex[:10]}{original_ext or '.jpg'}"
+    return ImageService.generate_filename(batch_counter, original_ext)
 
 
 def generate_updated_image_filename(existing_path, new_ext=None):
     """
     Generate updated filename for EXISTING images (update/reupload).
-    Keeps the ORIGINAL 13-digit timestamp and adds underscore + 6-digit HHMMSS.
-    
-    Example: 
-    - First upload: 1432251234561.jpg (13 digits)
-    - First update: 1432251234561_163045.jpg (13 + 1 + 6 = 20 digits)
-    - Second update: 1432251234561_171230.jpg (same 13 digits, new 6-digit time)
-    
-    Args:
-        existing_path: The current file path or filename
-        new_ext: Optional new extension (if different from original)
-    
-    Returns:
-        New filename string (20 digits + extension)
     """
-    try:
-        # Extract just the filename from path
-        if existing_path and existing_path not in ['NOT_FOUND', '']:
-            filename = os.path.basename(existing_path)
-        else:
-            # No existing file - generate fresh name
-            return generate_image_filename(1, new_ext or '.jpg')
-        
-        # Get base name and extension
-        base_name, current_ext = os.path.splitext(filename)
-        
-        # Use new extension if provided, otherwise keep current
-        ext = new_ext.lower() if new_ext else current_ext.lower()
-        if not ext.startswith('.'):
-            ext = '.' + ext
-        
-        # Ensure valid image extension
-        valid_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
-        if ext not in valid_extensions:
-            ext = '.jpg'
-        
-        # Extract the ORIGINAL 13-digit timestamp from the filename
-        # Could be: 1432251234561 (13 digits) or 1432251234561_163045 (20 digits)
-        # We need to keep only the first 13 digits
-        
-        # Remove any underscore suffix first
-        if '_' in base_name:
-            original_13 = base_name.split('_')[0]
-        else:
-            original_13 = base_name
-        
-        # Validate it's 13 digits
-        if len(original_13) == 13 and original_13.isdigit():
-            # Valid original timestamp
-            pass
-        else:
-            # Filename doesn't follow expected pattern - generate fresh
-            return generate_image_filename(1, ext)
-        
-        # Generate new 6-digit time suffix: HHMMSS
-        time_suffix = datetime.now().strftime('%H%M%S')
-        
-        # Create new filename: original_13_digits + _ + 6_digit_time + ext
-        new_filename = f"{original_13}_{time_suffix}{ext}"
-        
-        return new_filename
-    except Exception as e:
-        # Fallback: generate a simple unique filename
-        import uuid
-        return f"updated_{uuid.uuid4().hex[:12]}{new_ext or '.jpg'}"
+    return ImageService.generate_updated_filename(existing_path, new_ext)
 
 
 def get_client_image_folder(client):
-    """
-    Get the folder path for storing client images.
-    Uses client's folder code: 5 chars from name + 5 unique chars.
-    Creates the folder if it doesn't exist.
-    
-    Returns: folder path relative to MEDIA_ROOT like 'adarshimg/{ABCDE12345}/'
-    """
-    # Ensure folder code is generated
-    if not client.image_folder_code:
-        client.generate_folder_code()
-        client.save(update_fields=['image_folder_code', 'image_folder_suffix'])
-    
-    folder_path = f"adarshimg/{client.image_folder_code}"
-    
-    # Ensure folder exists
-    from django.conf import settings
-    full_path = os.path.join(settings.MEDIA_ROOT, folder_path)
-    os.makedirs(full_path, exist_ok=True)
-    
-    return folder_path
+    """Get the folder path for storing client images."""
+    return ImageService.get_client_image_folder(client)
 
 
 # Counter for unique filenames within same millisecond (legacy - kept for backward compatibility)
@@ -172,16 +44,12 @@ _image_upload_counter = 0
 
 
 def safe_save_image(storage, file_path, file_content, fallback_name=None):
-    """
-    Safely save an image with fallback handling.
-    Returns (saved_path, renamed_filename, success)
-    """
+    """Safely save an image with fallback handling."""
     try:
         saved_path = storage.save(file_path, file_content)
         renamed_filename = os.path.basename(file_path)
         return saved_path, renamed_filename, True
     except Exception as e:
-        # Try with fallback name if provided
         if fallback_name:
             try:
                 fallback_path = os.path.dirname(file_path) + '/' + fallback_name
@@ -193,28 +61,8 @@ def safe_save_image(storage, file_path, file_content, fallback_name=None):
 
 
 def validate_image_bytes(image_bytes):
-    """
-    Validate that image bytes represent a valid image.
-    Returns (is_valid, error_message)
-    """
-    try:
-        if not image_bytes or len(image_bytes) < 100:
-            return False, "Image data is empty or too small"
-        
-        from PIL import Image
-        from io import BytesIO
-        
-        # Try to open and verify the image
-        img = Image.open(BytesIO(image_bytes))
-        img.verify()
-        
-        # Re-open to check it's actually readable
-        img = Image.open(BytesIO(image_bytes))
-        img.load()  # Force load to catch truncated images
-        
-        return True, None
-    except Exception as e:
-        return False, str(e)
+    """Validate that image bytes represent a valid image."""
+    return ImageService.validate_image_bytes(image_bytes)
 
 
 # ==================== ID CARD TABLE API ENDPOINTS ====================
@@ -225,53 +73,9 @@ def validate_image_bytes(image_bytes):
 def api_idcard_table_create(request, group_id):
     """API endpoint to create a new ID Card Table"""
     try:
-        group = get_object_or_404(IDCardGroup, id=group_id)
         data = json.loads(request.body)
-        
-        name = data.get('name', '').strip().upper()  # Convert to uppercase
-        if not name:
-            return JsonResponse({'success': False, 'message': 'Table name is required!'}, status=400)
-        
-        fields = data.get('fields', [])
-        if len(fields) > 20:
-            return JsonResponse({'success': False, 'message': 'Maximum 20 fields allowed!'}, status=400)
-        
-        # Validate fields structure
-        validated_fields = []
-        for idx, field in enumerate(fields):
-            field_name = field.get('name', '').strip().upper()  # Convert to uppercase
-            field_type = field.get('type', 'text')
-            if not field_name:
-                return JsonResponse({'success': False, 'message': f'Field {idx+1} name is required!'}, status=400)
-            
-            if field_type not in ['text', 'number', 'date', 'email', 'image', 'textarea']:
-                field_type = 'text'
-            
-            validated_fields.append({
-                'name': field_name,
-                'type': field_type,
-                'order': idx
-            })
-        
-        table = IDCardTable.objects.create(
-            group=group,
-            name=name,
-            fields=validated_fields,
-            is_active=True
-        )
-        
-        return JsonResponse({
-            'success': True,
-            'message': 'Table created successfully!',
-            'table': {
-                'id': table.id,
-                'name': table.name,
-                'fields': table.fields,
-                'is_active': table.is_active,
-                'created_at': table.created_at.strftime('%d-%b-%Y %I:%M %p'),
-                'updated_at': table.updated_at.strftime('%d-%b-%Y %I:%M %p'),
-            }
-        })
+        result = IDCardService.create_table(group_id, data)
+        return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON data!'}, status=400)
     except Exception as e:
@@ -283,22 +87,8 @@ def api_idcard_table_create(request, group_id):
 @api_super_admin_required
 def api_idcard_table_get(request, table_id):
     """API endpoint to get a single ID Card Table"""
-    try:
-        table = get_object_or_404(IDCardTable, id=table_id)
-        
-        return JsonResponse({
-            'success': True,
-            'table': {
-                'id': table.id,
-                'name': table.name,
-                'fields': table.fields,
-                'is_active': table.is_active,
-                'created_at': table.created_at.strftime('%d-%b-%Y %I:%M %p'),
-                'updated_at': table.updated_at.strftime('%d-%b-%Y %I:%M %p'),
-            }
-        })
-    except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+    result = IDCardService.get_table(table_id)
+    return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
 
 @csrf_exempt
@@ -307,50 +97,9 @@ def api_idcard_table_get(request, table_id):
 def api_idcard_table_update(request, table_id):
     """API endpoint to update an ID Card Table"""
     try:
-        table = get_object_or_404(IDCardTable, id=table_id)
         data = json.loads(request.body)
-        
-        name = data.get('name', '').strip().upper()  # Convert to uppercase
-        if not name:
-            return JsonResponse({'success': False, 'message': 'Table name is required!'}, status=400)
-        
-        fields = data.get('fields', [])
-        if len(fields) > 20:
-            return JsonResponse({'success': False, 'message': 'Maximum 20 fields allowed!'}, status=400)
-        
-        # Validate fields structure
-        validated_fields = []
-        for idx, field in enumerate(fields):
-            field_name = field.get('name', '').strip().upper()  # Convert to uppercase
-            field_type = field.get('type', 'text')
-            if not field_name:
-                return JsonResponse({'success': False, 'message': f'Field {idx+1} name is required!'}, status=400)
-            
-            if field_type not in ['text', 'number', 'date', 'email', 'image', 'textarea']:
-                field_type = 'text'
-            
-            validated_fields.append({
-                'name': field_name,
-                'type': field_type,
-                'order': idx
-            })
-        
-        table.name = name
-        table.fields = validated_fields
-        table.save()
-        
-        return JsonResponse({
-            'success': True,
-            'message': 'Table updated successfully!',
-            'table': {
-                'id': table.id,
-                'name': table.name,
-                'fields': table.fields,
-                'is_active': table.is_active,
-                'created_at': table.created_at.strftime('%d-%b-%Y %I:%M %p'),
-                'updated_at': table.updated_at.strftime('%d-%b-%Y %I:%M %p'),
-            }
-        })
+        result = IDCardService.update_table(table_id, data)
+        return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON data!'}, status=400)
     except Exception as e:
@@ -362,17 +111,8 @@ def api_idcard_table_update(request, table_id):
 @api_super_admin_required
 def api_idcard_table_delete(request, table_id):
     """API endpoint to delete an ID Card Table"""
-    try:
-        table = get_object_or_404(IDCardTable, id=table_id)
-        table_name = table.name
-        table.delete()
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'Table "{table_name}" deleted successfully!'
-        })
-    except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+    result = IDCardService.delete_table(table_id)
+    return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
 
 @csrf_exempt
@@ -380,28 +120,8 @@ def api_idcard_table_delete(request, table_id):
 @api_super_admin_required
 def api_idcard_table_toggle_status(request, table_id):
     """API endpoint to toggle ID Card Table active/inactive status"""
-    try:
-        table = get_object_or_404(IDCardTable, id=table_id)
-        
-        if table.is_active:
-            table.is_active = False
-            status = 'inactive'
-            status_display = 'Inactive'
-        else:
-            table.is_active = True
-            status = 'active'
-            status_display = 'Active'
-        
-        table.save()
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'Table status changed to {status_display}!',
-            'status': status,
-            'status_display': status_display
-        })
-    except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+    result = IDCardService.toggle_table_status(table_id)
+    return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
 
 @csrf_exempt
@@ -409,28 +129,8 @@ def api_idcard_table_toggle_status(request, table_id):
 @api_super_admin_required
 def api_idcard_table_list(request, group_id):
     """API endpoint to list all ID Card Tables for a group"""
-    try:
-        group = get_object_or_404(IDCardGroup, id=group_id)
-        tables = IDCardTable.objects.filter(group=group)
-        
-        table_list = []
-        for table in tables:
-            table_list.append({
-                'id': table.id,
-                'name': table.name,
-                'fields': table.fields,
-                'field_count': len(table.fields),
-                'is_active': table.is_active,
-                'created_at': table.created_at.strftime('%d-%b-%Y %I:%M %p'),
-                'updated_at': table.updated_at.strftime('%d-%b-%Y %I:%M %p'),
-            })
-        
-        return JsonResponse({
-            'success': True,
-            'tables': table_list
-        })
-    except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+    result = IDCardService.list_tables(group_id)
+    return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
 
 # ==================== ID CARD API ENDPOINTS ====================
@@ -440,108 +140,12 @@ def api_idcard_table_list(request, group_id):
 @api_super_admin_required
 def api_idcard_list(request, table_id):
     """API endpoint to list ID Cards for a table with pagination support for lazy loading"""
-    try:
-        table = get_object_or_404(IDCardTable, id=table_id)
-        status_filter = request.GET.get('status', None)
-        
-        # Pagination parameters
-        offset = int(request.GET.get('offset', 0))
-        limit = int(request.GET.get('limit', 100))
-        
-        # Base queryset ordered by ID
-        cards_query = IDCard.objects.filter(table=table).order_by('id')
-        if status_filter and status_filter in ['pending', 'verified', 'pool', 'approved', 'download', 'reprint']:
-            cards_query = cards_query.filter(status=status_filter)
-        
-        # Get total count before slicing
-        total_count = cards_query.count()
-        
-        # Apply pagination
-        cards = cards_query[offset:offset + limit]
-        
-        # Image field detection patterns
-        IMAGE_FIELD_TYPES = ['photo', 'mother_photo', 'father_photo', 'barcode', 'qr_code', 'signature', 'image']
-        IMAGE_FIELD_NAME_PATTERNS = ['photo', 'sign', 'signature', 'barcode', 'qr']
-        
-        def is_image_field_by_name(field_name):
-            if not field_name:
-                return False
-            name_lower = field_name.lower()
-            return any(pattern in name_lower for pattern in IMAGE_FIELD_NAME_PATTERNS)
-        
-        def get_effective_field_type(field):
-            """Get field type - use 'image' if name suggests it's an image field"""
-            field_type = field.get('type', 'text')
-            field_name = field.get('name', '')
-            if field_type in IMAGE_FIELD_TYPES:
-                return field_type
-            if is_image_field_by_name(field_name):
-                return 'image'  # Override to image type
-            return field_type
-        
-        card_list = []
-        for idx, card in enumerate(cards):
-            # Build ordered fields based on table structure
-            ordered_fields = []
-            field_data = card.field_data or {}
-            
-            # Create case-insensitive lookup for field_data
-            field_data_normalized = {}
-            for key, value in field_data.items():
-                field_data_normalized[key.upper()] = value
-            
-            for field in table.fields:
-                field_name = field['name']
-                field_type = get_effective_field_type(field)  # Use effective type
-                # Try exact match first, then case-insensitive match
-                field_value = field_data.get(field_name, '')
-                if not field_value:
-                    field_value = field_data_normalized.get(field_name.upper(), '')
-                ordered_fields.append({
-                    'name': field_name,
-                    'type': field_type,
-                    'value': field_value,
-                })
-            
-            card_list.append({
-                'id': card.id,
-                'sr_no': offset + idx + 1,
-                'field_data': card.field_data,
-                'ordered_fields': ordered_fields,
-                'photo': card.photo.url if card.photo else None,
-                'status': card.status,
-                'status_display': card.get_status_display(),
-                'created_at': card.created_at.strftime('%d-%b-%Y %I:%M %p'),
-                'updated_at': card.updated_at.strftime('%d-%b-%Y %I:%M %p'),
-            })
-        
-        # Get status counts
-        status_counts = {
-            'pending': IDCard.objects.filter(table=table, status='pending').count(),
-            'verified': IDCard.objects.filter(table=table, status='verified').count(),
-            'pool': IDCard.objects.filter(table=table, status='pool').count(),
-            'approved': IDCard.objects.filter(table=table, status='approved').count(),
-            'download': IDCard.objects.filter(table=table, status='download').count(),
-            'reprint': IDCard.objects.filter(table=table, status='reprint').count(),
-            'total': IDCard.objects.filter(table=table).count(),
-        }
-        
-        return JsonResponse({
-            'success': True,
-            'cards': card_list,
-            'total_count': total_count,
-            'offset': offset,
-            'limit': limit,
-            'has_more': offset + limit < total_count,
-            'status_counts': status_counts,
-            'table': {
-                'id': table.id,
-                'name': table.name,
-                'fields': table.fields,
-            }
-        })
-    except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+    status_filter = request.GET.get('status', None)
+    offset = int(request.GET.get('offset', 0))
+    limit = int(request.GET.get('limit', 100))
+    
+    result = IDCardService.list_cards(table_id, status_filter, offset, limit)
+    return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
 
 @csrf_exempt
@@ -549,25 +153,9 @@ def api_idcard_list(request, table_id):
 @api_super_admin_required
 def api_idcard_all_ids(request, table_id):
     """API endpoint to get all card IDs for a table (for Select All functionality)"""
-    try:
-        table = get_object_or_404(IDCardTable, id=table_id)
-        status_filter = request.GET.get('status', None)
-        
-        # Base queryset
-        cards_query = IDCard.objects.filter(table=table)
-        if status_filter and status_filter in ['pending', 'verified', 'pool', 'approved', 'download', 'reprint']:
-            cards_query = cards_query.filter(status=status_filter)
-        
-        # Get only IDs (efficient query)
-        card_ids = list(cards_query.values_list('id', flat=True))
-        
-        return JsonResponse({
-            'success': True,
-            'card_ids': card_ids,
-            'total_count': len(card_ids)
-        })
-    except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+    status_filter = request.GET.get('status', None)
+    result = IDCardService.get_all_card_ids(table_id, status_filter)
+    return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
 
 @csrf_exempt
@@ -912,33 +500,12 @@ def api_idcard_delete(request, card_id):
 def api_idcard_update_field(request, card_id):
     """API endpoint to update a single field on an ID Card (for inline editing)"""
     try:
-        card = get_object_or_404(IDCard, id=card_id)
         data = json.loads(request.body)
-        
         field = data.get('field')
         value = data.get('value', '')
         
-        if not field:
-            return JsonResponse({'success': False, 'message': 'Field name is required!'}, status=400)
-        
-        # Update the field_data
-        field_data = card.field_data or {}
-        
-        # Convert to uppercase if it's a string
-        if isinstance(value, str):
-            field_data[field] = value.upper()
-        else:
-            field_data[field] = value
-        
-        card.field_data = field_data
-        card.save()
-        
-        return JsonResponse({
-            'success': True,
-            'message': 'Field updated successfully!',
-            'field': field,
-            'value': field_data[field]
-        })
+        result = IDCardService.update_single_field(card_id, field, value)
+        return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON data!'}, status=400)
     except Exception as e:
@@ -951,22 +518,11 @@ def api_idcard_update_field(request, card_id):
 def api_idcard_change_status(request, card_id):
     """API endpoint to change an ID Card's status"""
     try:
-        card = get_object_or_404(IDCard, id=card_id)
         data = json.loads(request.body)
-        
         new_status = data.get('status')
-        if new_status not in ['pending', 'verified', 'pool', 'approved', 'download', 'reprint']:
-            return JsonResponse({'success': False, 'message': 'Invalid status!'}, status=400)
         
-        card.status = new_status
-        card.save()
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'Card status changed to {card.get_status_display()}!',
-            'status': card.status,
-            'status_display': card.get_status_display()
-        })
+        result = IDCardService.change_status(card_id, new_status)
+        return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON data!'}, status=400)
     except Exception as e:
@@ -979,22 +535,12 @@ def api_idcard_change_status(request, card_id):
 def api_idcard_bulk_status(request, table_id):
     """API endpoint to change status of multiple ID Cards"""
     try:
-        table = get_object_or_404(IDCardTable, id=table_id)
         data = json.loads(request.body)
-        
         card_ids = data.get('card_ids', [])
         new_status = data.get('status')
         
-        if new_status not in ['pending', 'verified', 'pool', 'approved', 'download', 'reprint']:
-            return JsonResponse({'success': False, 'message': 'Invalid status!'}, status=400)
-        
-        updated_count = IDCard.objects.filter(table=table, id__in=card_ids).update(status=new_status)
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'{updated_count} cards updated to {new_status}!',
-            'updated_count': updated_count
-        })
+        result = IDCardService.bulk_change_status(table_id, card_ids, new_status)
+        return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON data!'}, status=400)
     except Exception as e:
@@ -1007,22 +553,12 @@ def api_idcard_bulk_status(request, table_id):
 def api_idcard_bulk_delete(request, table_id):
     """API endpoint to delete multiple ID Cards"""
     try:
-        table = get_object_or_404(IDCardTable, id=table_id)
         data = json.loads(request.body)
-        
         card_ids = data.get('card_ids', [])
         delete_all = data.get('delete_all', False)
         
-        if delete_all:
-            deleted_count, _ = IDCard.objects.filter(table=table).delete()
-        else:
-            deleted_count, _ = IDCard.objects.filter(table=table, id__in=card_ids).delete()
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'{deleted_count} cards deleted successfully!',
-            'deleted_count': deleted_count
-        })
+        result = IDCardService.bulk_delete(table_id, card_ids, delete_all)
+        return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON data!'}, status=400)
     except Exception as e:
@@ -1034,62 +570,9 @@ def api_idcard_bulk_delete(request, table_id):
 @api_super_admin_required
 def api_idcard_search(request, table_id):
     """API endpoint to search ID Cards across all statuses"""
-    try:
-        table = get_object_or_404(IDCardTable, id=table_id)
-        query = request.GET.get('q', '').strip().upper()
-        
-        if not query or len(query) < 2:
-            return JsonResponse({
-                'success': True,
-                'results': [],
-                'message': 'Please enter at least 2 characters to search'
-            })
-        
-        # Get all cards for this table
-        cards = IDCard.objects.filter(table=table)
-        
-        results = []
-        for card in cards:
-            # Search in field_data
-            field_data = card.field_data or {}
-            match_found = False
-            matched_field = ''
-            matched_value = ''
-            
-            for field_name, field_value in field_data.items():
-                if field_value and query in str(field_value).upper():
-                    match_found = True
-                    matched_field = field_name
-                    matched_value = str(field_value)
-                    break
-            
-            if match_found:
-                # Get the first text field as display name
-                display_name = ''
-                for field in table.fields:
-                    if field.get('type') in ['text', 'textarea'] and field.get('name') in field_data:
-                        display_name = field_data.get(field.get('name'), '')
-                        break
-                
-                results.append({
-                    'id': card.id,
-                    'display_name': display_name or f'Card #{card.id}',
-                    'status': card.status,
-                    'status_display': card.get_status_display(),
-                    'matched_field': matched_field,
-                    'matched_value': matched_value,
-                    'photo': card.photo.url if card.photo else None,
-                    'field_data': card.field_data,
-                })
-        
-        return JsonResponse({
-            'success': True,
-            'results': results,
-            'count': len(results),
-            'query': query
-        })
-    except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+    query = request.GET.get('q', '').strip()
+    result = IDCardService.search_cards(table_id, query)
+    return JsonResponse(result.to_response_dict(), status=200 if result.success else 400)
 
 
 @csrf_exempt
@@ -1099,16 +582,7 @@ def api_table_status_counts(request, table_id):
     """API endpoint to get status counts for a table"""
     try:
         table = get_object_or_404(IDCardTable, id=table_id)
-        
-        status_counts = {
-            'pending': IDCard.objects.filter(table=table, status='pending').count(),
-            'verified': IDCard.objects.filter(table=table, status='verified').count(),
-            'pool': IDCard.objects.filter(table=table, status='pool').count(),
-            'approved': IDCard.objects.filter(table=table, status='approved').count(),
-            'download': IDCard.objects.filter(table=table, status='download').count(),
-            'reprint': IDCard.objects.filter(table=table, status='reprint').count(),
-            'total': IDCard.objects.filter(table=table).count(),
-        }
+        status_counts = IDCardService.get_status_counts(table)
         
         return JsonResponse({
             'success': True,
@@ -1185,11 +659,15 @@ def api_idcard_bulk_upload(request, table_id):
                                     image_bytes = zf.read(zip_info.filename)
                                     is_valid, error_msg = validate_image_bytes(image_bytes)
                                     if is_valid:
-                                        # Store with UPPERCASE key for case-insensitive matching
-                                        zip_photos_by_field[field_name][name_without_ext.upper()] = {
-                                            'bytes': image_bytes,
-                                            'ext': ext
-                                        }
+                                        # Use normalized key for robust case/whitespace-insensitive matching
+                                        from ..services.base import BaseService
+                                        normalized_key = BaseService.normalize_image_identifier(name_without_ext)
+                                        if normalized_key:
+                                            zip_photos_by_field[field_name][normalized_key] = {
+                                                'bytes': image_bytes,
+                                                'ext': ext,
+                                                'original_name': base_name
+                                            }
                                 except Exception as img_read_err:
                                     continue
                 except Exception as zip_error:
@@ -1223,11 +701,15 @@ def api_idcard_bulk_upload(request, table_id):
                                 image_bytes = zf.read(zip_info.filename)
                                 is_valid, error_msg = validate_image_bytes(image_bytes)
                                 if is_valid:
-                                    # Store with UPPERCASE key for case-insensitive matching
-                                    zip_photos_by_field[first_image_field][name_without_ext.upper()] = {
-                                        'bytes': image_bytes,
-                                        'ext': ext
-                                    }
+                                    # Use normalized key for robust matching
+                                    from ..services.base import BaseService
+                                    normalized_key = BaseService.normalize_image_identifier(name_without_ext)
+                                    if normalized_key:
+                                        zip_photos_by_field[first_image_field][normalized_key] = {
+                                            'bytes': image_bytes,
+                                            'ext': ext,
+                                            'original_name': base_name
+                                        }
                             except Exception as img_read_err:
                                 continue
             except Exception as zip_error:
@@ -1548,12 +1030,13 @@ def api_idcard_bulk_upload(request, table_id):
                                     else:
                                         photo_column_value = str(cell_value).strip()
                         
-                        # Try to match photo from ZIP - CASE SENSITIVE match
-                        # Check if this specific field has ZIP photos
+                        # Try to match photo from ZIP using normalized matching
+                        # This handles: case insensitivity, whitespace, numeric formats
                         field_zip_photos = zip_photos_by_field.get(img_field, {})
                         
-                        # Normalize photo_column_value to uppercase for case-insensitive matching
-                        photo_key = photo_column_value.upper() if photo_column_value else None
+                        # Normalize the Excel cell value for matching
+                        from ..services.base import BaseService
+                        photo_key = BaseService.normalize_image_identifier(photo_column_value) if photo_column_value else None
                         
                         # Debug first few rows
                         if row_num <= 5:
@@ -1700,12 +1183,13 @@ def api_idcard_bulk_upload(request, table_id):
                                         photo_column_value = str(cell_value).strip()
                                     break
                         
-                        # Try to match photo from ZIP - CASE INSENSITIVE match
-                        # Check if this specific field has ZIP photos
+                        # Try to match photo from ZIP using normalized matching
+                        # This handles: case insensitivity, whitespace, numeric formats
                         field_zip_photos = zip_photos_by_field.get(img_field, {})
                         
-                        # Normalize photo_column_value to uppercase for case-insensitive matching
-                        photo_key = photo_column_value.upper() if photo_column_value else None
+                        # Normalize the CSV cell value for matching
+                        from ..services.base import BaseService
+                        photo_key = BaseService.normalize_image_identifier(photo_column_value) if photo_column_value else None
                         
                         if photo_key and field_zip_photos and photo_key in field_zip_photos:
                             try:
@@ -2025,11 +1509,15 @@ def api_idcard_reupload_images(request, table_id):
                             # Validate image before storing
                             is_valid, error_msg = validate_image_bytes(image_bytes)
                             if is_valid:
-                                zip_photos[name_without_ext] = {
-                                    'bytes': image_bytes,
-                                    'ext': ext,
-                                    'original_name': base_name
-                                }
+                                # Use normalized key for consistent matching
+                                from ..services.base import BaseService
+                                normalized_key = BaseService.normalize_image_identifier(name_without_ext)
+                                if normalized_key:
+                                    zip_photos[normalized_key] = {
+                                        'bytes': image_bytes,
+                                        'ext': ext,
+                                        'original_name': base_name
+                                    }
                             else:
                                 invalid_images += 1
                                 print(f"Invalid image skipped in reupload ZIP: {base_name} - {error_msg}")
@@ -2049,6 +1537,9 @@ def api_idcard_reupload_images(request, table_id):
         cards_updated = 0
         batch_counter = 0
         
+        # Import once for the loop
+        from ..services.base import BaseService
+        
         for card in cards_to_process:
             field_data = card.field_data or {}
             card_updated = False
@@ -2061,7 +1552,7 @@ def api_idcard_reupload_images(request, table_id):
                 if not current_value or current_value.strip() == '':
                     continue
                 
-                # Build matching keys for this specific field
+                # Build matching keys for this specific field (normalized for consistent matching)
                 matching_keys = []
                 existing_image_path = None
                 
@@ -2069,26 +1560,26 @@ def api_idcard_reupload_images(request, table_id):
                 if current_value.startswith('PENDING:'):
                     pending_ref = current_value[8:]
                     existing_image_path = 'PENDING'
-                    ref_no_ext = os.path.splitext(pending_ref)[0] if '.' in pending_ref else pending_ref
-                    if ref_no_ext:
-                        matching_keys.append(ref_no_ext)
-                    if pending_ref:
-                        matching_keys.append(pending_ref)
+                    # Normalize the pending reference for matching
+                    normalized_ref = BaseService.normalize_image_identifier(pending_ref)
+                    if normalized_ref:
+                        matching_keys.append(normalized_ref)
                 elif current_value == 'NOT_FOUND':
                     existing_image_path = 'NOT_FOUND'
                 elif '/' in current_value:
-                    # It's a path - extract filename without extension
+                    # It's a path - extract filename without extension and normalize
                     existing_image_path = current_value
                     stored_filename = os.path.splitext(os.path.basename(current_value))[0]
-                    if stored_filename:
-                        matching_keys.append(stored_filename)
+                    normalized_key = BaseService.normalize_image_identifier(stored_filename)
+                    if normalized_key:
+                        matching_keys.append(normalized_key)
                 else:
-                    # Direct reference (like "1" or "john")
-                    ref_name = os.path.splitext(current_value)[0] if '.' in current_value else current_value
-                    if ref_name:
-                        matching_keys.append(ref_name)
+                    # Direct reference (like "1" or "john") - normalize it
+                    normalized_ref = BaseService.normalize_image_identifier(current_value)
+                    if normalized_ref:
+                        matching_keys.append(normalized_ref)
                 
-                # Try to find a match in the ZIP photos
+                # Try to find a match in the ZIP photos (keys are already normalized)
                 matched_photo_info = None
                 for key in matching_keys:
                     if key in zip_photos:

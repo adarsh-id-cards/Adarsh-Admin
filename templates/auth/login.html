@@ -51,9 +51,9 @@
         
         .login-card {
             background: var(--auth-card-bg);
-            border-radius: 20px;
-            padding: 36px 48px;
-            box-shadow: 0 25px 60px -12px rgba(102, 126, 234, 0.25), 0 0 0 1px var(--auth-border);
+            border-radius: 0;
+            padding: 28px 36px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             border: 1px solid var(--auth-border);
             backdrop-filter: blur(20px);
             max-height: 90vh;
@@ -75,21 +75,21 @@
         
         .login-header {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
         }
         
         .login-logo {
-            width: 60px;
-            height: 60px;
+            width: 56px;
+            height: 56px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 14px;
+            border-radius: 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 14px;
-            font-size: 26px;
+            margin: 0 auto 12px;
+            font-size: 24px;
             color: white;
-            box-shadow: 0 6px 18px rgba(102, 126, 234, 0.35);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
         }
         
         .login-header h1 {
@@ -108,8 +108,8 @@
         .step-indicator {
             display: flex;
             justify-content: center;
-            gap: 8px;
-            margin-bottom: 20px;
+            gap: 6px;
+            margin-bottom: 16px;
         }
         
         .step-dot {
@@ -164,32 +164,31 @@
         .role-options {
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            margin-bottom: 20px;
+            gap: 8px;
+            margin-bottom: 16px;
         }
         
         .role-option {
             display: flex;
             align-items: center;
-            gap: 14px;
-            padding: 12px 16px;
+            gap: 12px;
+            padding: 10px 14px;
             background: rgba(102, 126, 234, 0.05);
-            border: 2px solid var(--auth-border);
-            border-radius: 12px;
+            border: 1px solid var(--auth-border);
+            border-radius: 0;
             cursor: pointer;
-            transition: all 0.25s ease;
+            transition: all 0.2s ease;
         }
         
         .role-option:hover {
             border-color: #667eea;
             background: rgba(102, 126, 234, 0.12);
-            transform: translateX(4px);
         }
         
         .role-option.selected {
             border-color: #667eea;
             background: rgba(102, 126, 234, 0.18);
-            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.2);
+            box-shadow: none;
         }
         
         .role-option input {
@@ -197,15 +196,15 @@
         }
         
         .role-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: 10px;
+            width: 40px;
+            height: 40px;
+            border-radius: 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
+            font-size: 16px;
             color: white;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
         }
         
         .role-icon.super-admin { background: linear-gradient(135deg, #667eea, #764ba2); }
@@ -245,15 +244,15 @@
         
         /* Form Elements */
         .form-group {
-            margin-bottom: 16px;
+            margin-bottom: 14px;
         }
         
         .form-group label {
             display: block;
             color: var(--auth-text-secondary);
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 500;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
         
         .input-wrapper {
@@ -271,20 +270,20 @@
         
         .input-wrapper input {
             width: 100%;
-            padding: 12px 12px 12px 44px;
+            padding: 10px 10px 10px 40px;
             background: rgba(102, 126, 234, 0.05);
-            border: 2px solid var(--auth-border);
-            border-radius: 10px;
+            border: 1px solid var(--auth-border);
+            border-radius: 0;
             color: var(--auth-text-primary);
-            font-size: 15px;
-            transition: all 0.25s ease;
+            font-size: 14px;
+            transition: all 0.2s ease;
         }
         
         .input-wrapper input:focus {
             outline: none;
             border-color: #667eea;
             background: rgba(102, 126, 234, 0.1);
-            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
         }
         
         .input-wrapper input::placeholder {
@@ -315,8 +314,8 @@
             padding: 10px 14px;
             background: rgba(102, 126, 234, 0.12);
             border: 1px solid rgba(102, 126, 234, 0.3);
-            border-radius: 10px;
-            margin-bottom: 16px;
+            border-radius: 0;
+            margin-bottom: 14px;
         }
         
         .user-display i {
@@ -342,13 +341,13 @@
         /* Buttons */
         .btn {
             width: 100%;
-            padding: 12px;
+            padding: 10px;
             border: none;
-            border-radius: 10px;
-            font-size: 15px;
+            border-radius: 4px;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.25s ease;
+            transition: all 0.2s ease;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -358,12 +357,11 @@
         .btn-primary {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.35);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.25);
         }
         
         .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.45);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.35);
         }
         
         .btn-primary:disabled {
@@ -376,8 +374,8 @@
         .btn-secondary {
             background: transparent;
             color: var(--auth-text-secondary);
-            border: 2px solid var(--auth-border);
-            margin-top: 10px;
+            border: 1px solid var(--auth-border);
+            margin-top: 8px;
         }
         
         .btn-secondary:hover {
@@ -416,31 +414,31 @@
         }
         
         .otp-inputs input {
-            width: 44px;
-            height: 50px;
+            width: 42px;
+            height: 46px;
             text-align: center;
-            font-size: 22px;
+            font-size: 20px;
             font-weight: 600;
             background: rgba(102, 126, 234, 0.05);
-            border: 2px solid var(--auth-border);
-            border-radius: 10px;
+            border: 1px solid var(--auth-border);
+            border-radius: 0;
             color: var(--auth-text-primary);
-            transition: all 0.25s ease;
+            transition: all 0.2s ease;
         }
         
         .otp-inputs input:focus {
             outline: none;
             border-color: #667eea;
             background: rgba(102, 126, 234, 0.1);
-            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
         }
         
         /* Error/Success Messages */
         .message {
             padding: 10px 14px;
-            border-radius: 8px;
+            border-radius: 0;
             font-size: 13px;
-            margin-bottom: 16px;
+            margin-bottom: 14px;
             display: none;
         }
         
@@ -498,9 +496,9 @@
             background: rgba(246, 173, 85, 0.12);
             border: 1px solid rgba(246, 173, 85, 0.35);
             padding: 10px;
-            border-radius: 8px;
+            border-radius: 0;
             text-align: center;
-            margin-bottom: 16px;
+            margin-bottom: 14px;
         }
         
         .dev-otp span {
@@ -519,8 +517,8 @@
         /* Footer branding */
         .login-footer {
             text-align: center;
-            margin-top: 18px;
-            padding-top: 14px;
+            margin-top: 14px;
+            padding-top: 12px;
             border-top: 1px solid var(--auth-border);
         }
         

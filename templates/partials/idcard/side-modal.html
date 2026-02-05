@@ -17,49 +17,32 @@
       <form id="cardForm">
         <!-- ========== ALL IMAGE FIELDS AT TOP ========== -->
         <div class="modal-images-section">
-          <!-- Main Photo Section (Large) -->
-          <div class="main-photo-container">
-            <div class="form-photo-preview photo-type" id="formPhotoPreview">
-              <i class="fa-solid fa-user"></i>
-            </div>
-            <div class="form-photo-controls">
-              <label class="photo-upload-label" id="photoUploadLabel">
-                <input type="file" id="formPhotoInput" accept="image/*" hidden>
-                <span class="btn btn-upload">
-                  <i class="fa-solid fa-camera"></i> Upload Photo
-                </span>
-              </label>
-              <p class="photo-hint">Passport size photo (35x45mm)</p>
-              <div class="photo-path-display" id="photoPathDisplay">No image</div>
-            </div>
-          </div>
-          
-          <!-- Other Image Fields (F PHOTO, M PHOTO, SIGN, etc.) -->
-          <div class="other-images-grid">
+          <!-- All Image Fields in Grid (including PHOTO) -->
+          <div class="images-grid">
             {% for field in table.fields %}
               {% check_image_field field.type field.name as is_img %}
-              {% if is_img and field.name|upper != 'PHOTO' %}
+              {% if is_img %}
               <div class="image-field-card {{ field.name|get_image_class }}" data-field-name="{{ field.name }}">
                 <div class="image-field-label">{{ field.name|expand_field_name }}</div>
-                <div class="image-preview-box {{ field.name|get_image_class }}" id="preview_{{ forloop.counter }}">
-                  <i class="fa-solid fa-image"></i>
+                <div class="image-preview-box {{ field.name|get_image_class }}" id="preview_{{ field.name|slugify }}">
+                  <i class="fa-solid fa-{% if field.name|upper == 'PHOTO' %}user{% elif 'sign' in field.name|lower %}signature{% else %}image{% endif %}"></i>
                 </div>
                 <div class="image-field-controls">
                   <label class="image-upload-btn">
                     <input type="file" 
-                           id="field_{{ forloop.counter }}" 
+                           id="field_img_{{ field.name|slugify }}" 
                            name="{{ field.name }}" 
                            class="form-control image-input"
                            data-field-name="{{ field.name }}"
                            data-field-type="image"
-                           data-preview-id="preview_{{ forloop.counter }}"
+                           data-preview-id="preview_{{ field.name|slugify }}"
                            accept="image/*" hidden>
                     <span class="btn btn-upload-field">
                       <i class="fa-solid fa-upload"></i> Upload
                     </span>
                   </label>
                 </div>
-                <div class="image-path-display" id="path_{{ forloop.counter }}">No image</div>
+                <div class="image-path-display" id="path_{{ field.name|slugify }}">No image</div>
               </div>
               {% endif %}
             {% endfor %}

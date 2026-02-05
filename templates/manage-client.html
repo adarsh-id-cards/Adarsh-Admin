@@ -562,7 +562,10 @@
                 </tr>
                 {% empty %}
                 <tr class="no-data-row">
-                    <td colspan="6" style="text-align: center;">No clients found</td>
+                    <td colspan="6" class="no-data">
+                        <i class="fa-solid fa-building-slash"></i>
+                        <span>No clients found</span>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>

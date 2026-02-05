@@ -1,0 +1,67 @@
+# render.yaml - Render Infrastructure as Code
+# ============================================
+# This file defines your Render service configuration.
+# Place it in your repository root for automatic deployment.
+#
+# Documentation: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: adarsh-admin
+    runtime: python
+    region: oregon  # or singapore, frankfurt, ohio
+    plan: free      # free, starter, standard, pro
+
+    # Build settings
+    buildCommand: |
+      pip install -r requirements.txt
+      python manage.py collectstatic --no-input
+
+    # Start command - runs startup.py BEFORE gunicorn
+    startCommand: python startup.py && gunicorn config.wsgi
+
+    # Environment variables
+    envVars:
+      # Required
+      - key: RENDER
+        value: true
+
+      - key: DEBUG
+        value: false
+
+      - key: SECRET_KEY
+        generateValue: true  # Render generates a random secret
+
+      - key: ALLOWED_HOSTS
+        value: .onrender.com
+
+      # Database (auto-linked if using Render PostgreSQL)
+      - key: DATABASE_URL
+        fromDatabase:
+          name: adarsh-db
+          property: connectionString
+
+      # Superuser credentials
+      - key: DJANGO_SUPERUSER_USERNAME
+        value: admin
+
+      - key: DJANGO_SUPERUSER_EMAIL
+        value: admin@mail.com
+
+      - key: DJANGO_SUPERUSER_PASSWORD
+        sync: false  # Mark as sensitive - set manually in dashboard
+
+      # Python settings
+      - key: PYTHON_VERSION
+        value: 3.11.4
+
+      - key: PYTHONUNBUFFERED
+        value: "1"
+
+# Database (if using Render PostgreSQL)
+databases:
+  - name: adarsh-db
+    plan: free
+    region: oregon
+    databaseName: adarsh_admin
+    user: adarsh_user

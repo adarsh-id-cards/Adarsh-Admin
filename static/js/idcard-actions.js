@@ -134,30 +134,65 @@
                 }
             }
             
-            // Escape - Close any open modal
+            // Escape - Close any open modal (unified handler)
             if (e.key === 'Escape') {
                 // Close side modal
-                if (typeof closeSideModal === 'function') {
-                    const sideModal = document.getElementById('sideModal');
-                    if (sideModal && sideModal.classList.contains('active')) {
-                        closeSideModal();
-                        e.preventDefault();
-                        return;
-                    }
+                const sideModal = document.getElementById('sideModalOverlay');
+                if (sideModal && sideModal.classList.contains('active')) {
+                    if (typeof closeSideModal === 'function') closeSideModal();
+                    e.preventDefault();
+                    return;
                 }
                 
-                // Close delete modal
+                // Close permanent delete modal
                 const deleteModal = document.getElementById('deleteModalOverlay');
                 if (deleteModal && deleteModal.classList.contains('active')) {
-                    deleteModal.classList.remove('active');
+                    if (typeof closeDeleteModalFn === 'function') closeDeleteModalFn();
+                    else deleteModal.classList.remove('active');
+                    document.body.style.overflow = '';
+                    e.preventDefault();
+                    return;
+                }
+                
+                // Close simple delete modal
+                const simpleDeleteModal = document.getElementById('simpleDeleteModalOverlay');
+                if (simpleDeleteModal && simpleDeleteModal.classList.contains('active')) {
+                    if (typeof closeSimpleDeleteModalFn === 'function') closeSimpleDeleteModalFn();
+                    else simpleDeleteModal.classList.remove('active');
+                    document.body.style.overflow = '';
+                    e.preventDefault();
+                    return;
+                }
+                
+                // Close upload modal
+                const uploadModal = document.getElementById('uploadModalOverlay');
+                if (uploadModal && uploadModal.classList.contains('active')) {
+                    uploadModal.classList.remove('active');
+                    document.body.style.overflow = '';
+                    e.preventDefault();
+                    return;
+                }
+                
+                // Close image sort modal
+                const imageSortModal = document.getElementById('imageSortModalOverlay');
+                if (imageSortModal && imageSortModal.classList.contains('active')) {
+                    imageSortModal.classList.remove('active');
                     e.preventDefault();
                     return;
                 }
                 
                 // Close search all modal
-                const searchAllModal = document.getElementById('searchAllModal');
+                const searchAllModal = document.getElementById('searchAllModalOverlay');
                 if (searchAllModal && searchAllModal.classList.contains('active')) {
                     searchAllModal.classList.remove('active');
+                    e.preventDefault();
+                    return;
+                }
+                
+                // Close doc format modal
+                const docFormatModal = document.getElementById('docFormatModalOverlay');
+                if (docFormatModal && docFormatModal.classList.contains('active')) {
+                    docFormatModal.classList.remove('active');
                     e.preventDefault();
                     return;
                 }

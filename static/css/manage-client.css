@@ -24,21 +24,21 @@
    TABLE COLUMN WIDTHS - Client Specific
    =========================================== */
 /* Name column */
-th:nth-child(1), td:nth-child(1) {
+th:nth-child(1), td:nth-child(1):not(.no-data) {
     width: auto;
     min-width: 180px;
     text-align: left;
 }
 
 /* Email column */
-th:nth-child(2), td:nth-child(2) {
+th:nth-child(2), td:nth-child(2):not(.no-data) {
     width: auto;
     min-width: 200px;
     text-align: left;
 }
 
 /* Mobile column */
-th:nth-child(3), td:nth-child(3) {
+th:nth-child(3), td:nth-child(3):not(.no-data) {
     width: 110px;
     min-width: 110px;
     max-width: 110px;
@@ -47,7 +47,7 @@ th:nth-child(3), td:nth-child(3) {
 }
 
 /* Status column */
-th:nth-child(4), td:nth-child(4) {
+th:nth-child(4), td:nth-child(4):not(.no-data) {
     width: 100px;
     min-width: 100px;
     max-width: 100px;
@@ -56,7 +56,7 @@ th:nth-child(4), td:nth-child(4) {
 }
 
 /* Create At column */
-th:nth-child(5), td:nth-child(5) {
+th:nth-child(5), td:nth-child(5):not(.no-data) {
     width: 150px;
     min-width: 150px;
     max-width: 150px;
@@ -65,7 +65,7 @@ th:nth-child(5), td:nth-child(5) {
 }
 
 /* Updated At column */
-th:nth-child(6), td:nth-child(6) {
+th:nth-child(6), td:nth-child(6):not(.no-data) {
     width: 150px;
     min-width: 150px;
     max-width: 150px;

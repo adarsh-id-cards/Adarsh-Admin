@@ -51,6 +51,15 @@ def api_check_email(request):
         # Check user exists with this email and role
         user = User.objects.filter(email__iexact=email, role=role).first()
         
+        # FALLBACK: If no user found and role is super_admin, check for Django superuser
+        # This handles cases where superuser was created but role wasn't set properly
+        if not user and role == 'super_admin':
+            user = User.objects.filter(email__iexact=email, is_superuser=True).first()
+            if user:
+                # Auto-heal: Set the role to match their superuser status
+                user.role = 'super_admin'
+                user.save(update_fields=['role'])
+        
         if not user:
             return JsonResponse({
                 'success': False, 
@@ -88,6 +97,14 @@ def api_login(request):
         
         # Find user by email and role
         user = User.objects.filter(email__iexact=email, role=role).first()
+        
+        # FALLBACK: If no user found and role is super_admin, check for Django superuser
+        if not user and role == 'super_admin':
+            user = User.objects.filter(email__iexact=email, is_superuser=True).first()
+            if user:
+                # Auto-heal: Ensure role is set correctly
+                user.role = 'super_admin'
+                user.save(update_fields=['role'])
         
         if not user:
             return JsonResponse({'success': False, 'message': 'Invalid credentials'})
@@ -129,6 +146,10 @@ def api_forgot_password(request):
         
         # Find user
         user = User.objects.filter(email__iexact=email, role=role).first()
+        
+        # FALLBACK: If no user found and role is super_admin, check for Django superuser
+        if not user and role == 'super_admin':
+            user = User.objects.filter(email__iexact=email, is_superuser=True).first()
         
         if not user:
             # Don't reveal if email exists for security

@@ -57,19 +57,38 @@
           <span id="dataRowsCount">0 data rows found</span>
         </div>
         
-        <!-- Multiple Photo ZIP Upload Section - One per image field -->
+        <!-- Unified ZIP Upload Section - Single multi-file input -->
         <div class="photo-zip-section" id="photoZipSection" style="display: none;">
           <div class="zip-upload-header">
             <i class="fa-solid fa-images"></i>
             <span>Upload Photos (Optional)</span>
           </div>
           <div class="zip-upload-info">
-            <p>Upload ZIP files containing photos for each image column. Filenames in ZIP should match values in the corresponding image column of your Excel (without extension).</p>
+            <div class="zip-info-box">
+              <p><strong>How it works:</strong></p>
+              <ul>
+                <li><i class="fa-solid fa-check"></i> Upload one or more ZIP files containing all your photos</li>
+                <li><i class="fa-solid fa-check"></i> Image filenames in ZIP should match values in Excel columns (without extension)</li>
+                <li><i class="fa-solid fa-check"></i> System will auto-detect which images belong to which column</li>
+              </ul>
+            </div>
           </div>
           
-          <!-- Dynamic ZIP inputs will be generated here by JavaScript -->
-          <div class="zip-inputs-container" id="zipInputsContainer">
-            <!-- ZIP upload rows are generated dynamically by JavaScript -->
+          <!-- Single unified ZIP input -->
+          <div class="unified-zip-input">
+            <input type="file" id="unifiedZipInput" accept=".zip" multiple style="display: none;">
+            <button class="btn btn-upload-zip" id="selectZipFilesBtn">
+              <i class="fa-solid fa-folder-open"></i> Select ZIP File(s)
+            </button>
+            <div class="selected-zips-list" id="selectedZipsList" style="display: none;">
+              <!-- Selected ZIPs will be listed here -->
+            </div>
+          </div>
+          
+          <!-- Image columns info (read-only) -->
+          <div class="image-columns-info" id="imageColumnsInfo">
+            <span class="info-label">Image columns detected:</span>
+            <span class="image-columns-list" id="imageColumnsList">None</span>
           </div>
         </div>
       </div>
@@ -110,7 +129,8 @@
           <select id="imageSortColumn" class="form-select">
             <option value="">-- Select Column --</option>
             {% for field in table.fields %}
-              {% if field.type|is_image_field %}
+              {% check_image_field field.type field.name as is_img %}
+              {% if is_img %}
               <option value="{{ field.name }}">{{ field.name|upper }}</option>
               {% endif %}
             {% endfor %}
@@ -161,20 +181,25 @@ window.applyImageSortFilter = function() {
         }
         
         var hasImage = imageCell.querySelector('img.table-image') !== null;
-        var hasPlaceholder = imageCell.querySelector('.no-image.passport-placeholder') !== null;
-        var originalValue = imageCell.getAttribute('data-original-value');
+        var originalValue = imageCell.getAttribute('data-original-value') || '';
+        var isPending = originalValue.startsWith('PENDING:');
+        var hasColorfulPlaceholder = imageCell.querySelector('.no-image.colorful-placeholder') !== null;
+        var hasPendingPlaceholder = imageCell.querySelector('.no-image.pending-placeholder') !== null;
         
         var showRow = false;
         
         switch (condition) {
             case 'complete':
-                showRow = hasImage && originalValue && originalValue.trim() !== '';
+                // Has actual image uploaded (not pending, not placeholder)
+                showRow = hasImage && originalValue.trim() !== '' && !isPending;
                 break;
             case 'pending':
-                showRow = hasPlaceholder && (!originalValue || originalValue.trim() === '');
+                // Has PENDING: prefix OR has pending placeholder
+                showRow = isPending || hasPendingPlaceholder;
                 break;
             case 'incomplete':
-                showRow = !hasImage && !hasPlaceholder;
+                // No image path at all (colorful placeholder)
+                showRow = hasColorfulPlaceholder || (!hasImage && !isPending && originalValue.trim() === '');
                 break;
         }
         
@@ -222,7 +247,7 @@ window.applyImageSortFilter = function() {
   </div>
 </div>
 
-<!-- Delete Permanent Confirmation Modal -->
+<!-- Delete Permanent Confirmation Modal (Pool List - requires 6-digit code) -->
 <div class="upload-modal-overlay" id="deleteModalOverlay">
   <div class="upload-modal delete-modal">
     <div class="upload-modal-header delete-header">
@@ -242,11 +267,52 @@ window.applyImageSortFilter = function() {
             <div class="warning-item"><i class="fa-solid fa-xmark"></i> <strong>No retrieve option</strong> available after deletion</div>
           </div>
         </div>
+        <!-- 6-digit verification code section -->
+        <div class="delete-verification-section">
+          <div class="verification-code-display">
+            <span class="verification-label">Type this code to confirm:</span>
+            <span class="verification-code" id="deleteVerificationCode">------</span>
+          </div>
+          <div class="verification-input-wrapper">
+            <input type="text" 
+                   id="deleteVerificationInput" 
+                   class="verification-input" 
+                   placeholder="Enter 6-digit code"
+                   maxlength="6"
+                   autocomplete="off">
+            <span class="verification-status" id="verificationStatus"></span>
+          </div>
+        </div>
       </div>
     </div>
     <div class="upload-modal-footer delete-footer">
       <button type="button" class="btn btn-secondary" id="cancelDeleteModal">Cancel</button>
-      <button type="button" class="btn btn-danger" id="confirmDeleteModal"><i class="fa-solid fa-trash"></i> Delete Permanently</button>
+      <button type="button" class="btn btn-danger" id="confirmDeleteModal" disabled><i class="fa-solid fa-trash"></i> Delete Permanently</button>
+    </div>
+  </div>
+</div>
+
+<!-- Simple Delete Confirmation Modal (Pending/Verified - actual delete) -->
+<div class="upload-modal-overlay" id="simpleDeleteModalOverlay">
+  <div class="upload-modal simple-delete-modal">
+    <div class="upload-modal-header simple-delete-header">
+      <h3><i class="fa-solid fa-trash-can"></i> Delete Cards</h3>
+      <button type="button" class="upload-modal-close" id="closeSimpleDeleteModal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="upload-modal-body">
+      <div class="simple-delete-content">
+        <div class="simple-delete-icon">
+          <i class="fa-solid fa-trash-can"></i>
+        </div>
+        <div class="simple-delete-text">
+          <p class="delete-count"><strong id="simpleDeleteCountText">0 card(s)</strong> will be deleted</p>
+          <p class="delete-info">Deleted cards will be moved to Pool. You can retrieve them later or permanently delete from Pool.</p>
+        </div>
+      </div>
+    </div>
+    <div class="upload-modal-footer">
+      <button type="button" class="btn btn-secondary" id="cancelSimpleDeleteModal">Cancel</button>
+      <button type="button" class="btn btn-danger" id="confirmSimpleDeleteModal"><i class="fa-solid fa-trash-can"></i> Delete</button>
     </div>
   </div>
 </div>

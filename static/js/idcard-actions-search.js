@@ -33,8 +33,10 @@ function initSearchHandlers() {
                 } else if (typeof window.searchRows === 'function') {
                     window.searchRows(query);
                 } else {
-                    // Fallback to old method
-                    searchQuery = query;
+                    // Fallback to old method - update table state
+                    if (window.IDCardApp?.tableState) {
+                        window.IDCardApp.tableState.searchQuery = query;
+                    }
                     applyClassSectionFilters();
                 }
             }, 300);
@@ -49,7 +51,9 @@ function initSearchHandlers() {
                 } else if (typeof window.searchRows === 'function') {
                     window.searchRows(query);
                 } else {
-                    searchQuery = query;
+                    if (window.IDCardApp?.tableState) {
+                        window.IDCardApp.tableState.searchQuery = query;
+                    }
                     applyClassSectionFilters();
                 }
             }
@@ -64,7 +68,9 @@ function initSearchHandlers() {
                 } else if (typeof window.searchRows === 'function') {
                     window.searchRows('');
                 } else {
-                    searchQuery = '';
+                    if (window.IDCardApp?.tableState) {
+                        window.IDCardApp.tableState.searchQuery = '';
+                    }
                     applyClassSectionFilters();
                 }
                 searchInput.focus();
@@ -328,7 +334,8 @@ function applyClassSectionFilters() {
             }
         }
         
-        // Also apply search query if exists
+        // Also apply search query if exists (get from table module's state)
+        const searchQuery = window.IDCardApp?.tableState?.searchQuery || '';
         if (showRow && searchQuery) {
             const rowText = row.textContent.toLowerCase();
             if (!rowText.includes(searchQuery.toLowerCase())) {
@@ -692,20 +699,25 @@ function initImageSortModal() {
                 }
                 
                 const hasImage = imageCell.querySelector('img.table-image') !== null;
-                const hasPlaceholder = imageCell.querySelector('.no-image.passport-placeholder') !== null;
-                const originalValue = imageCell.getAttribute('data-original-value');
+                const originalValue = imageCell.getAttribute('data-original-value') || '';
+                const isPending = originalValue.startsWith('PENDING:');
+                const hasColorfulPlaceholder = imageCell.querySelector('.no-image.colorful-placeholder') !== null;
+                const hasPendingPlaceholder = imageCell.querySelector('.no-image.pending-placeholder') !== null;
                 
                 let showRow = false;
                 
                 switch (condition) {
                     case 'complete':
-                        showRow = hasImage && originalValue && originalValue.trim() !== '';
+                        // Has actual image uploaded (not pending, not placeholder)
+                        showRow = hasImage && originalValue.trim() !== '' && !isPending;
                         break;
                     case 'pending':
-                        showRow = hasPlaceholder && (!originalValue || originalValue.trim() === '');
+                        // Has PENDING: prefix OR has pending placeholder
+                        showRow = isPending || hasPendingPlaceholder;
                         break;
                     case 'incomplete':
-                        showRow = !hasImage && !hasPlaceholder;
+                        // No image path at all (colorful placeholder)
+                        showRow = hasColorfulPlaceholder || (!hasImage && !isPending && originalValue.trim() === '');
                         break;
                 }
                 

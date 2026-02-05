@@ -76,17 +76,30 @@ document.addEventListener('DOMContentLoaded', function() {
         requestAnimationFrame(update);
     }
     
-    // Animate stat values
+    // Animate stat values - read actual values from DOM
     setTimeout(() => {
         const pendingCards = document.getElementById('pendingCards');
         const verifiedCards = document.getElementById('verifiedCards');
         const approvedCards = document.getElementById('approvedCards');
         const downloadedCards = document.getElementById('downloadedCards');
         
-        if (pendingCards) animateValue(pendingCards, 0, 23, 1000);
-        if (verifiedCards) animateValue(verifiedCards, 0, 156, 1000);
-        if (approvedCards) animateValue(approvedCards, 0, 412, 1200);
-        if (downloadedCards) animateValue(downloadedCards, 0, 656, 1500);
+        // Read actual values from DOM, then animate from 0 to that value
+        if (pendingCards) {
+            const targetValue = parseInt(pendingCards.textContent.replace(/,/g, '')) || 0;
+            animateValue(pendingCards, 0, targetValue, 1000);
+        }
+        if (verifiedCards) {
+            const targetValue = parseInt(verifiedCards.textContent.replace(/,/g, '')) || 0;
+            animateValue(verifiedCards, 0, targetValue, 1000);
+        }
+        if (approvedCards) {
+            const targetValue = parseInt(approvedCards.textContent.replace(/,/g, '')) || 0;
+            animateValue(approvedCards, 0, targetValue, 1200);
+        }
+        if (downloadedCards) {
+            const targetValue = parseInt(downloadedCards.textContent.replace(/,/g, '')) || 0;
+            animateValue(downloadedCards, 0, targetValue, 1500);
+        }
     }, 500);
     
     // ====================
