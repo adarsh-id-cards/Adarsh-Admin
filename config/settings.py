@@ -45,7 +45,7 @@ DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 'yes')
 
 # Allowed Hosts
 # Local default: localhost, 127.0.0.1 | Production: Add your domain in .env
-_default_hosts = 'localhost,127.0.0.1,.localhost' if DEBUG else ''
+_default_hosts = 'localhost,127.0.0.1,.localhost,adarsh-admin.onrender.com' if DEBUG else ''
 ALLOWED_HOSTS = [
     host.strip() 
     for host in os.getenv('ALLOWED_HOSTS', _default_hosts).split(',') 
